@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fade
+    username: postgres
+    password: "123456"
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+springdoc:
+  swagger-ui:
+    path: /swagger
+
+application:
+  security:
+    jwt:
+      secret-key: chaunhattang09072004nguyendinhthien04082004thaiphanthanhsang05072004
+
+app:
+  jwt:
+    issuer: VibeNet_Issuer
+    audience: VibeNet_Client
+    expiration-in-ms: 86400000
+
+file:
+  upload-dir: C:\Users\admin\Documents\EIU\Project\vibenet\uploads
