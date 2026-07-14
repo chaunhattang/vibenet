@@ -1,11 +1,10 @@
 package vibe.net.backend.models.entities;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
-import vibe.net.backend.enums.ReactionType;
+import vibe.net.backend.enums.NotificationType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,24 +15,31 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Reaction {
+public class Notification {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    Post post;
+    @JoinColumn(name = "recipient_id", nullable = false)
+    User recipient;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    User user;
+    @JoinColumn(name = "actor_id", nullable = false)
+    User actor;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "reaction_type", nullable = false)
-    ReactionType type;
+    @Column(nullable = false)
+    NotificationType type;
+
+    @Column(name = "related_entity_id")
+    UUID relatedEntityId;
+
+    @Builder.Default
+    @Column(nullable = false)
+    boolean isRead = false;
 
     @CreationTimestamp
+    @Column(nullable = false)
     LocalDateTime createdAt;
-
 }
