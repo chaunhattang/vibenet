@@ -18,6 +18,7 @@ import vibe.net.backend.models.dtos.request.RegisterRequest;
 import vibe.net.backend.models.dtos.response.TokenResponse;
 import vibe.net.backend.models.entities.User;
 import vibe.net.backend.repositories.UserRepository;
+import vibe.net.backend.services.interfaces.AuthService;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -28,7 +29,7 @@ import java.util.UUID;
 @Builder
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class AuthServiceImpl {
+public class AuthServiceImpl implements AuthService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;

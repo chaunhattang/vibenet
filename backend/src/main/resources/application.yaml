@@ -1,11 +1,14 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   application:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/fade
-    username: postgres
-    password: "123456"
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -23,8 +26,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
 
 springdoc:
   swagger-ui:
@@ -33,13 +36,13 @@ springdoc:
 application:
   security:
     jwt:
-      secret-key: chaunhattang09072004nguyendinhthien04082004thaiphanthanhsang05072004
+      secret-key: ${JWT_SECRET_KEY}
 
 app:
   jwt:
-    issuer: VibeNet_Issuer
-    audience: VibeNet_Client
-    expiration-in-ms: 86400000
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
+    expiration-in-ms: ${JWT_EXPIRATION_IN_MS}
 
 file:
-  upload-dir: C:\Users\admin\Documents\EIU\Project\vibenet\uploads
+  upload-dir: ${FILE_UPLOAD_DIR}
