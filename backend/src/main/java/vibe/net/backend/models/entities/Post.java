@@ -6,6 +6,7 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,11 +23,19 @@ public class Post {
 
     String textContent;
 
-    List<String> mediaUrl;
+    @ElementCollection
+    @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "media_url")
+    @Builder.Default
+    List<String> mediaUrl = new ArrayList<>();
 
-    List <Reaction> reactions;
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    List<Reaction> reactions = new ArrayList<>();
 
-    List <Comment> comments;
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    List<Comment> comments = new ArrayList<>();
 
     @CreationTimestamp
     LocalDateTime createdAt;

@@ -1,9 +1,5 @@
 package vibe.net.backend.services.implementations;
 
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,8 +13,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Service
-@Builder
-@RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
     @Value("${file.upload-dir}")
     private String uploadDir;

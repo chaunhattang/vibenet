@@ -10,8 +10,10 @@ public class AppException extends RuntimeException{
 
     public AppException(ErrorCodeInterface error){
         super(error.getMessage());
-        errorCode.setCode(error.getCode());
-        errorCode.setMessage(error.getMessage());
-        errorCode.setStatusCode(error.getStatusCode());
+        this.errorCode = ErrorCode.builder()
+                .code(error.getCode())
+                .message(error.getMessage())
+                .statusCode(error.getStatusCode())
+                .build();
     }
 }

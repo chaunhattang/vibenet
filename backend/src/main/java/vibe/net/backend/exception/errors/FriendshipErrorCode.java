@@ -14,7 +14,11 @@ import vibe.net.backend.exception.ErrorDomain;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum FriendshipErrorCode implements ErrorCodeInterface {
-    NOT_FOUND(1, "Friendship not found", HttpStatus.NOT_FOUND)
+    NOT_FOUND(1, "Friendship not found", HttpStatus.NOT_FOUND),
+    ALREADY_EXISTS(2, "Friendship already exists", HttpStatus.CONFLICT),
+    CANNOT_ADD_SELF(3, "Cannot send a friend request to yourself", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED(4, "Not authorized to act on this friend request", HttpStatus.FORBIDDEN),
+    INVALID_STATUS(5, "Friend request is not in a valid state for this action", HttpStatus.BAD_REQUEST)
     ;
 
     int relativeCode;

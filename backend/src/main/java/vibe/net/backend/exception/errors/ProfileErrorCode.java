@@ -14,7 +14,8 @@ import vibe.net.backend.exception.ErrorDomain;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum ProfileErrorCode implements ErrorCodeInterface {
-    NOT_FOUND(1, "Profile not found", HttpStatus.NOT_FOUND)
+    NOT_FOUND(1, "Profile not found", HttpStatus.NOT_FOUND),
+    EXISTED(2, "Profile already exists", HttpStatus.CONFLICT)
     ;
 
     int relativeCode;

@@ -28,6 +28,12 @@ public class JwtServiceImpl {
     @Value("${app.jwt.expiration-in-ms}")
     private Long expirationTime;
 
+    // Widget tokens are long-lived (90 days) and carry a "widget" scope but NO role claim,
+    // so they authorize only the explicit X-Widget-Token allow-list path in the filter and
+    // are useless as a Bearer token (role-based @PreAuthorize checks fail without a role).
+    private static final long WIDGET_TOKEN_EXPIRATION_MS = 90L * 24 * 60 * 60 * 1000;
+    public static final String WIDGET_SCOPE = "widget";
+
     public String createToken(User user) {
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
         var token = Jwts.builder()
@@ -40,6 +46,22 @@ public class JwtServiceImpl {
                 .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(key, Jwts.SIG.HS512).compact();
         return token;
+    }
+
+    public String createWidgetToken(User user) {
+        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .claim("scope", WIDGET_SCOPE)
+                .issuer(issuer)
+                .audience().add(audience).and()
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + WIDGET_TOKEN_EXPIRATION_MS))
+                .signWith(key, Jwts.SIG.HS512).compact();
+    }
+
+    public String extractScope(String token) {
+        return extractClaim(token, claims -> claims.get("scope", String.class));
     }
 
     public String extractSubject(String token) {

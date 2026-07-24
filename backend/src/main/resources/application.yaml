@@ -28,6 +28,12 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      # Fail fast instead of hanging the request thread if Redis is slow/unreachable;
+      # the notification/moment read paths all fall back to the DB on Redis errors.
+      timeout: 2000ms
+      connect-timeout: 2000ms
+      # Lettuce is thread-safe on a shared connection, so no pool is required for v1.
+      # To enable pooling, add the commons-pool2 dependency and a spring.data.redis.lettuce.pool block.
 
 springdoc:
   swagger-ui:

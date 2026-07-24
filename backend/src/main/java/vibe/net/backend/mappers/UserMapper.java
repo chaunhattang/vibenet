@@ -8,14 +8,14 @@ import vibe.net.backend.models.entities.User;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {Profile.class})
+@Mapper(componentModel = "spring")
 public interface UserMapper {
-    @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "hashedPassword", ignore = true)
     @Mapping(target = "profile", ignore = true)
     User toUser(RegisterRequest request);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "owner", ignore = true)
     Profile toProfile(RegisterRequest request);
 
     @Mapping(source = "profile", target = "profileResponse")

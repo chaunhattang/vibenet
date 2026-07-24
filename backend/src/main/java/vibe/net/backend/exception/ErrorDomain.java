@@ -16,6 +16,8 @@ public enum ErrorDomain {
     PROFILE(400, 499),
     REACTION(500, 599),
     USER(600, 699),
+    LOCKET(700, 799),
+    DEVICE(800, 899),
     SYSTEM(1000, 2000)
     ;
 
