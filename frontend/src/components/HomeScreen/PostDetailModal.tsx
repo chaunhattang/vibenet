@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CURRENT_USER_AVATAR } from '../../constants';
+import { useAuth } from '../../contexts/AuthContext';
 import { CommentData, PostData } from '../../types';
 import { CloseIcon } from '../../assets/Icon';
 
@@ -31,6 +32,7 @@ export default function PostDetailModal({
   onAddComment,
 }: PostDetailModalProps) {
   const insets = useSafeAreaInsets();
+  const { currentUser } = useAuth();
   const inputRef = useRef<TextInput>(null);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(
@@ -174,7 +176,7 @@ export default function PostDetailModal({
             <View className="flex-row items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-white/5">
               <View className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                 <Image
-                  source={{ uri: CURRENT_USER_AVATAR }}
+                  source={{ uri: currentUser?.avatar ?? CURRENT_USER_AVATAR }}
                   className="w-full h-full"
                 />
               </View>

@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,21 +16,25 @@ import Search from '../components/HomeScreen/Search';
 import { ChevronDownIcon } from '../assets/Icon';
 import OnlineUsers from '../layout/OnlineUsers';
 import PostCard from '../components/HomeScreen/PostCard';
-import { CURRENT_USER_AVATAR } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
 import { usePosts } from '../contexts/PostsContext';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
-import { OnlineUser, PostData } from '../types';
+import { OnlineUser, PostData, ProfileDetails } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 // Cái này là post giả (chưa có backend), sau này có be thì bỏ
-function createLocalPost(content: string, timeLeft: string): PostData {
+function createLocalPost(
+  author: ProfileDetails,
+  content: string,
+  timeLeft: string,
+): PostData {
   return {
     id: `local-${Date.now()}`,
-    author: 'You',
-    handle: '@me',
-    avatar: CURRENT_USER_AVATAR,
+    author: author.fullName,
+    handle: `@${author.handle}`,
+    avatar: author.avatar,
     content,
     type: 'thought',
     likes: 0,
@@ -39,12 +42,13 @@ function createLocalPost(content: string, timeLeft: string): PostData {
     timestamp: 'JUST NOW',
     timeLeft,
     isNew: true,
-    ownerId: 'me',
+    ownerId: author.userId,
   };
 }
 
 export default function NewsfeedScreen() {
   const navigation = useNavigation<Nav>();
+  const { currentUser, logout } = useAuth();
   // posts giờ nằm trong PostsContext (dùng chung với trang Profile), không phải state riêng nữa
   const { posts, addPost, deletePost } = usePosts();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
@@ -69,6 +73,10 @@ export default function NewsfeedScreen() {
     );
   }, [searchQuery]);
 
+  // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị, nhưng vẫn
+  // cần guard vì kiểu của nó là ProfileDetails | null.
+  if (!currentUser) return null;
+
   const handleToggleSearch = () => {
     setSearchOpen(v => !v);
     setSearchQuery('');
@@ -79,7 +87,7 @@ export default function NewsfeedScreen() {
     setIsSubmitting(true);
     // Sau này có be thì try catch ở đây
     setTimeout(() => {
-      addPost(createLocalPost(composerValue.trim(), '12H 00M REMAINING'));
+      addPost(createLocalPost(currentUser, composerValue.trim(), '12H 00M REMAINING'));
       setComposerValue('');
       setComposerExpanded(false);
       setIsSubmitting(false);
@@ -90,7 +98,7 @@ export default function NewsfeedScreen() {
     // Sau này có be thì try catch ở đây
     const hours = Math.floor(durationMinutes / 60);
     const timeLeft = `${String(hours).padStart(2, '0')}H 00M REMAINING`;
-    addPost(createLocalPost(content, timeLeft));
+    addPost(createLocalPost(currentUser, content, timeLeft));
     setModalVisible(false);
   };
 
@@ -118,7 +126,7 @@ export default function NewsfeedScreen() {
           <OnlineUsers users={mockOnlineUsers} onSelectUser={() => {}} />
 
           <ComposerCard
-            avatar={CURRENT_USER_AVATAR}
+            avatar={currentUser.avatar}
             value={composerValue}
             onChangeText={setComposerValue}
             expanded={composerExpanded}
@@ -175,13 +183,10 @@ export default function NewsfeedScreen() {
           if (tab === 'profile') navigation.navigate('Profile');
         }}
         onPressCreate={() => setModalVisible(true)}
-        // Sau này có be thì: gọi logout() (lib/auth) rồi router chuyển sang màn login
-        onLogout={() =>
-          Alert.alert(
-            'Logged out',
-            'This is a UI-only demo, no account was signed out.',
-          )
-        }
+        onLogout={() => {
+          logout();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        }}
       />
 
       <CreateWhisperModal

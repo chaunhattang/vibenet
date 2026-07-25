@@ -1,4 +1,6 @@
 export type RootStackParamList = {
+  Login: { registered?: boolean } | undefined;
+  Register: undefined;
   Home: undefined;
   MessagesList: undefined;
   ChatDetail: { chatId: string };

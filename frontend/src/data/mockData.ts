@@ -259,7 +259,7 @@ export const mockDrifters: Drifter[] = [
   { id: 'd5', name: 'Sol', avatar: 'https://i.pravatar.cc/150?u=Sol' },
 ];
 
-const DEFAULT_COVER =
+export const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?q=80&w=2070&auto=format&fit=crop';
 
 // Chi tiết profile, key = userId ('me' hoặc id trong mockOnlineUsers)

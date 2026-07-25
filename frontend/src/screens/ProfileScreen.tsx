@@ -5,10 +5,12 @@ import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   ArchiveIcon,
   EditIcon,
+  LogoutIcon,
   SettingsIcon,
   ShareIcon,
   UsersIcon,
 } from '../assets/Icon';
+import ConfirmModal from '../components/HomeScreen/ConfirmModal';
 import AboutCard from '../components/profileScreen/AboutCard';
 import EditProfileModal from '../components/profileScreen/EditProfileModal';
 import FriendCard from '../components/profileScreen/FriendCard';
@@ -16,12 +18,12 @@ import ProfileHeader from '../components/profileScreen/ProfileHeader';
 import ProfileTabs from '../components/profileScreen/ProfileTabs';
 import CreateWhisperModal from '../components/HomeScreen/CreateWhisperModal';
 import PostCard from '../components/HomeScreen/PostCard';
-import { CURRENT_USER_ID } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
 import { usePosts } from '../contexts/PostsContext';
-import { mockFriendsByUser, mockProfiles } from '../data/mockData';
+import { mockFriendsByUser } from '../data/mockData';
 import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
 import { RootStackParamList } from '../navigation/types';
-import { PostData, ProfileDetails } from '../types';
+import { PostData } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 type ProfileTab = 'thoughts' | 'friends' | 'settings';
@@ -29,26 +31,34 @@ type ProfileTab = 'thoughts' | 'friends' | 'settings';
 export default function ProfileScreen() {
   const navigation = useNavigation<Nav>();
   const { posts, addPost, deletePost } = usePosts();
+  const { currentUser, logout, updateCurrentUser } = useAuth();
 
-  const [profile, setProfile] = useState<ProfileDetails>(
-    mockProfiles[CURRENT_USER_ID],
-  );
-  const [friends] = useState(mockFriendsByUser[CURRENT_USER_ID] ?? []);
   const [activeTab, setActiveTab] = useState<ProfileTab>('thoughts');
   const [tabBarActive, setTabBarActive] = useState<TabKey>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [whisperModalVisible, setWhisperModalVisible] = useState(false);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
 
-  const myPosts = posts.filter(p => p.ownerId === CURRENT_USER_ID);
+  const handleLogout = () => {
+    logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
+  // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị, nhưng vẫn
+  // cần guard vì kiểu của nó là ProfileDetails | null.
+  if (!currentUser) return null;
+
+  const friends = mockFriendsByUser[currentUser.userId] ?? [];
+  const myPosts = posts.filter(p => p.ownerId === currentUser.userId);
   const totalReactions = myPosts.reduce((sum, p) => sum + p.likes, 0);
 
   const handleWhisperSubmit = (content: string, durationMinutes: number) => {
     const hours = Math.floor(durationMinutes / 60);
     const newPost: PostData = {
       id: `local-${Date.now()}`,
-      author: profile.fullName,
-      handle: `@${profile.handle}`,
-      avatar: profile.avatar,
+      author: currentUser.fullName,
+      handle: `@${currentUser.handle}`,
+      avatar: currentUser.avatar,
       content,
       type: 'thought',
       likes: 0,
@@ -56,7 +66,7 @@ export default function ProfileScreen() {
       timestamp: 'JUST NOW',
       timeLeft: `${String(hours).padStart(2, '0')}H 00M REMAINING`,
       isNew: true,
-      ownerId: CURRENT_USER_ID,
+      ownerId: currentUser.userId,
     };
     addPost(newPost);
     setWhisperModalVisible(false);
@@ -69,10 +79,10 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader
-          coverImage={profile.coverImage}
-          avatar={profile.avatar}
-          displayName={profile.fullName}
-          bio={profile.bio}
+          coverImage={currentUser.coverImage}
+          avatar={currentUser.avatar}
+          displayName={currentUser.fullName}
+          bio={currentUser.bio}
           postsCount={myPosts.length}
           friendsCount={friends.length}
           reactionsCount={totalReactions}
@@ -110,7 +120,7 @@ export default function ProfileScreen() {
           tabs={[
             { key: 'thoughts', label: 'Current Thoughts', Icon: ArchiveIcon },
             { key: 'friends', label: 'Friends', Icon: UsersIcon },
-            { key: 'settings', label: 'Soul Settings', Icon: SettingsIcon },
+            { key: 'settings', label: 'Settings', Icon: SettingsIcon },
           ]}
         />
 
@@ -123,7 +133,7 @@ export default function ProfileScreen() {
               >
                 <View className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                   <Image
-                    source={{ uri: profile.avatar }}
+                    source={{ uri: currentUser.avatar }}
                     className="w-full h-full"
                   />
                 </View>
@@ -173,12 +183,18 @@ export default function ProfileScreen() {
             ))}
 
           {activeTab === 'settings' && (
-            <View className="items-center py-16">
-              <Text className="text-gray-500">Coming soon</Text>
+            <View className="bg-gray-50 dark:bg-[#11131F] rounded-2xl border border-gray-200 dark:border-white/5 overflow-hidden">
+              <Pressable
+                onPress={() => setLogoutConfirmVisible(true)}
+                className="flex-row items-center gap-3 px-4 py-4 active:bg-gray-100 dark:active:bg-white/5"
+              >
+                <LogoutIcon size={18} />
+                <Text className="text-red-500 font-medium flex-1">Log Out</Text>
+              </Pressable>
             </View>
           )}
 
-          <AboutCard profile={profile} />
+          <AboutCard profile={currentUser} />
         </View>
       </ScrollView>
 
@@ -190,20 +206,28 @@ export default function ProfileScreen() {
           else if (tab === 'messages') navigation.navigate('MessagesList');
         }}
         onPressCreate={() => setWhisperModalVisible(true)}
-        onLogout={() =>
-          Alert.alert(
-            'Logged out',
-            'This is a UI-only demo, no account was signed out.',
-          )
-        }
+        onLogout={handleLogout}
+      />
+
+      <ConfirmModal
+        visible={logoutConfirmVisible}
+        icon={<LogoutIcon size={28} color="#EF4444" />}
+        title="Log Out"
+        message="Are you sure you want to let your session fade away? You will need to sign back in."
+        confirmLabel="Log Out"
+        onCancel={() => setLogoutConfirmVisible(false)}
+        onConfirm={() => {
+          setLogoutConfirmVisible(false);
+          handleLogout();
+        }}
       />
 
       <EditProfileModal
         visible={editModalVisible}
-        profile={profile}
+        profile={currentUser}
         onClose={() => setEditModalVisible(false)}
         onSave={updated => {
-          setProfile(updated);
+          updateCurrentUser(updated);
           setEditModalVisible(false);
         }}
       />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
-import { CURRENT_USER_AVATAR, CURRENT_USER_ID } from '../../constants';
+import { CURRENT_USER_AVATAR } from '../../constants';
+import { useAuth } from '../../contexts/AuthContext';
 import { mockComments } from '../../data/mockData';
 import { CommentData, PostData } from '../../types';
 import ConfirmModal from '../HomeScreen/ConfirmModal';
@@ -21,8 +22,8 @@ type PostCardProps = {
 };
 
 export default function PostCard({ post, onDelete }: PostCardProps) {
-  // Sau này có be thì: CURRENT_USER_ID lấy từ getCurrentUserId() (lib/user) thay vì hằng số 'me'
-  const isOwner = post.ownerId === CURRENT_USER_ID;
+  const { currentUser } = useAuth();
+  const isOwner = post.ownerId === currentUser?.userId;
 
   const [liked, setLiked] = useState(false);
   const likeCount = post.likes + (liked ? 1 : 0);
@@ -59,8 +60,8 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
     setComments(prev => [
       {
         id: `c-${Date.now()}`,
-        author: 'You',
-        avatar: CURRENT_USER_AVATAR,
+        author: currentUser?.fullName ?? 'You',
+        avatar: currentUser?.avatar ?? CURRENT_USER_AVATAR,
         content,
         timestamp: 'JUST NOW',
         parentId,

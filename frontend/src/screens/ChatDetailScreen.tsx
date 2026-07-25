@@ -10,7 +10,7 @@ import {
 import ChatComposer from '../components/chatScreen/ChatComposer';
 import ChatDetailHeader from '../components/chatScreen/ChatDetailHeader';
 import MessageBubble from '../components/chatScreen/MessageBubble';
-import { CURRENT_USER_ID } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { RootStackParamList } from '../navigation/types';
 
@@ -22,6 +22,7 @@ export default function ChatDetailScreen() {
   const route = useRoute() as Route;
   const { chatId } = route.params;
   const { rooms, getMessages, sendMessage } = useChat();
+  const { currentUserId } = useAuth();
 
   const room = rooms.find(r => r.chatId === chatId);
   const messages = getMessages(chatId);
@@ -57,10 +58,10 @@ export default function ChatDetailScreen() {
               <MessageBubble
                 key={msg.id}
                 content={msg.content}
-                isMe={msg.senderId === CURRENT_USER_ID}
+                isMe={msg.senderId === currentUserId}
                 avatar={msg.senderAvatar}
                 sender={
-                  msg.senderId !== CURRENT_USER_ID ? msg.senderName : undefined
+                  msg.senderId !== currentUserId ? msg.senderName : undefined
                 }
                 timestamp={msg.timestamp}
               />

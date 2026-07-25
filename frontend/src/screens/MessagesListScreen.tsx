@@ -1,9 +1,10 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import ChatRoomRow from '../components/chatScreen/ChatRoomRow';
 import FloatingTabBar from '../layout/FloatingTabBar';
+import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
@@ -14,6 +15,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'MessagesList'>;
 export default function MessagesListScreen() {
   const navigation = useNavigation<Nav>();
   const { rooms } = useChat();
+  const { logout } = useAuth();
   const [search, setSearch] = useState('');
 
   const filteredRooms = useMemo(
@@ -80,12 +82,10 @@ export default function MessagesListScreen() {
           else if (tab === 'profile') navigation.navigate('Profile');
         }}
         onPressCreate={() => navigation.navigate('Home')}
-        onLogout={() =>
-          Alert.alert(
-            'Logged out',
-            'This is a UI-only demo, no account was signed out.',
-          )
-        }
+        onLogout={() => {
+          logout();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        }}
       />
     </View>
   );

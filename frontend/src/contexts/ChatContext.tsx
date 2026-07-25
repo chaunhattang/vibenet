@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useState } from 'react';
 import { CURRENT_USER_ID } from '../constants';
 import { mockChatMessages, mockChatRooms } from '../data/mockData';
 import { ChatMessageData, ChatRoomData } from '../types';
+import { useAuth } from './AuthContext';
 
 function sortRooms(rooms: ChatRoomData[]): ChatRoomData[] {
   return [...rooms].sort((a, b) => {
@@ -25,6 +26,7 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 // Giữ rooms/messages ở đây (thay vì trong từng screen) để MessagesListScreen và
 // ChatDetailScreen luôn đồng bộ dữ liệu khi điều hướng qua lại giữa 2 màn.
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const { currentUserId, currentUser } = useAuth();
   const [rooms, setRooms] = useState<ChatRoomData[]>(() => sortRooms(mockChatRooms));
   const [messagesByChat, setMessagesByChat] =
     useState<Record<string, ChatMessageData[]>>(mockChatMessages);
@@ -36,8 +38,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const newMessage: ChatMessageData = {
       id: `msg-${Date.now()}`,
       chatId,
-      senderId: CURRENT_USER_ID,
-      senderName: 'You',
+      senderId: currentUserId ?? CURRENT_USER_ID,
+      senderName: currentUser?.fullName ?? 'You',
       content,
       timestamp,
     };
