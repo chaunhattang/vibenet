@@ -4,6 +4,7 @@ export type RootStackParamList = {
   Home: undefined;
   MessagesList: undefined;
   ChatDetail: { chatId: string };
+  Notifications: undefined;
   Profile: undefined;
   OtherProfile: { userId: string };
   SetupProfile: undefined;

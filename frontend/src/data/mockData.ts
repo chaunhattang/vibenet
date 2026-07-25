@@ -5,6 +5,7 @@ import {
   CommentData,
   Drifter,
   FriendStatus,
+  NotificationData,
   OnlineUser,
   PostData,
   ProfileDetails,
@@ -120,6 +121,7 @@ export const mockComments: Record<string, CommentData[]> = {
     {
       id: 'c1',
       author: 'Duy Khang',
+      userId: 'u2',
       avatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
       content: 'Cho mình xin địa chỉ quán với!',
       timestamp: '3M AGO',
@@ -129,6 +131,7 @@ export const mockComments: Record<string, CommentData[]> = {
     {
       id: 'c2',
       author: 'Linh Vu',
+      userId: 'u3',
       avatar: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
       content: 'Đẹp quá trời luôn',
       timestamp: '15M AGO',
@@ -136,6 +139,7 @@ export const mockComments: Record<string, CommentData[]> = {
     {
       id: 'c3',
       author: 'Gia Han',
+      userId: 'u5',
       avatar: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
       content: 'View này chụp ở đâu vậy bạn',
       timestamp: '10M AGO',
@@ -272,7 +276,7 @@ export const mockProfiles: Record<string, ProfileDetails> = {
     avatar: CURRENT_USER_AVATAR,
     coverImage: DEFAULT_COVER,
     phoneNumber: '+84 912 345 678',
-    email: 'me@fade.app',
+    email: 'me@vibenet.app',
     dateOfBirth: '2000-01-01',
     gender: 'OTHER',
   },
@@ -283,7 +287,7 @@ export const mockProfiles: Record<string, ProfileDetails> = {
     bio: 'Cà phê mỗi sáng, deadline mỗi tối.',
     avatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
     coverImage: DEFAULT_COVER,
-    email: 'minhanh@fade.app',
+    email: 'minhanh@vibenet.app',
     dateOfBirth: '1999-05-12',
     gender: 'FEMALE',
   },
@@ -294,7 +298,7 @@ export const mockProfiles: Record<string, ProfileDetails> = {
     bio: 'Săn hoàng hôn, lưu giữ khoảnh khắc.',
     avatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
     coverImage: DEFAULT_COVER,
-    email: 'duykhang@fade.app',
+    email: 'duykhang@vibenet.app',
     gender: 'MALE',
   },
   u3: {
@@ -345,3 +349,43 @@ export const mockFriendStatusByUser: Record<string, FriendStatus> = {
   u4: 'NONE',
   u5: 'PENDING_RECEIVED',
 };
+
+// Thông báo giả cho trang Notifications — sau này có be thì bỏ, gọi getNotifications()
+export const mockNotifications: NotificationData[] = [
+  {
+    id: 'n1',
+    type: 'like',
+    userId: 'u1',
+    userName: 'Minh Anh',
+    message: 'liked your whisper "Cà phê sáng nay ngon xuất sắc..."',
+    timeAgo: '2M AGO',
+    avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
+  },
+  {
+    id: 'n2',
+    type: 'reply',
+    userId: 'u2',
+    userName: 'Duy Khang',
+    message: 'replied: "Cho mình xin địa chỉ quán với!"',
+    timeAgo: '10M AGO',
+    avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
+  },
+  {
+    id: 'n3',
+    type: 'mention',
+    userId: 'u3',
+    userName: 'Linh Vu',
+    message: 'mentioned you in a comment',
+    timeAgo: '30M AGO',
+    avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
+  },
+  {
+    id: 'n4',
+    type: 'faded',
+    userId: 'u4',
+    userName: 'Bao Tran',
+    message: 'Your whisper faded away after reaching its time limit.',
+    timeAgo: '5H AGO',
+    avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
+  },
+];

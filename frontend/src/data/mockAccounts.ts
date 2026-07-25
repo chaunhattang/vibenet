@@ -10,7 +10,7 @@ export type MockAccount = {
 // Tài khoản giả để test đăng nhập (chưa có backend) — sau này có be thì xoá file này,
 // login()/register() (lib/auth) sẽ gọi API thật.
 export const mockAccounts: MockAccount[] = [
-  { userId: CURRENT_USER_ID, userName: 'me', email: 'me@fade.app', password: '123456' },
-  { userId: 'u1', userName: 'minhanh', email: 'minhanh@fade.app', password: '123456' },
-  { userId: 'u2', userName: 'duykhang', email: 'duykhang@fade.app', password: '123456' },
+  { userId: CURRENT_USER_ID, userName: 'me', email: 'me@vibenet.app', password: '123456' },
+  { userId: 'u1', userName: 'minhanh', email: 'minhanh@vibenet.app', password: '123456' },
+  { userId: 'u2', userName: 'duykhang', email: 'duykhang@vibenet.app', password: '123456' },
 ];

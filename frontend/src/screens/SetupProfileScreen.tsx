@@ -51,7 +51,7 @@ export default function SetupProfileScreen() {
           Set Up Your Profile
         </Text>
         <Text className="text-gray-500 dark:text-gray-400 mt-1">
-          This is how people will see you on Fade.
+          This is how people will see you on Vibenet.
         </Text>
       </View>
 

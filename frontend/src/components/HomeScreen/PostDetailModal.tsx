@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CURRENT_USER_AVATAR } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGoToProfile } from '../../hooks/useGoToProfile';
 import { CommentData, PostData } from '../../types';
 import { CloseIcon } from '../../assets/Icon';
 
@@ -33,6 +34,7 @@ export default function PostDetailModal({
 }: PostDetailModalProps) {
   const insets = useSafeAreaInsets();
   const { currentUser } = useAuth();
+  const goToProfile = useGoToProfile();
   const inputRef = useRef<TextInput>(null);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(
@@ -62,13 +64,14 @@ export default function PostDetailModal({
 
   const renderComment = (comment: CommentData, isReply: boolean) => (
     <View key={comment.id} className="flex-row gap-3">
-      <View
+      <Pressable
+        onPress={() => goToProfile(comment.userId)}
         className={`${
           isReply ? 'w-7 h-7' : 'w-8 h-8'
         } rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700`}
       >
         <Image source={{ uri: comment.avatar }} className="w-full h-full" />
-      </View>
+      </Pressable>
       <View className="flex-1">
         <Text className="text-sm text-gray-900 dark:text-gray-100">
           <Text className="font-semibold">{comment.author} </Text>
@@ -116,12 +119,15 @@ export default function PostDetailModal({
 
             <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
               <View className="flex-row items-center gap-3">
-                <View className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                <Pressable
+                  onPress={() => post.ownerId && goToProfile(post.ownerId)}
+                  className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
+                >
                   <Image
                     source={{ uri: post.avatar }}
                     className="w-full h-full"
                   />
-                </View>
+                </Pressable>
                 <View>
                   <Text className="text-sm font-semibold text-gray-900 dark:text-white">
                     {post.author}
@@ -174,12 +180,15 @@ export default function PostDetailModal({
             )}
 
             <View className="flex-row items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-white/5">
-              <View className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+              <Pressable
+                onPress={() => currentUser && goToProfile(currentUser.userId)}
+                className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
+              >
                 <Image
                   source={{ uri: currentUser?.avatar ?? CURRENT_USER_AVATAR }}
                   className="w-full h-full"
                 />
-              </View>
+              </Pressable>
               <TextInput
                 ref={inputRef}
                 value={text}

@@ -17,7 +17,10 @@ import { ChevronDownIcon } from '../assets/Icon';
 import OnlineUsers from '../layout/OnlineUsers';
 import PostCard from '../components/HomeScreen/PostCard';
 import { useAuth } from '../contexts/AuthContext';
+import { useChat } from '../contexts/ChatContext';
+import { useFriends } from '../contexts/FriendsContext';
 import { usePosts } from '../contexts/PostsContext';
+import { useGoToProfile } from '../hooks/useGoToProfile';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
 import { OnlineUser, PostData, ProfileDetails } from '../types';
@@ -49,6 +52,9 @@ function createLocalPost(
 export default function NewsfeedScreen() {
   const navigation = useNavigation<Nav>();
   const { currentUser, logout } = useAuth();
+  const goToProfile = useGoToProfile();
+  const { getOrCreateRoomByFriend } = useChat();
+  const { getFriendStatus } = useFriends();
   // posts giờ nằm trong PostsContext (dùng chung với trang Profile), không phải state riêng nữa
   const { posts, addPost, deletePost } = usePosts();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
@@ -76,6 +82,11 @@ export default function NewsfeedScreen() {
   // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị, nhưng vẫn
   // cần guard vì kiểu của nó là ProfileDetails | null.
   if (!currentUser) return null;
+
+  // "Online Now" chỉ hiện bạn bè thật sự (đã FRIENDS) đang online, không hiện người lạ
+  const onlineFriends = mockOnlineUsers.filter(
+    u => u.isOnline && getFriendStatus(u.id) === 'FRIENDS',
+  );
 
   const handleToggleSearch = () => {
     setSearchOpen(v => !v);
@@ -111,7 +122,10 @@ export default function NewsfeedScreen() {
         onChangeSearchQuery={setSearchQuery}
         searchResults={searchResults}
         isSearching={false}
-        onSelectUser={() => handleToggleSearch()}
+        onSelectUser={user => {
+          handleToggleSearch();
+          goToProfile(user.id);
+        }}
       />
 
       <KeyboardAvoidingView
@@ -123,7 +137,14 @@ export default function NewsfeedScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Sau này có be thì đổi mockOnlineUsers thành kết quả getOnlineUsers() (đã fetch) */}
-          <OnlineUsers users={mockOnlineUsers} onSelectUser={() => {}} />
+          <OnlineUsers
+            users={onlineFriends}
+            onSelectUser={user =>
+              navigation.navigate('ChatDetail', {
+                chatId: getOrCreateRoomByFriend(user),
+              })
+            }
+          />
 
           <ComposerCard
             avatar={currentUser.avatar}
@@ -180,6 +201,7 @@ export default function NewsfeedScreen() {
         onChangeTab={tab => {
           setActiveTab(tab);
           if (tab === 'messages') navigation.navigate('MessagesList');
+          if (tab === 'notifications') navigation.navigate('Notifications');
           if (tab === 'profile') navigation.navigate('Profile');
         }}
         onPressCreate={() => setModalVisible(true)}

@@ -1,4 +1,5 @@
 import { Image, Pressable, Text, View } from 'react-native';
+import { useGoToProfile } from '../../hooks/useGoToProfile';
 import { ChatRoomData } from '../../types';
 import { formatRelativeTime } from '../../utils/time';
 
@@ -14,6 +15,7 @@ export default function ChatRoomRow({
   onPress,
 }: ChatRoomRowProps) {
   const hasMessage = !!room.lastMessage;
+  const goToProfile = useGoToProfile();
 
   return (
     <Pressable
@@ -26,7 +28,7 @@ export default function ChatRoomRow({
           : ''
       }`}
     >
-      <View className="relative">
+      <Pressable onPress={() => goToProfile(room.friendId)} className="relative">
         <View className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
           <Image
             source={{ uri: room.friendAvatar }}
@@ -36,7 +38,7 @@ export default function ChatRoomRow({
         {room.friendIsOnline && (
           <View className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-[#0a0a0a]" />
         )}
-      </View>
+      </Pressable>
 
       <View className="flex-1 min-w-0">
         <View className="flex-row items-center justify-between mb-0.5">

@@ -55,7 +55,7 @@ export default function Search({
         ) : (
           <>
             <Text className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Fade
+              Vibenet
             </Text>
             <Pressable
               onPress={onToggleSearch}

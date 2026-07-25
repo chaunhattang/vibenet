@@ -190,7 +190,7 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row justify-center mt-4">
-          <Text className="text-gray-600 dark:text-gray-400">New to Fade? </Text>
+          <Text className="text-gray-600 dark:text-gray-400">New to Vibenet? </Text>
           <Pressable onPress={() => navigation.navigate('Register')} hitSlop={8}>
             <Text className="text-indigo-600 font-semibold">Create an account</Text>
           </Pressable>

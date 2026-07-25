@@ -1,9 +1,11 @@
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
+import { useGoToProfile } from '../../hooks/useGoToProfile';
 import { formatClockTime } from '../../utils/time';
 
 type MessageBubbleProps = {
   content: string;
   isMe: boolean;
+  senderId: string;
   avatar?: string;
   sender?: string;
   timestamp: string;
@@ -12,19 +14,25 @@ type MessageBubbleProps = {
 export default function MessageBubble({
   content,
   isMe,
+  senderId,
   avatar,
   sender,
   timestamp,
 }: MessageBubbleProps) {
+  const goToProfile = useGoToProfile();
+
   return (
     <View className={`flex-row mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
       <View className={`flex-row max-w-[75%] ${isMe ? '' : 'gap-2'}`}>
         {!isMe && (
-          <View className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 self-end">
+          <Pressable
+            onPress={() => goToProfile(senderId)}
+            className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 self-end"
+          >
             {avatar && (
               <Image source={{ uri: avatar }} className="w-full h-full" />
             )}
-          </View>
+          </Pressable>
         )}
 
         <View className={isMe ? 'items-end' : 'items-start'}>

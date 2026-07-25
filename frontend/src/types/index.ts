@@ -27,6 +27,8 @@ export type OnlineUser = {
 export type CommentData = {
   id: string;
   author: string;
+  // userId của người comment — dùng để bấm avatar nhảy sang profile của họ
+  userId: string;
   avatar: string;
   content: string;
   timestamp: string;
@@ -76,3 +78,16 @@ export type ProfileDetails = {
 };
 
 export type FriendStatus = 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'FRIENDS';
+
+export type NotificationType = 'like' | 'reply' | 'mention' | 'faded';
+
+export type NotificationData = {
+  id: string;
+  type: NotificationType;
+  // userId của người gây ra thông báo — dùng để bấm avatar nhảy sang profile của họ
+  userId?: string;
+  userName: string;
+  message: string;
+  timeAgo: string;
+  avatarUrl?: string;
+};

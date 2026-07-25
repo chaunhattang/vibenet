@@ -32,6 +32,7 @@ export default function ChatDetailScreen() {
   return (
     <View className="flex-1 bg-white dark:bg-[#0a0a0a]">
       <ChatDetailHeader
+        friendId={room.friendId}
         friendName={room.friendName}
         friendAvatar={room.friendAvatar}
         friendIsOnline={room.friendIsOnline}
@@ -59,6 +60,7 @@ export default function ChatDetailScreen() {
                 key={msg.id}
                 content={msg.content}
                 isMe={msg.senderId === currentUserId}
+                senderId={msg.senderId}
                 avatar={msg.senderAvatar}
                 sender={
                   msg.senderId !== currentUserId ? msg.senderName : undefined

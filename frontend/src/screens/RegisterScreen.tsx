@@ -76,7 +76,7 @@ export default function RegisterScreen() {
         className="flex-1 bg-white dark:bg-[#0a0a0a]"
       >
         <View className="mt-4">
-          <Text className="text-3xl font-bold text-gray-900 dark:text-white">Join Fade</Text>
+          <Text className="text-3xl font-bold text-gray-900 dark:text-white">Join Vibenet</Text>
           <Text className="text-gray-500 dark:text-gray-400 mt-1">
             Sign up to share the fleeting thoughts of the night.
           </Text>
@@ -207,7 +207,7 @@ export default function RegisterScreen() {
         >
           {loading && <ActivityIndicator size="small" color="#FFFFFF" />}
           <Text className="text-white font-semibold text-base">
-            {loading ? 'Creating account…' : 'Fade In'}
+            {loading ? 'Creating account…' : 'Vibe In'}
           </Text>
         </Pressable>
 

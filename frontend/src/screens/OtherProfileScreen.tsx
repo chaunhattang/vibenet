@@ -17,10 +17,10 @@ import ProfileHeader from '../components/profileScreen/ProfileHeader';
 import ProfileTabs from '../components/profileScreen/ProfileTabs';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
 import PostCard from '../components/HomeScreen/PostCard';
+import { useFriends } from '../contexts/FriendsContext';
 import { usePosts } from '../contexts/PostsContext';
-import { mockFriendStatusByUser, mockFriendsByUser, mockProfiles } from '../data/mockData';
+import { mockFriendsByUser, mockProfiles } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
-import { FriendStatus } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'OtherProfile'>;
 type Route = { params: RootStackParamList['OtherProfile'] };
@@ -33,11 +33,10 @@ export default function OtherProfileScreen() {
   const { userId } = route.params;
 
   const { posts } = usePosts();
+  const { getFriendStatus, sendRequest, cancelRequest, unfriend } = useFriends();
   const profile = mockProfiles[userId];
   const [friends] = useState(mockFriendsByUser[userId] ?? []);
-  const [friendStatus, setFriendStatus] = useState<FriendStatus>(
-    mockFriendStatusByUser[userId] ?? 'NONE',
-  );
+  const friendStatus = getFriendStatus(userId);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'unfriend' | null>(null);
   const [activeTab, setActiveTab] = useState<OtherProfileTab>('thoughts');
 
@@ -48,8 +47,7 @@ export default function OtherProfileScreen() {
 
   const handleFriendPress = () => {
     if (friendStatus === 'NONE') {
-      // Sau này có be thì: await sendFriendRequest(userId)
-      setFriendStatus('PENDING_SENT');
+      sendRequest(userId);
     } else if (friendStatus === 'PENDING_SENT') {
       setConfirmAction('cancel');
     } else if (friendStatus === 'FRIENDS') {
@@ -58,8 +56,8 @@ export default function OtherProfileScreen() {
   };
 
   const confirmFriendAction = () => {
-    // Sau này có be thì: await unfriend(userId)
-    setFriendStatus('NONE');
+    if (confirmAction === 'cancel') cancelRequest(userId);
+    else if (confirmAction === 'unfriend') unfriend(userId);
     setConfirmAction(null);
   };
 

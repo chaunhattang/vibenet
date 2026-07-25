@@ -6,6 +6,7 @@ import ChatRoomRow from '../components/chatScreen/ChatRoomRow';
 import FloatingTabBar from '../layout/FloatingTabBar';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
+import { useFriends } from '../contexts/FriendsContext';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
 import OnlineUsers from '../layout/OnlineUsers';
@@ -14,8 +15,9 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'MessagesList'>;
 
 export default function MessagesListScreen() {
   const navigation = useNavigation<Nav>();
-  const { rooms } = useChat();
+  const { rooms, getOrCreateRoomByFriend } = useChat();
   const { logout } = useAuth();
+  const { getFriendStatus } = useFriends();
   const [search, setSearch] = useState('');
 
   const filteredRooms = useMemo(
@@ -26,11 +28,16 @@ export default function MessagesListScreen() {
     [rooms, search],
   );
 
+  // "Online Now" chỉ hiện bạn bè thật sự (đã FRIENDS) đang online, không hiện người lạ
+  const onlineFriends = mockOnlineUsers.filter(
+    u => u.isOnline && getFriendStatus(u.id) === 'FRIENDS',
+  );
+
   return (
     <View className="flex-1 bg-white dark:bg-[#0a0a0a] mt-10">
       <View className="px-4 pt-4">
         <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Fade
+          Vibenet
         </Text>
         <TextInput
           value={search}
@@ -47,7 +54,14 @@ export default function MessagesListScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Sau này có be thì đổi mockOnlineUsers thành kết quả getOnlineUsers() (đã fetch) */}
-        <OnlineUsers users={mockOnlineUsers} onSelectUser={() => {}} />
+        <OnlineUsers
+          users={onlineFriends}
+          onSelectUser={user =>
+            navigation.navigate('ChatDetail', {
+              chatId: getOrCreateRoomByFriend(user),
+            })
+          }
+        />
 
         <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 mb-2">
           Active Whispers
@@ -79,6 +93,8 @@ export default function MessagesListScreen() {
         activeTab="messages"
         onChangeTab={tab => {
           if (tab === 'home') navigation.navigate('Home');
+          else if (tab === 'notifications')
+            navigation.navigate('Notifications');
           else if (tab === 'profile') navigation.navigate('Profile');
         }}
         onPressCreate={() => navigation.navigate('Home')}

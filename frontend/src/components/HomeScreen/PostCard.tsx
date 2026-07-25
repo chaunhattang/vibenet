@@ -3,6 +3,7 @@ import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { CURRENT_USER_AVATAR } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { mockComments } from '../../data/mockData';
+import { useGoToProfile } from '../../hooks/useGoToProfile';
 import { CommentData, PostData } from '../../types';
 import ConfirmModal from '../HomeScreen/ConfirmModal';
 import {
@@ -23,6 +24,7 @@ type PostCardProps = {
 
 export default function PostCard({ post, onDelete }: PostCardProps) {
   const { currentUser } = useAuth();
+  const goToProfile = useGoToProfile();
   const isOwner = post.ownerId === currentUser?.userId;
 
   const [liked, setLiked] = useState(false);
@@ -61,6 +63,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       {
         id: `c-${Date.now()}`,
         author: currentUser?.fullName ?? 'You',
+        userId: currentUser?.userId ?? '',
         avatar: currentUser?.avatar ?? CURRENT_USER_AVATAR,
         content,
         timestamp: 'JUST NOW',
@@ -74,9 +77,12 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
     <View className="mx-4 bg-white dark:bg-[#181825] rounded-3xl p-4 border border-gray-100 dark:border-white/5 shadow-sm">
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-3 flex-1">
-          <View className="w-11 h-11 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+          <Pressable
+            onPress={() => post.ownerId && goToProfile(post.ownerId)}
+            className="w-11 h-11 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
+          >
             <Image source={{ uri: post.avatar }} className="w-full h-full" />
-          </View>
+          </Pressable>
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5">
               <Text className="text-sm font-semibold text-gray-900 dark:text-white">

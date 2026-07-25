@@ -204,6 +204,7 @@ export default function ProfileScreen() {
           setTabBarActive(tab);
           if (tab === 'home') navigation.navigate('Home');
           else if (tab === 'messages') navigation.navigate('MessagesList');
+          else if (tab === 'notifications') navigation.navigate('Notifications');
         }}
         onPressCreate={() => setWhisperModalVisible(true)}
         onLogout={handleLogout}

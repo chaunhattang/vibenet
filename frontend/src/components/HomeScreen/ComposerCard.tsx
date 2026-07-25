@@ -1,5 +1,10 @@
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { ImageIcon, SmileIcon } from '../../assets/Icon';
+import { RootStackParamList } from '../../navigation/types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 type ComposerCardProps = {
   avatar: string;
@@ -24,12 +29,17 @@ export default function ComposerCard({
   onOpenMedia,
   isSubmitting,
 }: ComposerCardProps) {
+  const navigation = useNavigation<Nav>();
+
   return (
     <View className="mx-4 bg-white dark:bg-[#181825] rounded-3xl p-4 border border-indigo-100 dark:border-indigo-500/10 shadow-sm">
       <View className="flex-row gap-3">
-        <View className="w-11 h-11 rounded-full overflow-hidden border-2 border-indigo-100 dark:border-indigo-500/20">
+        <Pressable
+          onPress={() => navigation.navigate('Profile')}
+          className="w-11 h-11 rounded-full overflow-hidden border-2 border-indigo-100 dark:border-indigo-500/20"
+        >
           <Image source={{ uri: avatar }} className="w-full h-full" />
-        </View>
+        </Pressable>
         <TextInput
           value={value}
           onChangeText={onChangeText}
