@@ -15,7 +15,8 @@ import vibe.net.backend.exception.ErrorDomain;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum SystemErrorCode implements ErrorCodeInterface {
     UNCATEGORIZED_EXCEPTION(1, "Uncategorized exception",HttpStatus.UNAUTHORIZED),
-    ACCESS_DENIED(2, "Access denied", HttpStatus.FORBIDDEN)
+    ACCESS_DENIED(2, "Access denied", HttpStatus.FORBIDDEN),
+    VALIDATION_ERROR(3, "Validation failed", HttpStatus.BAD_REQUEST)
     ;
 
     int relativeCode;

@@ -70,10 +70,10 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = profileRepository.findById(user.getId())
                 .orElseThrow(() -> new AppException(ProfileErrorCode.NOT_FOUND));
 
-        profile.setBio(request.getBio());
-        profile.setFullName(request.getFullName());
-        profile.setGender(request.getGender());
-        profile.setDateOfBirth(request.getDateOfBirth());
+        if (request.getBio() != null) profile.setBio(request.getBio());
+        if (request.getFullName() != null) profile.setFullName(request.getFullName());
+        if (request.getGender() != null) profile.setGender(request.getGender());
+        if (request.getDateOfBirth() != null) profile.setDateOfBirth(request.getDateOfBirth());
 
         if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber());
@@ -93,7 +93,7 @@ public class ProfileServiceImpl implements ProfileService {
             }
             profile.setAvatarUrl(fileService.uploadFile(request.getAvatar(), "avatars"));
         } else if (profile.getAvatarUrl() == null || profile.getAvatarUrl().contains("default")) {
-            profile.setAvatarUrl(defaultAvatarFor(request.getGender()));
+            profile.setAvatarUrl(defaultAvatarFor(profile.getGender()));
         }
 
         Profile savedProfile = profileRepository.save(profile);

@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 import vibe.net.backend.enums.Role;
 import vibe.net.backend.enums.Status;
 import vibe.net.backend.exception.AppException;
+import vibe.net.backend.exception.errors.AuthErrorCode;
 import vibe.net.backend.exception.errors.UserErrorCode;
 import vibe.net.backend.mappers.UserMapper;
 import vibe.net.backend.models.dtos.request.LoginRequest;
+import vibe.net.backend.models.dtos.request.RefreshTokenRequest;
 import vibe.net.backend.models.dtos.request.RegisterRequest;
 import vibe.net.backend.models.dtos.response.TokenResponse;
 import vibe.net.backend.models.entities.User;
@@ -23,7 +25,6 @@ import vibe.net.backend.services.interfaces.AuthService;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.UUID;
 
 @Service
 @Builder
@@ -72,6 +73,14 @@ public class AuthServiceImpl implements AuthService {
         return createTokenResponse(user);
     }
 
+    public TokenResponse refresh(RefreshTokenRequest request) {
+        User user = validateRefreshToken(request.getRefreshToken());
+        if (user == null) {
+            throw new AppException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        }
+        return createTokenResponse(user);
+    }
+
     private TokenResponse createTokenResponse(User user) {
         String accessToken = jwtService.createToken(user);
         String refreshToken = generateAndSetRefreshToken(user);
@@ -81,13 +90,9 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    private User validateRefreshToken(UUID userId, String refreshToken) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null
-                || user.getRefreshToken() == null
-                || !user.getRefreshToken().equals(refreshToken)
-                || user.getTokenExpireTime().isBefore(LocalDateTime.now())
-        ) {
+    private User validateRefreshToken(String refreshToken) {
+        User user = userRepository.findByRefreshToken(refreshToken).orElse(null);
+        if (user == null || user.getTokenExpireTime().isBefore(LocalDateTime.now())) {
             return null;
         }
         return user;

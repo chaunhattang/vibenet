@@ -7,5 +7,8 @@ import java.util.UUID;
 
 @Service
 public interface ReactionService {
-    void toggleReaction(UUID postId, ReactionType newType);
+    /**
+     * @return the caller's resulting reaction on the post, or null if the reaction was removed.
+     */
+    ReactionType toggleReaction(UUID postId, ReactionType newType);
 }

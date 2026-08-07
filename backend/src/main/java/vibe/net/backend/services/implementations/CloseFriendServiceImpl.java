@@ -74,7 +74,7 @@ public class CloseFriendServiceImpl implements CloseFriendService {
                 .owner(owner)
                 .friend(friend)
                 .build();
-        closeFriend = closeFriendRepository.save(closeFriend);
+        closeFriend = closeFriendRepository.saveAndFlush(closeFriend);
 
         return AddCloseFriendResponse.builder()
                 .friendId(friendId)

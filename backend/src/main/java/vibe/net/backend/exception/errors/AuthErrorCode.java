@@ -14,7 +14,8 @@ import vibe.net.backend.exception.ErrorDomain;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum AuthErrorCode implements ErrorCodeInterface {
-    UNAUTHENTICATED(1, "Unauthenticated", HttpStatus.UNAUTHORIZED)
+    UNAUTHENTICATED(1, "Unauthenticated", HttpStatus.UNAUTHORIZED),
+    REFRESH_TOKEN_INVALID(2, "Invalid or expired refresh token", HttpStatus.UNAUTHORIZED)
     ;
 
     int relativeCode;

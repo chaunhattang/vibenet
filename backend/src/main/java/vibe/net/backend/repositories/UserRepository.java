@@ -17,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByUsernameContainingIgnoreCase(String username);
 
     List <User> findTop15ByLastActiveAtIsNotNullOrderByLastActiveAtDesc();
+
+    Optional<User> findByRefreshToken(String refreshToken);
 }

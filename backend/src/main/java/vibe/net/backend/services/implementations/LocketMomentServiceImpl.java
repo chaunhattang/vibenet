@@ -79,7 +79,7 @@ public class LocketMomentServiceImpl implements LocketMomentService {
 
         String mediaUrl = fileService.uploadFile(media, "media/locket");
 
-        LocketMoment moment = momentRepository.save(LocketMoment.builder()
+        LocketMoment moment = momentRepository.saveAndFlush(LocketMoment.builder()
                 .sender(sender)
                 .mediaUrl(mediaUrl)
                 .mediaType(mediaType)
@@ -249,7 +249,7 @@ public class LocketMomentServiceImpl implements LocketMomentService {
                         .recipient(recipient.getRecipient())
                         .build());
         reaction.setEmoji(emoji);
-        reaction = reactionRepository.save(reaction);
+        reaction = reactionRepository.saveAndFlush(reaction);
 
         UUID senderId = moment.getSender().getId();
         if (!senderId.equals(userId)) {

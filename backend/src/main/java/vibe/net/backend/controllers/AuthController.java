@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vibe.net.backend.models.dtos.request.LoginRequest;
+import vibe.net.backend.models.dtos.request.RefreshTokenRequest;
 import vibe.net.backend.models.dtos.request.RegisterRequest;
 import vibe.net.backend.models.dtos.response.ApiResponse;
 import vibe.net.backend.models.dtos.response.TokenResponse;
@@ -29,5 +30,10 @@ public class AuthController {
     @PostMapping(value = "/login")
     public ApiResponse<TokenResponse> login(@RequestBody @Valid LoginRequest request){
         return ApiResponse.<TokenResponse>builder().result(authService.login(request)).build();
+    }
+
+    @PostMapping(value = "/refresh")
+    public ApiResponse<TokenResponse> refresh(@RequestBody @Valid RefreshTokenRequest request){
+        return ApiResponse.<TokenResponse>builder().result(authService.refresh(request)).build();
     }
 }

@@ -24,8 +24,8 @@ public class ReactionController {
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @PostMapping
-    public ApiResponse<Void> toggleReaction(@PathVariable UUID postId, @RequestParam ReactionType type) {
-        reactionService.toggleReaction(postId, type);
-        return ApiResponse.<Void>builder().message("Reaction toggled").build();
+    public ApiResponse<ReactionType> toggleReaction(@PathVariable UUID postId, @RequestParam ReactionType type) {
+        ReactionType result = reactionService.toggleReaction(postId, type);
+        return ApiResponse.<ReactionType>builder().result(result).message("Reaction toggled").build();
     }
 }

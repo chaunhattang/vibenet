@@ -33,7 +33,7 @@ public class ReactionServiceImpl implements ReactionService {
 
     @Override
     @Transactional
-    public void toggleReaction(UUID postId, ReactionType newType) {
+    public ReactionType toggleReaction(UUID postId, ReactionType newType) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
 
         Post post = postRepository.findById(postId)
@@ -47,11 +47,11 @@ public class ReactionServiceImpl implements ReactionService {
             Reaction existingReaction = existingReactionOpt.get();
             if (existingReaction.getType() == newType) {
                 reactionRepository.delete(existingReaction);
-            } else {
-                existingReaction.setType(newType);
-                reactionRepository.save(existingReaction);
+                return null;
             }
-            return;
+            existingReaction.setType(newType);
+            reactionRepository.save(existingReaction);
+            return newType;
         }
 
         Reaction newReaction = Reaction.builder()
@@ -64,5 +64,6 @@ public class ReactionServiceImpl implements ReactionService {
         if (!post.getOwner().getId().equals(currentUserId)) {
             notificationPublisher.publish(post.getOwner().getId(), currentUserId, NotificationType.REACTION, post.getId());
         }
+        return newType;
     }
 }

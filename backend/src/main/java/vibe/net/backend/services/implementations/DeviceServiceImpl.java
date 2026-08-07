@@ -42,7 +42,7 @@ public class DeviceServiceImpl implements DeviceService {
         if (device.getWidgetToken() == null) {
             device.setWidgetToken(jwtService.createWidgetToken(user));
         }
-        device = deviceTokenRepository.save(device);
+        device = deviceTokenRepository.saveAndFlush(device);
 
         return DeviceRegisterResponse.builder()
                 .deviceId(device.getId())

@@ -36,7 +36,7 @@ public class DeviceToken {
     @Column(name = "push_token", nullable = false)
     String pushToken;
 
-    @Column(name = "widget_token")
+    @Column(name = "widget_token", length = 1000)
     String widgetToken;
 
     @CreationTimestamp

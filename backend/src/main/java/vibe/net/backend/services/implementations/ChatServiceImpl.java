@@ -138,7 +138,7 @@ public class ChatServiceImpl implements ChatService {
                 .content(request.getContent())
                 .build();
 
-        message = chatMessageRepository.save(message);
+        message = chatMessageRepository.saveAndFlush(message);
         return toMessageResponse(message);
     }
 

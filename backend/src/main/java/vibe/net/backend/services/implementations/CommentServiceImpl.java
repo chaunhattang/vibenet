@@ -54,7 +54,7 @@ public class CommentServiceImpl implements CommentService {
                 .post(post)
                 .content(request.getContent())
                 .build();
-        comment = commentRepository.save(comment);
+        comment = commentRepository.saveAndFlush(comment);
 
         if (!post.getOwner().getId().equals(currentUserId)) {
             notificationPublisher.publish(post.getOwner().getId(), currentUserId, NotificationType.COMMENT, comment.getId());
