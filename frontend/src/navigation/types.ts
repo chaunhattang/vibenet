@@ -8,6 +8,8 @@ export type RootStackParamList = {
   Profile: undefined;
   OtherProfile: { userId: string };
   SetupProfile: undefined;
+  CloseFriends: undefined;
+  LocketFeed: undefined;
 };
 
 declare global {

@@ -8,6 +8,7 @@ import {
   LogoutIcon,
   SettingsIcon,
   ShareIcon,
+  StarIcon,
   UsersIcon,
 } from '../assets/Icon';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
@@ -184,6 +185,15 @@ export default function ProfileScreen() {
 
           {activeTab === 'settings' && (
             <View className="bg-gray-50 dark:bg-[#11131F] rounded-2xl border border-gray-200 dark:border-white/5 overflow-hidden">
+              <Pressable
+                onPress={() => navigation.navigate('CloseFriends')}
+                className="flex-row items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/5"
+              >
+                <StarIcon size={18} />
+                <Text className="text-gray-900 dark:text-white font-medium flex-1">
+                  Close Friends
+                </Text>
+              </Pressable>
               <Pressable
                 onPress={() => setLogoutConfirmVisible(true)}
                 className="flex-row items-center gap-3 px-4 py-4 active:bg-gray-100 dark:active:bg-white/5"

@@ -7,7 +7,7 @@ import {
   Text,
 } from 'react-native';
 import { OnlineUser } from '../../types';
-import { CloseIcon, SearchIcon } from '../../assets/Icon';
+import { CameraIcon, CloseIcon, SearchIcon } from '../../assets/Icon';
 
 type SearchProps = {
   searchOpen: boolean;
@@ -17,6 +17,8 @@ type SearchProps = {
   searchResults: OnlineUser[];
   isSearching: boolean;
   onSelectUser: (user: OnlineUser) => void;
+  onPressLocket: () => void;
+  locketUnreadCount: number;
 };
 
 export default function Search({
@@ -27,6 +29,8 @@ export default function Search({
   searchResults,
   isSearching,
   onSelectUser,
+  onPressLocket,
+  locketUnreadCount,
 }: SearchProps) {
   return (
     <View className="bg-[#FDFDFD]/95 dark:bg-[#0c1014]/95 px-4 pt-2 pb-3 border-b border-gray-100 dark:border-white/5">
@@ -57,13 +61,29 @@ export default function Search({
             <Text className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Vibenet
             </Text>
-            <Pressable
-              onPress={onToggleSearch}
-              hitSlop={8}
-              className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A27] items-center justify-center"
-            >
-              <SearchIcon size={18} />
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={onPressLocket}
+                hitSlop={8}
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A27] items-center justify-center"
+              >
+                <CameraIcon size={18} />
+                {locketUnreadCount > 0 && (
+                  <View className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 items-center justify-center">
+                    <Text className="text-white text-[10px] font-bold">
+                      {locketUnreadCount > 9 ? '9+' : locketUnreadCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={onToggleSearch}
+                hitSlop={8}
+                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A27] items-center justify-center"
+              >
+                <SearchIcon size={18} />
+              </Pressable>
+            </View>
           </>
         )}
       </View>

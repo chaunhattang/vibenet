@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +19,7 @@ import PostCard from '../components/HomeScreen/PostCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { useFriends } from '../contexts/FriendsContext';
+import { useLocket } from '../contexts/LocketContext';
 import { usePosts } from '../contexts/PostsContext';
 import { useGoToProfile } from '../hooks/useGoToProfile';
 import { mockOnlineUsers } from '../data/mockData';
@@ -55,6 +56,13 @@ export default function NewsfeedScreen() {
   const goToProfile = useGoToProfile();
   const { getOrCreateRoomByFriend } = useChat();
   const { getFriendStatus } = useFriends();
+  const { unreadCount: locketUnreadCount, refreshUnreadCount } = useLocket();
+
+  useEffect(() => {
+    refreshUnreadCount();
+    // Chỉ cần gọi khi Home mount — refreshUnreadCount có identity ổn định (useCallback).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // posts giờ nằm trong PostsContext (dùng chung với trang Profile), không phải state riêng nữa
   const { posts, addPost, deletePost } = usePosts();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
@@ -126,6 +134,8 @@ export default function NewsfeedScreen() {
           handleToggleSearch();
           goToProfile(user.id);
         }}
+        onPressLocket={() => navigation.navigate('LocketFeed')}
+        locketUnreadCount={locketUnreadCount}
       />
 
       <KeyboardAvoidingView

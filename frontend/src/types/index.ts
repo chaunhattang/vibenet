@@ -91,3 +91,82 @@ export type NotificationData = {
   timeAgo: string;
   avatarUrl?: string;
 };
+
+// Locket feature — đặt tên "CloseFriend"/"LocketMoment" có tiền tố rõ ràng để tránh
+// đụng với PostData.type === 'moment' (tính năng Whisper, không liên quan).
+export type CloseFriend = {
+  userId: string;
+  userName: string;
+  fullName: string;
+  avatarUrl: string;
+  addedAt: string;
+};
+
+export type MomentMediaType = 'PHOTO' | 'VIDEO';
+
+// Khớp trực tiếp với LatestMomentResponse / MomentFeedItemResponse của backend — không
+// cần lớp map riêng vì field trùng tên.
+export type LocketMoment = {
+  momentId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl: string;
+  mediaUrl: string;
+  mediaType: MomentMediaType;
+  caption: string | null;
+  createdAt: string;
+};
+
+export type MomentFeedItem = LocketMoment & {
+  viewedAt: string | null;
+  myReaction: string | null;
+};
+
+export type MomentReaction = {
+  emoji: string;
+  reactedAt: string;
+};
+
+export type MomentViewer = {
+  userId: string;
+  userName: string;
+  avatarUrl: string;
+  viewedAt: string;
+};
+
+export type MomentViewers = {
+  viewedCount: number;
+  totalRecipients: number;
+  viewers: MomentViewer[];
+};
+
+// --- Backend response shapes (dùng bởi lớp src/api/*, tách khỏi type "cho UI" ở trên) ---
+
+export type PageResponse<T> = {
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  totalElements: number;
+  data: T[];
+};
+
+export type ProfileResponse = {
+  id: string;
+  fullName: string;
+  bio: string;
+  phoneNumber: string;
+  gender: Gender;
+  dateOfBirth: string;
+  avatarUrl: string;
+  coverImageUrl: string;
+};
+
+export type UserResponse = {
+  id: string;
+  username: string;
+  email: string;
+  role: 'ADMIN' | 'USER' | 'GUEST';
+  status: 'ACTIVE' | 'BANNED' | 'INACTIVE' | 'LOCKED' | 'DELETED';
+  lastActiveAt: string;
+  profileResponse: ProfileResponse | null;
+};

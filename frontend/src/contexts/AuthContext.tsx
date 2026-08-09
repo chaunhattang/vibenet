@@ -1,8 +1,11 @@
 import { createContext, ReactNode, useContext, useState } from 'react';
+import { loginRequest, registerRequest } from '../api/auth';
+import { resolveMediaUrl, setTokens } from '../api/client';
+import { decodeJwtPayload } from '../api/jwt';
+import { getUserById } from '../api/users';
 import { CURRENT_USER_AVATAR } from '../constants';
-import { DEFAULT_COVER, mockProfiles } from '../data/mockData';
-import { mockAccounts, MockAccount } from '../data/mockAccounts';
-import { ProfileDetails } from '../types';
+import { DEFAULT_COVER } from '../data/mockData';
+import { ProfileDetails, UserResponse } from '../types';
 
 type LoginInput = { userName: string; password: string };
 type RegisterInput = { userName: string; email: string; password: string };
@@ -18,61 +21,55 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-let nextMockUserId = 1;
+// Backend users may not have set up a ProfileResponse yet (POST /api/profile is a
+// separate step) — fall back to sensible defaults rather than showing blanks.
+function toProfileDetails(user: UserResponse): ProfileDetails {
+  const profile = user.profileResponse;
+  return {
+    userId: user.id,
+    fullName: profile?.fullName || user.username,
+    handle: user.username,
+    bio: profile?.bio ?? '',
+    avatar: profile?.avatarUrl ? resolveMediaUrl(profile.avatarUrl) : CURRENT_USER_AVATAR,
+    coverImage: profile?.coverImageUrl ? resolveMediaUrl(profile.coverImageUrl) : DEFAULT_COVER,
+    phoneNumber: profile?.phoneNumber || undefined,
+    email: user.email,
+    dateOfBirth: profile?.dateOfBirth || undefined,
+    gender: profile?.gender,
+  };
+}
 
-// Data giả cho đăng ký/đăng nhập (chưa có backend) — sau này có be thì bỏ accounts/profiles ở
-// đây, gọi login()/register()/logout() (lib/auth) thật rồi lấy currentUser từ getCurrentUser().
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [accounts, setAccounts] = useState<MockAccount[]>(mockAccounts);
-  const [profiles, setProfiles] = useState<Record<string, ProfileDetails>>(mockProfiles);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const currentUser = currentUserId ? profiles[currentUserId] ?? null : null;
+  const [currentUser, setCurrentUser] = useState<ProfileDetails | null>(null);
 
   const login = async ({ userName, password }: LoginInput) => {
-    const account = accounts.find(
-      a => a.userName.toLowerCase() === userName.trim().toLowerCase(),
-    );
-    if (!account || account.password !== password) {
-      throw new Error('Invalid username or password.');
+    const tokenResponse = await loginRequest({ username: userName.trim(), password });
+    if (!tokenResponse) throw new Error('Invalid username or password.');
+    setTokens(tokenResponse);
+
+    const { sub: userId } = decodeJwtPayload(tokenResponse.accessToken) as { sub: string };
+    const user = await getUserById(userId);
+    if (!user) {
+      setTokens(null);
+      throw new Error('Could not load your account.');
     }
-    setCurrentUserId(account.userId);
+
+    setCurrentUserId(user.id);
+    setCurrentUser(toProfileDetails(user));
   };
 
   const register = async ({ userName, email, password }: RegisterInput) => {
-    const isTaken = accounts.some(
-      a =>
-        a.userName.toLowerCase() === userName.trim().toLowerCase() ||
-        a.email.toLowerCase() === email.trim().toLowerCase(),
-    );
-    if (isTaken) {
-      throw new Error('Username or email is already taken.');
-    }
-
-    const userId = `mock-${nextMockUserId++}`;
-    setAccounts(prev => [
-      ...prev,
-      { userId, userName: userName.trim(), email: email.trim(), password },
-    ]);
-    setProfiles(prev => ({
-      ...prev,
-      [userId]: {
-        userId,
-        fullName: userName.trim(),
-        handle: userName.trim().toLowerCase().replace(/\s+/g, ''),
-        bio: '',
-        avatar: CURRENT_USER_AVATAR,
-        coverImage: DEFAULT_COVER,
-        email: email.trim(),
-      },
-    }));
+    await registerRequest({ username: userName.trim(), email: email.trim(), password });
   };
 
-  const logout = () => setCurrentUserId(null);
-
-  const updateCurrentUser = (updated: ProfileDetails) => {
-    if (!currentUserId) return;
-    setProfiles(prev => ({ ...prev, [currentUserId]: updated }));
+  const logout = () => {
+    setTokens(null);
+    setCurrentUserId(null);
+    setCurrentUser(null);
   };
+
+  const updateCurrentUser = (updated: ProfileDetails) => setCurrentUser(updated);
 
   return (
     <AuthContext.Provider

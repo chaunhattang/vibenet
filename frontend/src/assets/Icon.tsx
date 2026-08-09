@@ -499,6 +499,24 @@ export function EyeOffIcon({ size = 20, color = '#9CA3AF' }: IconProps) {
   );
 }
 
+export function StarIcon({
+  size = 16,
+  color = '#9CA3AF',
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'}>
+      <Path
+        d="M12 2.5l2.9 6.6 7.1.7-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7-5.4-4.7 7.1-.7L12 2.5z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function GithubIcon({ size = 20, color = '#111827' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
