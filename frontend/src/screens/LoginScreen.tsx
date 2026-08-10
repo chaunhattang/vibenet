@@ -6,7 +6,7 @@
  */
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -160,6 +160,18 @@ export default function LoginScreen() {
   const pressOut = () =>
     Animated.spring(submitScale, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
 
+  // ── Animated sliding thumb for the Sign In / Register segmented switcher ───
+  const [switcherWidth, setSwitcherWidth] = useState(0);
+  const thumbAnim = useRef(new Animated.Value(activeTab === 'register' ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(thumbAnim, {
+      toValue: activeTab === 'register' ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 6,
+    }).start();
+  }, [activeTab, thumbAnim]);
+
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleLogin = async () => {
     if (!loginUsername.trim() || !loginPassword) {
@@ -225,10 +237,10 @@ export default function LoginScreen() {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: SURFACE_WHITE,
+          backgroundColor: SURFACE_MUTED,
           borderRadius: 20,
           borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
+          borderColor: 'rgba(0,0,0,0.04)',
           height: 48,
           paddingHorizontal: 14,
           gap: 10,
@@ -442,16 +454,44 @@ export default function LoginScreen() {
               elevation: 6,
             }}
           >
-            {/* ── Segmented Tab Switcher ───────────────────────────────── */}
+            {/* ── Segmented Tab Switcher (animated sliding thumb) ─────────── */}
             <View
+              onLayout={e => setSwitcherWidth(e.nativeEvent.layout.width)}
               style={{
                 backgroundColor: SURFACE_MUTED,
                 borderRadius: 9999,
                 padding: 4,
                 flexDirection: 'row',
                 marginBottom: 24,
+                position: 'relative',
               }}
             >
+              {switcherWidth > 0 && (
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    bottom: 4,
+                    left: 4,
+                    width: (switcherWidth - 8) / 2,
+                    borderRadius: 9999,
+                    backgroundColor: SURFACE_WHITE,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 8,
+                    elevation: 2,
+                    transform: [
+                      {
+                        translateX: thumbAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, (switcherWidth - 8) / 2],
+                        }),
+                      },
+                    ],
+                  }}
+                />
+              )}
               {(['login', 'register'] as AuthTab[]).map(tab => {
                 const active = activeTab === tab;
                 return (
@@ -464,12 +504,6 @@ export default function LoginScreen() {
                       borderRadius: 9999,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: active ? SURFACE_WHITE : 'transparent',
-                      shadowColor: active ? '#000' : 'transparent',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: active ? 0.06 : 0,
-                      shadowRadius: 8,
-                      elevation: active ? 2 : 0,
                     }}
                   >
                     <Text

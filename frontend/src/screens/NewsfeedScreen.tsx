@@ -138,7 +138,13 @@ export default function NewsfeedScreen() {
 
   return (
     <View className="flex-1 bg-paper-base dark:bg-ink-base">
-      <GlassTopHeader title="Vibenet" unreadCount={locketUnreadCount} />
+      <GlassTopHeader
+        title="Vibenet"
+        unreadCount={locketUnreadCount}
+        onPressMenu={() => navigation.navigate('MessagesList')}
+        onPressAdd={() => setModalVisible(true)}
+        onPressBell={() => navigation.navigate('Notifications')}
+      />
       <Search
         searchOpen={searchOpen}
         onToggleSearch={handleToggleSearch}
@@ -230,11 +236,10 @@ export default function NewsfeedScreen() {
         activeTab={activeTab}
         onChangeTab={tab => {
           setActiveTab(tab);
-          if (tab === 'messages') navigation.navigate('MessagesList');
+          if (tab === 'explore') handleToggleSearch();
           if (tab === 'notifications') navigation.navigate('Notifications');
           if (tab === 'profile') navigation.navigate('Profile');
         }}
-        onPressCreate={() => setModalVisible(true)}
         onLogout={() => {
           logout();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });

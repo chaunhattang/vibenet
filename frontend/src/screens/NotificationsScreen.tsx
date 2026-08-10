@@ -106,10 +106,9 @@ export default function NotificationsScreen() {
         onChangeTab={tab => {
           setActiveTab(tab);
           if (tab === 'home') navigation.navigate('Home');
-          else if (tab === 'messages') navigation.navigate('MessagesList');
+          else if (tab === 'explore') navigation.navigate('Home');
           else if (tab === 'profile') navigation.navigate('Profile');
         }}
-        onPressCreate={() => navigation.navigate('Home')}
         onLogout={() => {
           logout();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });

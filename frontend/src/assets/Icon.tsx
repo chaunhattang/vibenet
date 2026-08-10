@@ -116,6 +116,21 @@ export function HomeIcon({ size = 22, color = C.contentFaint }: IconProps) {
   );
 }
 
+export function ExploreIcon({ size = 22, color = C.contentFaint }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
+      <Path
+        d="M15.5 8.5l-2.2 5.2-5.2 2.2 2.2-5.2 5.2-2.2z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function BellIcon({ size = 22, color = C.contentFaint }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

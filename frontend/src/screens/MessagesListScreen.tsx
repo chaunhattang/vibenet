@@ -96,14 +96,14 @@ export default function MessagesListScreen() {
       </ScrollView>
 
       <FloatingTabBar
-        activeTab="messages"
+        activeTab={null}
         onChangeTab={tab => {
           if (tab === 'home') navigation.navigate('Home');
+          else if (tab === 'explore') navigation.navigate('Home');
           else if (tab === 'notifications')
             navigation.navigate('Notifications');
           else if (tab === 'profile') navigation.navigate('Profile');
         }}
-        onPressCreate={() => navigation.navigate('Home')}
         onLogout={() => {
           logout();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });

@@ -2,17 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
-import GradientButton from '../components/ui/GradientButton';
-import { BellIcon, HomeIcon, LogoutIcon, MessageIcon, PlusIcon, UserIcon } from '../assets/Icon';
+import { ExploreIcon, HeartIcon, HomeIcon, LogoutIcon, UserIcon } from '../assets/Icon';
 import { C } from '../theme/colors';
 import { PressableScale } from '../theme/motion';
 
-export type TabKey = 'home' | 'messages' | 'notifications' | 'profile';
+// Sketch nav is exactly 4 icons — Home / Explore / Notifications / Profile —
+// with no centre "+" and no messages tab (see GLASSMORPHIC_MOBILE_RESTRUCTURE_PLAN.md Phase H).
+export type TabKey = 'home' | 'explore' | 'notifications' | 'profile';
 
 type FloatingTabBarProps = {
-  activeTab: TabKey;
+  // null when the current screen (e.g. Messages) has no corresponding tab —
+  // all four icons render inactive rather than falsely highlighting one.
+  activeTab: TabKey | null;
   onChangeTab: (tab: TabKey) => void;
-  onPressCreate: () => void;
   onLogout: () => void;
 };
 
@@ -49,7 +51,6 @@ function TabIcon({ active, onPress, onLongPress, children }: {
 export default function FloatingTabBar({
   activeTab,
   onChangeTab,
-  onPressCreate,
   onLogout,
 }: FloatingTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -65,18 +66,12 @@ export default function FloatingTabBar({
           <HomeIcon color={activeTab === 'home' ? '#0F0F0F' : C.contentFaint} />
         </TabIcon>
 
-        <TabIcon active={activeTab === 'messages'} onPress={() => onChangeTab('messages')}>
-          <MessageIcon color={activeTab === 'messages' ? '#0F0F0F' : C.contentFaint} />
+        <TabIcon active={activeTab === 'explore'} onPress={() => onChangeTab('explore')}>
+          <ExploreIcon color={activeTab === 'explore' ? '#0F0F0F' : C.contentFaint} />
         </TabIcon>
 
-        <GradientButton
-          icon={<PlusIcon />}
-          onPress={onPressCreate}
-          className="w-12 h-12 -mt-8 shadow-lg shadow-accent/40"
-        />
-
         <TabIcon active={activeTab === 'notifications'} onPress={() => onChangeTab('notifications')}>
-          <BellIcon color={activeTab === 'notifications' ? '#0F0F0F' : C.contentFaint} />
+          <HeartIcon color={activeTab === 'notifications' ? '#0F0F0F' : C.contentFaint} />
         </TabIcon>
 
         <TabIcon
