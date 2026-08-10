@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Babagang — Glassmorphic Social UI Prototype</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       1. COLOR PALETTE & DESIGN TOKENS
+       ========================================================================== */
+    :root {
+      /* Primary & Canvas Colors */
+      --bg-main: #F6F6F8;
+      --surface-white: #FFFFFF;
+      --surface-muted: #F0F0F3;
+      --surface-dark-glass: rgba(20, 20, 22, 0.65);
+      --surface-light-glass: rgba(255, 255, 255, 0.35);
+
+      /* Typography & Icon Colors */
+      --text-primary: #0D0E11;
+      --text-secondary: #6C727F;
+      --text-tertiary: #9CA3AF;
+      --text-on-dark: #FFFFFF;
+
+      /* Accents & Status Indicators */
+      --accent-blue: #0084FF;
+      --status-live: #FF3B30;
+      --active-pill: #FFFFFF;
+      --active-pill-icon: #0F0F0F;
+
+      /* Radii Tokens */
+      --radius-card: 28px;
+      --radius-button: 20px;
+      --radius-container: 20px;
+      --radius-small: 12px;
+      --radius-pill: 9999px;
+
+      /* Shadows & Elevations */
+      --shadow-floating-nav: 0px 12px 32px rgba(0, 0, 0, 0.18);
+      --shadow-card: 0px 4px 20px rgba(0, 0, 0, 0.04);
+
+      /* Glass Blurs */
+      --glass-blur-heavy: blur(20px) saturate(180%);
+      --glass-blur-medium: blur(12px) saturate(150%);
+    }
+
+    /* ==========================================================================
+       2. RESET & BASE STYLES
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #E2E4E8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--text-primary);
+    }
+
+    /* Outer Wrapper framing mobile device */
+    .app-frame {
+      width: 100%;
+      max-width: 412px;
+      height: 870px;
+      background-color: var(--bg-main);
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+      border: 8px solid #FFFFFF;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Main Scrollable View Area */
+    .view-container {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 90px;
+      scroll-behavior: smooth;
+    }
+
+    /* Hide Scrollbars */
+    .view-container::-webkit-scrollbar,
+    .horizontal-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    .view-container, .horizontal-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Toggle Views */
+    .view {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       3. TOP HEADER NAVIGATION
+       ========================================================================== */
+    .top-header {
+      height: 56px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(246, 246, 248, 0.85);
+      backdrop-filter: var(--glass-blur-medium);
+      -webkit-backdrop-filter: var(--glass-blur-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .icon-btn-circular {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: var(--surface-white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+
+    .notification-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--status-live);
+      border-radius: 50%;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      border: 2px solid var(--surface-white);
+    }
+
+    /* ==========================================================================
+       4. FEED DASHBOARD COMPONENTS
+       ========================================================================== */
+    /* Story Highlights Bar */
+    .story-bar {
+      display: flex;
+      gap: 16px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .story-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 60px;
+      height: 60px;
+    }
+
+    .avatar-img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--surface-white);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .story-item.has-story .avatar-img {
+      padding: 2px;
+      border: 2px solid var(--accent-blue);
+    }
+
+    .live-badge {
+      position: absolute;
+      bottom: -3px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface-dark-glass);
+      backdrop-filter: var(--glass-blur-medium);
+      color: var(--text-on-dark);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .story-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      max-width: 64px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Feed Cards */
+    .feed-container {
+      padding: 8px 20px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .feed-card {
+      width: 100%;
+      height: 480px;
+      border-radius: var(--radius-card);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* Top Overlay Glass Banner */
+    .card-top-glass {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      height: 52px;
+      background: var(--surface-dark-glass);
+      backdrop-filter: var(--glass-blur-heavy);
+      -webkit-backdrop-filter: var(--glass-blur-heavy);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+    }
+
+    .author-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .author-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .author-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .author-name-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .author-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-on-dark);
+    }
+
+    .verified-icon {
+      color: var(--accent-blue);
+      width: 14px;
+      height: 14px;
+    }
+
+    .author-handle {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Bottom Scrim & Content */
+    .card-bottom-scrim {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 24px 16px 16px 16px;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+      color: var(--text-on-dark);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-caption {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+
+    .card-hashtag {
+      color: var(--accent-blue);
+      font-weight: 500;
+    }
+
+    .card-stats-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-on-dark);
+    }
+
+    /* ==========================================================================
+       5. PROFILE SCREEN COMPONENTS
+       ========================================================================== */
+    .hero-banner {
+      height: 140px;
+      background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%), 
+                  url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .profile-header-content {
+      padding: 0 20px;
+      position: relative;
+      margin-top: -45px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .profile-avatar-large {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 4px solid var(--surface-white);
+      object-fit: cover;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .profile-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .profile-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .profile-handle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .profile-bio {
+      font-size: 13px;
+      color: var(--text-primary);
+      margin-top: 8px;
+      line-height: 1.4;
+      max-width: 320px;
+    }
+
+    /* Stats Counter Row */
+    .stats-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      width: 100%;
+      margin: 20px 0;
+      padding: 12px 0;
+      border-top: 1px solid var(--surface-muted);
+      border-bottom: 1px solid var(--surface-muted);
+    }
+
+    .stat-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+    }
+
+    .stat-column:not(:last-child) {
+      border-right: 1px solid #E5E7EB;
+    }
+
+    .stat-number {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Action Buttons Row */
+    .action-buttons-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .action-btn {
+      flex: 1;
+      height: 40px;
+      border-radius: var(--radius-button);
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .action-btn-primary {
+      background: var(--text-primary);
+      color: var(--surface-white);
+    }
+
+    .action-btn-secondary {
+      background: var(--surface-muted);
+      color: var(--text-primary);
+    }
+
+    /* Tab Navigation Line Icons */
+    .profile-tabs {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      border-bottom: 1px solid var(--surface-muted);
+      position: relative;
+    }
+
+    .tab-item {
+      padding: 12px 0;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      position: relative;
+      flex: 1;
+    }
+
+    .tab-item.active {
+      color: var(--text-primary);
+    }
+
+    .tab-indicator {
+      position: absolute;
+      bottom: 0;
+      height: 3px;
+      width: 32px;
+      background: var(--text-primary);
+      border-radius: 2px;
+    }
+
+    /* Staggered Masonry Grid */
+    .masonry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    .grid-card {
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--shadow-card);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .grid-card:nth-child(odd) { height: 210px; }
+    .grid-card:nth-child(even) { height: 160px; }
+
+    .grid-card-overlay {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-on-dark);
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0,0,0,0.4);
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ==========================================================================
+       6. FLOATING GLASS BOTTOM NAVIGATION BAR
+       ========================================================================== */
+    .floating-nav-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(320px, 85%);
+      height: 64px;
+      background: var(--surface-dark-glass);
+      backdrop-filter: var(--glass-blur-heavy);
+      -webkit-backdrop-filter: var(--glass-blur-heavy);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-floating-nav);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+      z-index: 1000;
+    }
+
+    .nav-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.6);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-btn.active {
+      background: var(--active-pill);
+      color: var(--active-pill-icon);
+      transform: scale(1.05);
+    }
+
+    .nav-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MOBILE APP CONTAINER FRAME -->
+  <div class="app-frame">
+
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="icon-btn-circular" id="btn-grid-menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="2"/>
+          <rect x="14" y="3" width="7" height="7" rx="2"/>
+          <rect x="14" y="14" width="7" height="7" rx="2"/>
+          <rect x="3" y="14" width="7" height="7" rx="2"/>
+        </svg>
+      </div>
+
+      <div class="header-title" id="header-title-text">Babagang</div>
+
+      <div class="icon-btn-circular">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="notification-dot"></span>
+      </div>
+    </header>
+
+    <!-- SCROLLABLE VIEW CONTAINER -->
+    <div class="view-container">
+
+      <!-- ===================================================================
+           VIEW 1: FEED DASHBOARD
+           =================================================================== -->
+      <div id="feed-view" class="view active">
+
+        <!-- Story Highlight Horizontal Scroll -->
+        <div class="story-bar horizontal-scroll">
+          
+          <!-- Story 1 (Your Story) -->
+          <div class="story-item">
+            <div class="avatar-wrapper">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" class="avatar-img" alt="My Profile" />
+            </div>
+            <span class="story-name">My Story</span>
+          </div>
+
+          <!-- Story 2 (Live) -->
+          <div class="story-item has-story" onclick="switchToProfileView('Elena Rostova')">
+            <div class="avatar-wrapper">
+              <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80" class="avatar-img" alt="Elena" />
+              <span class="live-badge">LIVE</span>
+            </div>
+            <span class="story-name">elena_r</span>
+          </div>
+
+          <!-- Story 3 -->
+          <div class="story-item has-story" onclick="switchToProfileView('Marcus Vance')">
+            <div class="avatar-wrapper">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80" class="avatar-img" alt="Marcus" />
+            </div>
+            <span class="story-name">marcus_v</span>
+          </div>
+
+          <!-- Story 4 -->
+          <div class="story-item has-story">
+            <div class="avatar-wrapper">
+              <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80" class="avatar-img" alt="Chloe" />
+            </div>
+            <span class="story-name">chloe_d</span>
+          </div>
+
+          <!-- Story 5 -->
+          <div class="story-item">
+            <div class="avatar-wrapper">
+              <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" class="avatar-img" alt="David" />
+            </div>
+            <span class="story-name">david_k</span>
+          </div>
+        </div>
+
+        <!-- Feed Media Cards -->
+        <div class="feed-container">
+
+          <!-- Card 1 -->
+          <div class="feed-card" style="background-image: url('https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80');">
+            <!-- Frosted Glass Top Banner -->
+            <div class="card-top-glass">
+              <div class="author-info" onclick="switchToProfileView('Elena Rostova')" style="cursor: pointer;">
+                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80" class="author-avatar" alt="Elena" />
+                <div class="author-meta">
+                  <div class="author-name-row">
+                    <span class="author-name">Elena Rostova</span>
+                    <svg class="verified-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                  </div>
+                  <span class="author-handle">@elena_design</span>
+                </div>
+              </div>
+              <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </div>
+
+            <!-- Bottom Caption Overlay -->
+            <div class="card-bottom-scrim">
+              <p class="card-caption">
+                Capturing the golden hour glow over the brutalist warm architecture. Pure bliss! ✨ <span class="card-hashtag">#Modernism #Architecture</span>
+              </p>
+              <div class="card-stats-row">
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  <span>1,245</span>
+                </div>
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  <span>173</span>
+                </div>
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  <span>229</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="feed-card" style="background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80');">
+            <div class="card-top-glass">
+              <div class="author-info">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" class="author-avatar" alt="Marcus" />
+                <div class="author-meta">
+                  <div class="author-name-row">
+                    <span class="author-name">Marcus Vance</span>
+                  </div>
+                  <span class="author-handle">@marcus_v</span>
+                </div>
+              </div>
+              <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </div>
+            <div class="card-bottom-scrim">
+              <p class="card-caption">
+                Mist creeping through the valley mornings. Unplugged for the weekend 🌲
+              </p>
+              <div class="card-stats-row">
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  <span>3,890</span>
+                </div>
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  <span>412</span>
+                </div>
+                <div class="stat-pill">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  <span>580</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ===================================================================
+           VIEW 2: USER PROFILE SCREEN
+           =================================================================== -->
+      <div id="profile-view" class="view">
+
+        <!-- Hero Atmospheric Banner -->
+        <div class="hero-banner"></div>
+
+        <!-- Profile Detail Section -->
+        <div class="profile-header-content">
+          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" class="profile-avatar-large" id="profile-avatar-img" alt="Elena Rostova" />
+
+          <div class="profile-name-row">
+            <h2 class="profile-title" id="profile-name-heading">Elena Rostova</h2>
+            <svg class="verified-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+          </div>
+          <span class="profile-handle">@elena_design</span>
+
+          <p class="profile-bio">
+            Visual Director & Glassmorphism enthusiast 🎨 Designing soft modern mobile interfaces & warm space aesthetics.
+          </p>
+
+          <!-- 3-Column Split Stats Counter -->
+          <div class="stats-container">
+            <div class="stat-column">
+              <span class="stat-number">14.8k</span>
+              <span class="stat-label">Followers</span>
+            </div>
+            <div class="stat-column">
+              <span class="stat-number">892</span>
+              <span class="stat-label">Following</span>
+            </div>
+            <div class="stat-column">
+              <span class="stat-number">134</span>
+              <span class="stat-label">Posts</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons-row">
+            <button class="action-btn action-btn-primary">Follow</button>
+            <button class="action-btn action-btn-secondary">Message</button>
+            <button class="action-btn action-btn-secondary">Insight</button>
+          </div>
+
+          <!-- Profile Tab Navigation Icons -->
+          <div class="profile-tabs">
+            <div class="tab-item active">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <div class="tab-indicator"></div>
+            </div>
+            <div class="tab-item">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div class="tab-item">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </div>
+            <div class="tab-item">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2-Column Staggered Masonry Content Grid -->
+        <div class="masonry-grid">
+          <div class="grid-card" style="background-image: url('https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=400&q=80');">
+            <div class="grid-card-overlay">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span>1.2k</span>
+            </div>
+          </div>
+
+          <div class="grid-card" style="background-image: url('https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=400&q=80');">
+            <div class="grid-card-overlay">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span>854</span>
+            </div>
+          </div>
+
+          <div class="grid-card" style="background-image: url('https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80');">
+            <div class="grid-card-overlay">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span>2.4k</span>
+            </div>
+          </div>
+
+          <div class="grid-card" style="background-image: url('https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=400&q=80');">
+            <div class="grid-card-overlay">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span>3.1k</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =======================================================================
+         FLOATING GLASS BOTTOM NAVIGATION BAR
+         ======================================================================= -->
+    <nav class="floating-nav-bar">
+      <!-- Home Icon Button -->
+      <button class="nav-btn active" id="nav-home" onclick="switchTab('feed-view', this)">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+
+      <!-- Search Button -->
+      <button class="nav-btn" id="nav-search">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+
+      <!-- Add Action Button -->
+      <button class="nav-btn" id="nav-add">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+
+      <!-- Notifications/Favorites -->
+      <button class="nav-btn" id="nav-likes">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+
+      <!-- User Profile Navigation Button -->
+      <button class="nav-btn" id="nav-profile" onclick="switchTab('profile-view', this)">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- INTERACTIVE SWITCHING LOGIC -->
+  <script>
+    function switchTab(viewId, element) {
+      // Toggle Active Views
+      document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+
+      // Update Navigation Bar Buttons Active State
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      if(element) element.classList.add('active');
+
+      // Header Dynamic Title Adjustments
+      const headerTitle = document.getElementById('header-title-text');
+      if (viewId === 'profile-view') {
+        headerTitle.innerText = 'Profile';
+      } else {
+        headerTitle.innerText = 'Babagang';
+      }
+
+      // Scroll view back to top
+      document.querySelector('.view-container').scrollTop = 0;
+    }
+
+    function switchToProfileView(userName) {
+      if(userName) {
+        document.getElementById('profile-name-heading').innerText = userName;
+      }
+      const profileBtn = document.getElementById('nav-profile');
+      switchTab('profile-view', profileBtn);
+    }
+  </script>
+</body>
+</html>

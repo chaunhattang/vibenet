@@ -1,4 +1,6 @@
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import Avatar from '../components/ui/Avatar';
+import { PressableScale } from '../theme/motion';
 import { OnlineUser } from '../types';
 
 type OnlineUsersProps = {
@@ -11,7 +13,7 @@ export default function OnlineUsers({ users, onSelectUser }: OnlineUsersProps) {
 
   return (
     <View className="pt-4 pb-2">
-      <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider px-4 mb-3">
+      <Text className="text-xs font-bold text-content-faint dark:text-content-faint-dark tracking-wider px-5 mb-3">
         ONLINE NOW
       </Text>
 
@@ -19,32 +21,27 @@ export default function OnlineUsers({ users, onSelectUser }: OnlineUsersProps) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
       >
         {users.map(user => (
-          <Pressable
+          <PressableScale
             key={user.id}
             onPress={() => onSelectUser(user)}
             className="items-center w-16"
           >
             <View className="relative">
-              <View className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden border-2 border-indigo-100 dark:border-indigo-500/20">
-                <Image
-                  source={{ uri: user.avatar }}
-                  className="w-full h-full"
-                />
-              </View>
+              <Avatar uri={user.avatar} size={56} ring />
               {user.isOnline && (
-                <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#FDFDFD] dark:border-[#0c1014] rounded-full" />
+                <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-spark border-2 border-paper-base dark:border-ink-base rounded-full" />
               )}
             </View>
             <Text
               numberOfLines={1}
-              className="text-[11px] text-gray-600 dark:text-gray-300 mt-1.5 w-16 text-center"
+              className="text-[11px] text-content-muted dark:text-content-muted-dark mt-1.5 w-16 text-center"
             >
               {user.name}
             </Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </ScrollView>
     </View>

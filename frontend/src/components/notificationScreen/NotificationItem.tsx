@@ -1,13 +1,18 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { UserIcon } from '../../assets/Icon';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import { PressableScale } from '../../theme/motion';
 import { NotificationData, NotificationType } from '../../types';
+import Avatar from '../ui/Avatar';
 
-const BADGE_CONFIG: Record<NotificationType, { emoji: string; className: string }> = {
-  like: { emoji: '❤️', className: 'bg-pink-500' },
-  reply: { emoji: '💬', className: 'bg-blue-500' },
-  mention: { emoji: '@', className: 'bg-purple-500' },
-  faded: { emoji: '👤', className: 'bg-gray-500' },
+// Retokenized from an unrelated pink/blue/purple/gray palette to the app's actual
+// semantic colors: like -> accent (energy), reply -> brand (primary), mention -> spark
+// (acid-lime highlight, dark text for contrast), faded -> muted content tone.
+const BADGE_CONFIG: Record<NotificationType, { emoji: string; className: string; textClassName: string }> = {
+  like: { emoji: '❤️', className: 'bg-accent', textClassName: 'text-white' },
+  reply: { emoji: '💬', className: 'bg-brand', textClassName: 'text-white' },
+  mention: { emoji: '@', className: 'bg-spark', textClassName: 'text-ink-base' },
+  faded: { emoji: '👤', className: 'bg-content-faint dark:bg-content-faint-dark', textClassName: 'text-white' },
 };
 
 type NotificationItemProps = {
@@ -22,37 +27,35 @@ export default function NotificationItem({ notification, onPress }: Notification
   const goToProfile = useGoToProfile();
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      className={`flex-row items-center gap-3 py-3 px-4 rounded-xl active:bg-gray-50 dark:active:bg-white/5 ${
+      className={`flex-row items-center gap-3 py-3 px-4 rounded-field active:bg-paper-raised dark:active:bg-white/5 ${
         isFaded ? 'opacity-60' : ''
       }`}
     >
       <Pressable onPress={() => userId && goToProfile(userId)} className="relative">
-        <View className="w-11 h-11 rounded-full overflow-hidden bg-gray-200 dark:bg-[#2A2A3E] border border-gray-200 dark:border-white/10">
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} className="w-full h-full" />
-          ) : (
-            <View className="w-full h-full items-center justify-center">
-              <UserIcon size={20} />
-            </View>
-          )}
-        </View>
+        {avatarUrl ? (
+          <Avatar uri={avatarUrl} size={44} />
+        ) : (
+          <View className="w-11 h-11 rounded-full items-center justify-center bg-paper-overlay dark:bg-ink-overlay border border-hairline-light dark:border-hairline-dark">
+            <UserIcon size={20} />
+          </View>
+        )}
         <View
-          className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full items-center justify-center border-2 border-white dark:border-[#0a0a0a] ${badge.className}`}
+          className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full items-center justify-center border-2 border-paper-base dark:border-ink-base ${badge.className}`}
         >
-          <Text className="text-[10px] text-white font-bold">{badge.emoji}</Text>
+          <Text className={`text-[10px] font-bold ${badge.textClassName}`}>{badge.emoji}</Text>
         </View>
       </Pressable>
 
       <View className="flex-1">
-        <Text className="text-sm text-gray-800 dark:text-gray-200">
-          <Text className="font-semibold text-gray-900 dark:text-white">{userName} </Text>
+        <Text className="text-sm text-content-strong dark:text-content-strong-dark">
+          <Text className="font-semibold">{userName} </Text>
           {message}
         </Text>
       </View>
 
-      <Text className="text-xs text-gray-500">{timeAgo}</Text>
-    </Pressable>
+      <Text className="text-xs text-content-muted dark:text-content-muted-dark">{timeAgo}</Text>
+    </PressableScale>
   );
 }

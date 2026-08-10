@@ -13,7 +13,11 @@ import ComposerCard from '../components/HomeScreen/ComposerCard';
 import CreateWhisperModal from '../components/HomeScreen/CreateWhisperModal';
 import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
 import Search from '../components/HomeScreen/Search';
-import { ChevronDownIcon } from '../assets/Icon';
+import GlassTopHeader from '../components/layout/GlassTopHeader';
+import StoryHighlightBar from '../components/HomeScreen/StoryHighlightBar';
+import MediaFeedCard from '../components/HomeScreen/MediaFeedCard';
+import { CameraIcon, ChevronDownIcon } from '../assets/Icon';
+import EmptyState from '../components/ui/EmptyState';
 import OnlineUsers from '../layout/OnlineUsers';
 import PostCard from '../components/HomeScreen/PostCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +27,10 @@ import { useLocket } from '../contexts/LocketContext';
 import { usePosts } from '../contexts/PostsContext';
 import { useGoToProfile } from '../hooks/useGoToProfile';
 import { mockOnlineUsers } from '../data/mockData';
+import { MOCK_STORIES } from '../data/mockStories';
+import { MOCK_MEDIA_FEED } from '../data/mockMediaFeed';
+import { C } from '../theme/colors';
+import { animateNextLayout, FadeInUp } from '../theme/motion';
 import { RootStackParamList } from '../navigation/types';
 import { OnlineUser, PostData, ProfileDetails } from '../types';
 
@@ -106,6 +114,7 @@ export default function NewsfeedScreen() {
     setIsSubmitting(true);
     // Sau này có be thì try catch ở đây
     setTimeout(() => {
+      animateNextLayout();
       addPost(createLocalPost(currentUser, composerValue.trim(), '12H 00M REMAINING'));
       setComposerValue('');
       setComposerExpanded(false);
@@ -117,12 +126,19 @@ export default function NewsfeedScreen() {
     // Sau này có be thì try catch ở đây
     const hours = Math.floor(durationMinutes / 60);
     const timeLeft = `${String(hours).padStart(2, '0')}H 00M REMAINING`;
+    animateNextLayout();
     addPost(createLocalPost(currentUser, content, timeLeft));
     setModalVisible(false);
   };
 
+  const handleDeletePost = (id: string) => {
+    animateNextLayout();
+    deletePost(id);
+  };
+
   return (
-    <View className="flex-1 bg-[#FDFDFD] dark:bg-[#0c1014] mt-10">
+    <View className="flex-1 bg-paper-base dark:bg-ink-base">
+      <GlassTopHeader title="Vibenet" unreadCount={locketUnreadCount} />
       <Search
         searchOpen={searchOpen}
         onToggleSearch={handleToggleSearch}
@@ -146,6 +162,8 @@ export default function NewsfeedScreen() {
           contentContainerStyle={{ paddingBottom: 120, gap: 16 }}
           showsVerticalScrollIndicator={false}
         >
+          <StoryHighlightBar stories={MOCK_STORIES} />
+
           {/* Sau này có be thì đổi mockOnlineUsers thành kết quả getOnlineUsers() (đã fetch) */}
           <OnlineUsers
             users={onlineFriends}
@@ -171,36 +189,38 @@ export default function NewsfeedScreen() {
             isSubmitting={isSubmitting}
           />
 
-          <View className="flex-row items-center justify-between px-4">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">
+          <View className="flex-row items-center justify-between px-5">
+            <Text className="text-title text-content-strong dark:text-content-strong-dark">
               The Feed
             </Text>
-            <Pressable className="flex-row items-center gap-1.5 bg-gray-100 dark:bg-[#1A1A27] px-3 py-1.5 rounded-lg">
-              <Text className="text-xs font-semibold text-gray-500">
+            <Pressable className="flex-row items-center gap-1.5 bg-paper-raised dark:bg-ink-overlay px-3 py-1.5 rounded-full">
+              <Text className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">
                 Newest First
               </Text>
               <ChevronDownIcon />
             </Pressable>
           </View>
 
+          {/* MediaFeedCard section */}
+          <View style={{ paddingHorizontal: 20, gap: 20 }}>
+            {MOCK_MEDIA_FEED.map(post => (
+              <MediaFeedCard key={post.id} post={post} />
+            ))}
+          </View>
+
           <View style={{ gap: 16 }}>
             {posts.length > 0 ? (
-              posts.map(post => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onDelete={deletePost}
-                />
+              posts.map((post, i) => (
+                <FadeInUp key={post.id} delay={Math.min(i, 5) * 40}>
+                  <PostCard post={post} onDelete={handleDeletePost} />
+                </FadeInUp>
               ))
             ) : (
-              <View className="mx-4 items-center py-16 bg-white/50 dark:bg-[#181825]/50 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                <Text className="text-lg font-medium text-gray-600 dark:text-gray-400">
-                  No whispers yet
-                </Text>
-                <Text className="text-sm text-gray-500 mt-1">
-                  Share your first thought before it fades away.
-                </Text>
-              </View>
+              <EmptyState
+                icon={<CameraIcon size={26} color={C.brand} />}
+                title="No whispers yet"
+                subtitle="Share your first thought before it fades away."
+              />
             )}
           </View>
         </ScrollView>

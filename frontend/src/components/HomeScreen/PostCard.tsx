@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { Animated, Image, Pressable, Text, TextInput, View } from 'react-native';
 import { CURRENT_USER_AVATAR } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { mockComments } from '../../data/mockData';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import { C } from '../../theme/colors';
+import { usePop } from '../../theme/motion';
 import { CommentData, PostData } from '../../types';
+import Avatar from '../ui/Avatar';
+import GradientButton from '../ui/GradientButton';
 import ConfirmModal from '../HomeScreen/ConfirmModal';
 import {
   CommentIcon,
@@ -29,6 +33,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
 
   const [liked, setLiked] = useState(false);
   const likeCount = post.likes + (liked ? 1 : 0);
+  const { scale: heartScale, pop } = usePop();
 
   const [displayContent, setDisplayContent] = useState(post.content);
   const [isEditing, setIsEditing] = useState(false);
@@ -73,30 +78,33 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
     ]);
   };
 
+  const handleToggleLike = () => {
+    setLiked(v => {
+      const next = !v;
+      if (next) pop();
+      return next;
+    });
+  };
+
   return (
-    <View className="mx-4 bg-white dark:bg-[#181825] rounded-3xl p-4 border border-gray-100 dark:border-white/5 shadow-sm">
+    <View className="mx-5 bg-paper-base dark:bg-ink-raised rounded-hero p-4 border border-hairline-light dark:border-hairline-dark shadow-sm">
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-3 flex-1">
-          <Pressable
-            onPress={() => post.ownerId && goToProfile(post.ownerId)}
-            className="w-11 h-11 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
-          >
-            <Image source={{ uri: post.avatar }} className="w-full h-full" />
+          <Pressable onPress={() => post.ownerId && goToProfile(post.ownerId)}>
+            <Avatar uri={post.avatar} size={44} shape="squircle" />
           </Pressable>
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5">
-              <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+              <Text className="text-sm font-semibold text-content-strong dark:text-content-strong-dark">
                 {post.author}
               </Text>
               {post.isNew && (
-                <View className="bg-indigo-500/10 px-1.5 py-0.5 rounded">
-                  <Text className="text-[9px] font-bold text-indigo-500">
-                    NEW
-                  </Text>
+                <View className="bg-spark px-1.5 py-0.5 rounded">
+                  <Text className="text-[9px] font-bold text-ink-base">NEW</Text>
                 </View>
               )}
             </View>
-            <Text className="text-xs text-gray-500">
+            <Text className="text-xs text-content-muted dark:text-content-muted-dark">
               {post.handle} · {post.timestamp}
             </Text>
           </View>
@@ -104,10 +112,8 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
 
         <View className="flex-row items-center gap-2 ml-2">
           {post.timeLeft && (
-            <View className="bg-red-500/10 px-2 py-1 rounded-md">
-              <Text className="text-red-500 font-bold text-[10px]">
-                {post.timeLeft}
-              </Text>
+            <View className="bg-danger/15 px-2 py-1 rounded-md">
+              <Text className="text-danger font-bold text-[10px]">{post.timeLeft}</Text>
             </View>
           )}
           {isOwner && !isEditing && (
@@ -130,32 +136,27 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
             onChangeText={setEditContent}
             multiline
             textBreakStrategy="simple"
-            className="bg-gray-50 dark:bg-black/20 rounded-xl p-3 text-[15px] text-gray-800 dark:text-gray-100"
+            className="bg-paper-raised dark:bg-black/20 rounded-field p-3 text-[15px] text-content-strong dark:text-content-strong-dark"
           />
           <View className="flex-row justify-end gap-2">
             <Pressable onPress={handleCancelEdit} className="px-4 py-2">
-              <Text className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              <Text className="text-sm font-semibold text-content-muted dark:text-content-muted-dark">
                 Cancel
               </Text>
             </Pressable>
-            <Pressable
-              onPress={handleSaveEdit}
-              className="px-4 py-2 bg-indigo-600 rounded-full"
-            >
-              <Text className="text-sm font-medium text-white">Save</Text>
-            </Pressable>
+            <GradientButton onPress={handleSaveEdit} label="Save" />
           </View>
         </View>
       ) : (
         !!displayContent && (
-          <Text className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed mt-3">
+          <Text className="text-[15px] text-content-strong dark:text-content-strong-dark leading-relaxed mt-3">
             {displayContent}
           </Text>
         )
       )}
 
       {post.media && post.mediaType === 'image' && (
-        <View className="mt-3 rounded-2xl overflow-hidden bg-gray-100 dark:bg-black/20">
+        <View className="mt-3 rounded-card overflow-hidden bg-paper-raised dark:bg-black/20">
           <Image
             source={{ uri: post.media }}
             className="w-full h-56"
@@ -165,7 +166,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       {post.media && post.mediaType === 'video' && (
-        <View className="mt-3 rounded-2xl overflow-hidden bg-black h-56 items-center justify-center">
+        <View className="mt-3 rounded-card overflow-hidden bg-black h-56 items-center justify-center">
           <Image
             source={{ uri: post.media }}
             className="w-full h-full absolute opacity-70"
@@ -178,30 +179,26 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       {post.mediaType === 'audio' && (
-        <View className="mt-3 flex-row items-center gap-3 bg-gray-50 dark:bg-black/20 rounded-2xl p-4">
-          <View className="w-10 h-10 bg-indigo-500/20 rounded-full items-center justify-center">
+        <View className="mt-3 flex-row items-center gap-3 bg-paper-raised dark:bg-black/20 rounded-card p-4">
+          <View className="w-10 h-10 bg-brand/20 rounded-full items-center justify-center">
             <MusicIcon />
           </View>
-          <View className="flex-1 h-1 bg-gray-300 dark:bg-white/10 rounded-full overflow-hidden">
-            <View className="w-1/3 h-full bg-indigo-500" />
+          <View className="flex-1 h-1 bg-hairline-light dark:bg-white/10 rounded-full overflow-hidden">
+            <View className="w-1/3 h-full bg-brand" />
           </View>
-          <Text className="text-xs font-mono text-gray-400">0:14 / 1:30</Text>
+          <Text className="text-xs font-mono text-content-faint dark:text-content-faint-dark">
+            0:14 / 1:30
+          </Text>
         </View>
       )}
 
-      <View className="flex-row items-center gap-5 mt-4 pt-3 border-t border-gray-100 dark:border-white/5">
+      <View className="flex-row items-center gap-5 mt-4 pt-3 border-t border-hairline-light dark:border-hairline-dark">
         {/* Sau này có be thì: gọi toggleReaction(post.id, 'LOVE') trong onPress, giống handleReact bên web */}
-        <Pressable
-          onPress={() => setLiked(v => !v)}
-          hitSlop={8}
-          className="flex-row items-center gap-1.5"
-        >
-          <HeartIcon
-            size={18}
-            color={liked ? '#EF4444' : '#9CA3AF'}
-            filled={liked}
-          />
-          <Text className="text-xs text-gray-500 dark:text-gray-400">
+        <Pressable onPress={handleToggleLike} hitSlop={8} className="flex-row items-center gap-1.5">
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <HeartIcon size={18} color={liked ? C.accent : C.contentFaint} filled={liked} />
+          </Animated.View>
+          <Text className="text-xs text-content-muted dark:text-content-muted-dark">
             {likeCount}
           </Text>
         </Pressable>
@@ -211,7 +208,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
           className="flex-row items-center gap-1.5"
         >
           <CommentIcon size={18} />
-          <Text className="text-xs text-gray-500 dark:text-gray-400">
+          <Text className="text-xs text-content-muted dark:text-content-muted-dark">
             {comments.length}
           </Text>
         </Pressable>
@@ -222,10 +219,11 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
 
       <ConfirmModal
         visible={showDeleteConfirm}
-        icon={<TrashIcon size={28} color="#EF4444" />}
+        icon={<TrashIcon size={28} color={C.danger} />}
         title="Delete Whisper"
         message="Are you sure you want to let this thought fade away? This action cannot be undone."
         confirmLabel="Delete"
+        confirmColor={C.danger}
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={() => {
           setShowDeleteConfirm(false);

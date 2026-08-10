@@ -1,8 +1,15 @@
 import { createContext, ReactNode, useCallback, useContext, useRef, useState } from 'react';
 import { ApiError, resolveMediaUrl } from '../api/client';
 import { addCloseFriendRequest, getCloseFriends, removeCloseFriendRequest } from '../api/closeFriends';
-import { getMomentFeed, getUnreadMomentCount, markMomentViewed, reactToMoment } from '../api/locket';
-import { CloseFriend, MomentFeedItem } from '../types';
+import {
+  createMoment as createMomentRequest,
+  getMomentFeed,
+  getSentMoments,
+  getUnreadMomentCount,
+  markMomentViewed,
+  reactToMoment,
+} from '../api/locket';
+import { CloseFriend, CreateMomentInput, MomentCreation, MomentFeedItem, SentMoment } from '../types';
 
 const FEED_PAGE_SIZE = 20;
 
@@ -30,6 +37,17 @@ type LocketContextValue = {
   loadMoreFeed: () => Promise<void>;
   markViewed: (momentId: string) => Promise<void>;
   react: (momentId: string, emoji: string) => Promise<void>;
+
+  // Sent moments — wired to the real backend (GET /api/locket/moments/sent).
+  sentMoments: SentMoment[];
+  sentLoading: boolean;
+  sentError: string | null;
+  hasMoreSent: boolean;
+  loadSentMoments: (opts?: { refresh?: boolean }) => Promise<void>;
+  loadMoreSentMoments: () => Promise<void>;
+
+  // Create — wired to the real backend (POST /api/locket/moments, multipart).
+  createMoment: (input: CreateMomentInput) => Promise<MomentCreation | undefined>;
 };
 
 const LocketContext = createContext<LocketContextValue | null>(null);
@@ -47,6 +65,12 @@ export function LocketProvider({ children }: { children: ReactNode }) {
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const viewedIdsRef = useRef(new Set<string>());
+
+  const [sentMoments, setSentMoments] = useState<SentMoment[]>([]);
+  const [sentLoading, setSentLoading] = useState(false);
+  const [sentError, setSentError] = useState<string | null>(null);
+  const [sentPage, setSentPage] = useState(0);
+  const [hasMoreSent, setHasMoreSent] = useState(true);
 
   const isCloseFriend = (userId: string) => closeFriends.some(f => f.userId === userId);
 
@@ -160,6 +184,57 @@ export function LocketProvider({ children }: { children: ReactNode }) {
     }
   }, [feed]);
 
+  const loadSentMoments = useCallback(async (opts?: { refresh?: boolean }) => {
+    setSentLoading(true);
+    setSentError(null);
+    try {
+      const result = await getSentMoments(0, FEED_PAGE_SIZE);
+      setSentMoments(result?.data ?? []);
+      setSentPage(0);
+      setHasMoreSent((result?.totalPages ?? 0) > 1);
+    } catch (err) {
+      setSentError(err instanceof ApiError ? err.message : 'Could not load your sent moments.');
+      if (!opts?.refresh) setSentMoments([]);
+    } finally {
+      setSentLoading(false);
+    }
+  }, []);
+
+  const loadMoreSentMoments = useCallback(async () => {
+    if (sentLoading || !hasMoreSent) return;
+    const nextPage = sentPage + 1;
+    setSentLoading(true);
+    try {
+      const result = await getSentMoments(nextPage, FEED_PAGE_SIZE);
+      setSentMoments(prev => [...prev, ...(result?.data ?? [])]);
+      setSentPage(nextPage);
+      setHasMoreSent((result?.totalPages ?? 0) > nextPage + 1);
+    } catch (err) {
+      setSentError(err instanceof ApiError ? err.message : 'Could not load more sent moments.');
+    } finally {
+      setSentLoading(false);
+    }
+  }, [sentLoading, hasMoreSent, sentPage]);
+
+  const createMoment = useCallback(async (input: CreateMomentInput) => {
+    const created = await createMomentRequest(input);
+    if (created) {
+      setSentMoments(prev => [
+        {
+          momentId: created.momentId,
+          mediaUrl: created.mediaUrl,
+          mediaType: created.mediaType,
+          caption: created.caption,
+          createdAt: created.createdAt,
+          recipientCount: created.recipientCount,
+          viewedCount: 0,
+        },
+        ...prev,
+      ]);
+    }
+    return created;
+  }, []);
+
   return (
     <LocketContext.Provider
       value={{
@@ -181,6 +256,13 @@ export function LocketProvider({ children }: { children: ReactNode }) {
         loadMoreFeed,
         markViewed,
         react,
+        sentMoments,
+        sentLoading,
+        sentError,
+        hasMoreSent,
+        loadSentMoments,
+        loadMoreSentMoments,
+        createMoment,
       }}
     >
       {children}

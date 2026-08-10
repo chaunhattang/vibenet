@@ -134,6 +134,44 @@ export type MomentViewer = {
   viewedAt: string;
 };
 
+// Backend leaves omitted-recipientIds semantics undefined — modeled explicitly here.
+// Only 'CLOSE_FRIENDS' (omit recipientIds) and 'SPECIFIC' (explicit subset) are exposed
+// in the UI today; 'ALL_FRIENDS' is reserved until there's a real all-friends picker.
+export type RecipientScope = 'CLOSE_FRIENDS' | 'ALL_FRIENDS' | 'SPECIFIC';
+
+export type CreateMomentInput = {
+  assetUri: string;
+  assetType: MomentMediaType;
+  assetMimeType: string;
+  assetFileName: string;
+  durationSeconds?: number;
+  caption?: string;
+  scope: RecipientScope;
+  recipientIds?: string[]; // only when scope === 'SPECIFIC'
+  replyToMomentId?: string;
+};
+
+export type MomentCreation = {
+  momentId: string;
+  mediaUrl: string;
+  mediaType: MomentMediaType;
+  durationSeconds: number | null;
+  caption: string | null;
+  replyToMomentId: string | null;
+  createdAt: string;
+  recipientCount: number;
+};
+
+export type SentMoment = {
+  momentId: string;
+  mediaUrl: string;
+  mediaType: MomentMediaType;
+  caption: string | null;
+  createdAt: string;
+  recipientCount: number;
+  viewedCount: number;
+};
+
 export type MomentViewers = {
   viewedCount: number;
   totalRecipients: number;

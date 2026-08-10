@@ -2,7 +2,9 @@ import { ReactNode, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon } from '../../assets/Icon';
+import { PLACEHOLDER } from '../../theme/colors';
 import { Gender, ProfileDetails } from '../../types';
+import GradientButton from '../ui/GradientButton';
 
 type EditProfileModalProps = {
   visible: boolean;
@@ -44,10 +46,10 @@ export default function EditProfileModal({
         <Pressable className="flex-1" onPress={onClose} />
         <View
           style={{ maxHeight: '85%', paddingBottom: insets.bottom + 16 }}
-          className="bg-white dark:bg-[#181825] rounded-t-3xl"
+          className="bg-paper-base dark:bg-ink-overlay rounded-t-hero"
         >
-          <View className="flex-row items-center justify-between p-5 border-b border-gray-100 dark:border-white/5">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">
+          <View className="flex-row items-center justify-between p-5 border-b border-hairline-light dark:border-hairline-dark">
+            <Text className="text-headline text-content-strong dark:text-content-strong-dark">
               Edit Profile
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
@@ -61,7 +63,7 @@ export default function EditProfileModal({
                 value={fullName}
                 onChangeText={setFullName}
                 textBreakStrategy="simple"
-                className="border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                className="border border-hairline-light dark:border-hairline-dark rounded-field px-4 py-3 text-content-strong dark:text-content-strong-dark"
               />
             </Field>
 
@@ -72,7 +74,7 @@ export default function EditProfileModal({
                 multiline
                 numberOfLines={3}
                 textBreakStrategy="simple"
-                className="border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white min-h-[80px]"
+                className="border border-hairline-light dark:border-hairline-dark rounded-field px-4 py-3 text-content-strong dark:text-content-strong-dark min-h-[80px]"
               />
             </Field>
 
@@ -81,7 +83,7 @@ export default function EditProfileModal({
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
                 keyboardType="phone-pad"
-                className="border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                className="border border-hairline-light dark:border-hairline-dark rounded-field px-4 py-3 text-content-strong dark:text-content-strong-dark"
               />
             </Field>
 
@@ -90,8 +92,8 @@ export default function EditProfileModal({
                 value={dateOfBirth}
                 onChangeText={setDateOfBirth}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9CA3AF"
-                className="border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                placeholderTextColor={PLACEHOLDER}
+                className="border border-hairline-light dark:border-hairline-dark rounded-field px-4 py-3 text-content-strong dark:text-content-strong-dark"
               />
             </Field>
 
@@ -103,13 +105,15 @@ export default function EditProfileModal({
                     onPress={() => setGender(g)}
                     className={`px-4 py-2 rounded-full border ${
                       gender === g
-                        ? 'bg-indigo-600 border-indigo-600'
-                        : 'bg-transparent border-gray-200 dark:border-white/10'
+                        ? 'bg-brand border-brand'
+                        : 'bg-transparent border-hairline-light dark:border-hairline-dark'
                     }`}
                   >
                     <Text
                       className={`text-xs font-semibold ${
-                        gender === g ? 'text-white' : 'text-gray-600 dark:text-gray-300'
+                        gender === g
+                          ? 'text-white'
+                          : 'text-content-muted dark:text-content-muted-dark'
                       }`}
                     >
                       {g.charAt(0) + g.slice(1).toLowerCase()}
@@ -121,12 +125,7 @@ export default function EditProfileModal({
           </ScrollView>
 
           <View className="px-5 pt-2">
-            <Pressable
-              onPress={handleSave}
-              className="bg-indigo-600 rounded-full py-3.5 items-center"
-            >
-              <Text className="text-white font-semibold text-base">Save Changes</Text>
-            </Pressable>
+            <GradientButton onPress={handleSave} label="Save Changes" />
           </View>
         </View>
       </View>
@@ -137,7 +136,7 @@ export default function EditProfileModal({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View>
-      <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+      <Text className="text-sm font-semibold text-content-strong dark:text-content-strong-dark mb-2">
         {label}
       </Text>
       {children}

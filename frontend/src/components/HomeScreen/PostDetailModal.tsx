@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import {
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,8 +13,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CURRENT_USER_AVATAR } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import { PLACEHOLDER } from '../../theme/colors';
 import { CommentData, PostData } from '../../types';
 import { CloseIcon } from '../../assets/Icon';
+import Avatar from '../ui/Avatar';
 
 type PostDetailModalProps = {
   visible: boolean;
@@ -64,24 +65,21 @@ export default function PostDetailModal({
 
   const renderComment = (comment: CommentData, isReply: boolean) => (
     <View key={comment.id} className="flex-row gap-3">
-      <Pressable
-        onPress={() => goToProfile(comment.userId)}
-        className={`${
-          isReply ? 'w-7 h-7' : 'w-8 h-8'
-        } rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700`}
-      >
-        <Image source={{ uri: comment.avatar }} className="w-full h-full" />
+      <Pressable onPress={() => goToProfile(comment.userId)}>
+        <Avatar uri={comment.avatar} size={isReply ? 28 : 32} />
       </Pressable>
       <View className="flex-1">
-        <Text className="text-sm text-gray-900 dark:text-gray-100">
+        <Text className="text-sm text-content-strong dark:text-content-strong-dark">
           <Text className="font-semibold">{comment.author} </Text>
           {comment.content}
         </Text>
         <View className="flex-row items-center gap-3 mt-0.5">
-          <Text className="text-xs text-gray-500">{comment.timestamp}</Text>
+          <Text className="text-xs text-content-muted dark:text-content-muted-dark">
+            {comment.timestamp}
+          </Text>
           {!isReply && (
             <Pressable onPress={() => handleReply(comment)} hitSlop={6}>
-              <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+              <Text className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">
                 Reply
               </Text>
             </Pressable>
@@ -106,10 +104,10 @@ export default function PostDetailModal({
           <Pressable className="flex-1" onPress={onClose} />
           <View
             style={{ height: '75%', paddingBottom: insets.bottom }}
-            className="bg-white dark:bg-[#181825] rounded-t-3xl overflow-hidden"
+            className="bg-paper-base dark:bg-ink-overlay rounded-t-hero overflow-hidden"
           >
-            <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/5">
-              <Text className="text-base font-bold text-gray-900 dark:text-white">
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-hairline-light dark:border-hairline-dark">
+              <Text className="text-headline text-content-strong dark:text-content-strong-dark">
                 Whisper
               </Text>
               <Pressable onPress={onClose} hitSlop={8}>
@@ -119,37 +117,31 @@ export default function PostDetailModal({
 
             <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
               <View className="flex-row items-center gap-3">
-                <Pressable
-                  onPress={() => post.ownerId && goToProfile(post.ownerId)}
-                  className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
-                >
-                  <Image
-                    source={{ uri: post.avatar }}
-                    className="w-full h-full"
-                  />
+                <Pressable onPress={() => post.ownerId && goToProfile(post.ownerId)}>
+                  <Avatar uri={post.avatar} size={36} />
                 </Pressable>
                 <View>
-                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <Text className="text-sm font-semibold text-content-strong dark:text-content-strong-dark">
                     {post.author}
                   </Text>
-                  <Text className="text-xs text-gray-500">
+                  <Text className="text-xs text-content-muted dark:text-content-muted-dark">
                     {post.timestamp}
                   </Text>
                 </View>
               </View>
 
               {!!post.content && (
-                <Text className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed">
+                <Text className="text-[15px] text-content-strong dark:text-content-strong-dark leading-relaxed">
                   {post.content}
                 </Text>
               )}
 
               <View
-                className="border-t border-gray-100 dark:border-white/5 pt-4"
+                className="border-t border-hairline-light dark:border-hairline-dark pt-4"
                 style={{ gap: 14 }}
               >
                 {topLevelComments.length === 0 ? (
-                  <Text className="text-sm text-gray-500 text-center py-6">
+                  <Text className="text-sm text-content-muted dark:text-content-muted-dark text-center py-6">
                     No comments yet. Be the first!
                   </Text>
                 ) : (
@@ -168,8 +160,8 @@ export default function PostDetailModal({
             </ScrollView>
 
             {replyTo && (
-              <View className="flex-row items-center justify-between px-4 py-2 bg-gray-50 dark:bg-black/20 border-t border-gray-100 dark:border-white/5">
-                <Text className="text-xs text-gray-500 dark:text-gray-400">
+              <View className="flex-row items-center justify-between px-4 py-2 bg-paper-raised dark:bg-ink-input border-t border-hairline-light dark:border-hairline-dark">
+                <Text className="text-xs text-content-muted dark:text-content-muted-dark">
                   Replying to{' '}
                   <Text className="font-semibold">@{replyTo.author}</Text>
                 </Text>
@@ -179,24 +171,18 @@ export default function PostDetailModal({
               </View>
             )}
 
-            <View className="flex-row items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-white/5">
-              <Pressable
-                onPress={() => currentUser && goToProfile(currentUser.userId)}
-                className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
-              >
-                <Image
-                  source={{ uri: currentUser?.avatar ?? CURRENT_USER_AVATAR }}
-                  className="w-full h-full"
-                />
+            <View className="flex-row items-center gap-3 px-4 py-3 border-t border-hairline-light dark:border-hairline-dark">
+              <Pressable onPress={() => currentUser && goToProfile(currentUser.userId)}>
+                <Avatar uri={currentUser?.avatar ?? CURRENT_USER_AVATAR} size={32} />
               </Pressable>
               <TextInput
                 ref={inputRef}
                 value={text}
                 onChangeText={setText}
                 placeholder="Add a comment..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={PLACEHOLDER}
                 textBreakStrategy="simple"
-                className="flex-1 text-sm text-gray-900 dark:text-gray-100"
+                className="flex-1 text-sm text-content-strong dark:text-content-strong-dark"
               />
               <Pressable
                 onPress={handleSend}
@@ -206,8 +192,8 @@ export default function PostDetailModal({
                 <Text
                   className={
                     text.trim()
-                      ? 'text-indigo-600 font-semibold text-sm'
-                      : 'text-gray-400 font-semibold text-sm'
+                      ? 'text-brand font-semibold text-sm'
+                      : 'text-content-faint dark:text-content-faint-dark font-semibold text-sm'
                   }
                 >
                   Send

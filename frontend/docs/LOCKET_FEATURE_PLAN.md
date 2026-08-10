@@ -370,14 +370,37 @@ against a live server**. Verify against a running backend before considering thi
 - [x] Locket entry icon (camera icon + unread badge) added to `Search.tsx`'s header row,
       wired in `NewsfeedScreen` → navigates to `LocketFeed`; unread count fetched on
       Home mount via `refreshUnreadCount()`
-- [ ] `SentMomentsScreen` + `SentMomentCard` — not built this round
-- [ ] `MomentViewersScreen` + `ViewerRow`, `ViewersProgressHeader` — not built this round
-- [x] Nav: registered `LocketFeed` route (`SentMoments`/`MomentViewers` still pending)
+- [x] `SentMomentsScreen` + `SentMomentCard` — built 2026-08-10, wired to
+      `GET /api/locket/moments/sent`
+- [x] `MomentViewersScreen` + `ViewerRow`, `ViewersProgressHeader` — built 2026-08-10,
+      wired to `GET /api/locket/moments/{momentId}/viewers`
+- [x] Nav: registered `LocketFeed`, `SentMoments`, `MomentViewers` routes
 - [x] View-marking wired via `FlatList` `onViewableItemsChanged`
       (`itemVisiblePercentThreshold: 60`), deduped per session via a `Set` ref, with
       optimistic `unreadCount` decrement and rollback if the `POST /view` call fails
 - [x] `npx tsc --noEmit` clean, `npx jest` passing, JWT base64url decode verified against
       Node's `Buffer` for round-trip correctness (incl. UTF-8 usernames)
+
+**Update — `SentMomentsScreen` + `MomentViewersScreen` added 2026-08-10:**
+- Added `SentMoment` type to `src/types/index.ts` and `getSentMoments(page, size)` to
+  `src/api/locket.ts` (`GET /api/locket/moments/sent`).
+- `LocketContext` gained a sent-moments slice mirroring the feed slice pattern:
+  `sentMoments`, `sentLoading`, `sentError`, `hasMoreSent`, `loadSentMoments`,
+  `loadMoreSentMoments`.
+- `MomentViewersScreen` deliberately does **not** go through `LocketContext` — it calls
+  `getMomentViewers(momentId)` directly from the screen (same precedent as
+  `CloseFriendsScreen` calling `getFriends` directly), since per-moment viewer data is
+  transient and not needed anywhere else. It receives the tapped `SentMoment` as a nav
+  param (`MomentViewers: { moment: SentMoment }`) so the header can render immediately
+  without a second round-trip, then fetches the live `viewedCount`/`totalRecipients`/
+  `viewers` on mount.
+- New components: `SentMomentCard` (thumbnail + caption + `viewedCount/recipientCount`
+  badge), `ViewersProgressHeader` (thumbnail + caption + progress bar), `ViewerRow`.
+- Entry points added: a "sent" icon button in `LocketFeedScreen`'s header, and a "Sent
+  Moments" row in `ProfileScreen`'s Settings tab (next to "Close Friends").
+- `npx tsc --noEmit` clean, `npx eslint` clean (0 errors; only pre-existing
+  `no-inline-styles` warnings matching codebase convention), `npx jest` passing. Not yet
+  smoke-tested against a live backend (same caveat as the rest of Phase B).
 
 **Auth is now real (scope expansion, approved by user this round):**
 - `AuthContext.login()` now calls `POST /api/auth/login`, decodes the JWT to get the
@@ -398,17 +421,59 @@ against a live server**. Verify against a running backend before considering thi
   for a real account until those areas are migrated too. This is expected fallout of
   doing the auth/Locket migration ahead of the rest of the app, not a bug in this diff.
 
-### Phase C — Capture (needs camera dependency decision)
-- [ ] Decide + install camera lib (`react-native-vision-camera` recommended) or ship
-      gallery-only via `react-native-image-picker` first
-- [ ] Add types: `RecipientScope`, `CreateMomentInput`, `MomentCreation`
-- [ ] `LocketContext`: `createMoment`
-- [ ] `LocketCaptureScreen` + `CameraView`, `CaptureButton`, `CameraControls`,
-      `CapturePermissionGate`
-- [ ] `LocketComposeScreen` + `MomentPreview`, `CaptionInput`, `RecipientPicker`,
-      `SendMomentButton`, `ReplyContextBanner`
-- [ ] Nav: register `LocketCapture`, `LocketCompose` routes
-- [ ] Reply-to-moment flow wired end to end
+### Phase C — Capture — ✅ done 2026-08-10
+
+**⚠️ Deviation from the original plan**: chose **`react-native-image-picker`** over
+`react-native-vision-camera`. Rationale: vision-camera needs a hand-built native
+camera-preview UI plus Reanimated/worklets and careful native permission wiring — none of
+which could be build-verified in this environment (no confirmed Android/iOS toolchain
+run here). image-picker launches the OS camera/gallery natively (`launchCamera` /
+`launchImageLibrary`), has a far smaller native surface, and still covers photo + video
+capture. Trade-off: capture UI is the OS camera, not a fully custom in-app one — the
+plan's `CameraView`/`CameraControls`/`CapturePermissionGate` components don't exist
+because there's no live preview to control; revisit if a custom capture UI becomes a
+priority.
+
+- [x] Installed `react-native-image-picker` (^8.2.1). Added native permissions:
+      `CAMERA`/`RECORD_AUDIO` in `android/app/src/main/AndroidManifest.xml`;
+      `NSCameraUsageDescription`/`NSMicrophoneUsageDescription`/
+      `NSPhotoLibraryUsageDescription`/`NSPhotoLibraryAddUsageDescription` in
+      `ios/FeFadeMobile/Info.plist`. **iOS needs `pod install` on a Mac before building** —
+      not run here (Windows environment, no CocoaPods).
+- [x] Added types: `RecipientScope`, `CreateMomentInput` (extended with
+      `assetMimeType`/`assetFileName` beyond the original plan, since image-picker assets
+      carry those directly and the backend multipart upload needs a real mime type/name,
+      not just a bare URI), `MomentCreation` to `src/types/index.ts`
+- [x] `src/api/client.ts`: added `apiPostMultipart<T>` helper (reuses the existing
+      `request()` multipart path, previously only used internally)
+- [x] `src/api/locket.ts`: `createMoment(input)` → `POST /api/locket/moments` (multipart:
+      `media` file + optional `caption`/`replyToMomentId`/`recipientIds[]`)
+- [x] `LocketContext`: `createMoment` — calls the API, prepends the result to
+      `sentMoments` on success so `SentMomentsScreen` reflects it without a refetch
+- [x] `LocketCaptureScreen` — three actions (Take Photo / Record Video / Choose from
+      Gallery) via `launchCamera`/`launchImageLibrary`, using `CaptureButton`; navigates
+      to `LocketCompose` with the picked asset. Shows `ReplyContextBanner` when opened
+      with a `replyToMomentId`.
+- [x] `LocketComposeScreen` + `MomentPreview`, `RecipientPicker`, `ReplyContextBanner`.
+      Caption input and the send button are inlined directly in the screen (plain
+      `TextInput`/`Pressable`) rather than split into their own `CaptionInput`/
+      `SendMomentButton` files — too trivial to justify separate components, consistent
+      with how `AddCloseFriendSheet` inlines its own search input.
+- [x] Recipient scope resolution: `RecipientPicker` defaults to all close friends
+      selected; on send, all-selected → `scope: 'CLOSE_FRIENDS'` (omits `recipientIds`,
+      per the plan's still-unconfirmed backend default), a partial selection →
+      `scope: 'SPECIFIC'` with explicit `recipientIds`. `ALL_FRIENDS` stays unexposed in
+      the UI (§8 risk #2 unresolved — still needs backend confirmation).
+- [x] Nav: registered `LocketCapture`, `LocketCompose` routes
+- [x] Reply-to-moment: added a reply button (`MessageIcon`) to `MomentCard`, wired in
+      `LocketFeedScreen` → `navigation.navigate('LocketCapture', { replyToMomentId })`
+- [x] Entry point: camera icon button added next to the sent-moments icon in
+      `LocketFeedScreen`'s header → `LocketCapture`
+- [x] `npx tsc --noEmit` clean, `npx eslint` clean (0 errors), `npx jest` passing. **Not
+      tested on a device/emulator** — no camera hardware/simulator available in this
+      environment, and the backend isn't running. Before shipping: run `pod install` on
+      iOS, rebuild both platforms, and manually verify capture → compose → send against a
+      live backend.
 
 ### Deferred
 - [ ] `MomentDetailScreen` (push deep-link target)

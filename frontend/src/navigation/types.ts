@@ -1,3 +1,5 @@
+import { MomentMediaType, SentMoment } from '../types';
+
 export type RootStackParamList = {
   Login: { registered?: boolean } | undefined;
   Register: undefined;
@@ -10,6 +12,17 @@ export type RootStackParamList = {
   SetupProfile: undefined;
   CloseFriends: undefined;
   LocketFeed: undefined;
+  SentMoments: undefined;
+  MomentViewers: { moment: SentMoment };
+  LocketCapture: { replyToMomentId?: string } | undefined;
+  LocketCompose: {
+    assetUri: string;
+    assetType: MomentMediaType;
+    assetMimeType: string;
+    assetFileName: string;
+    durationSeconds?: number;
+    replyToMomentId?: string;
+  };
 };
 
 declare global {

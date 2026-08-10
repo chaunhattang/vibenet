@@ -1,5 +1,12 @@
+/**
+ * ProfileTabs — Babagang icon-only tabs with solid bottom-bar indicator.
+ * Phase G: dark-mode aware indicator, border, and icon colours.
+ *           iconOnly={false} fallback retains label+icon for OtherProfileScreen.
+ */
 import { ComponentType } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View, useColorScheme } from 'react-native';
+import { Text } from 'react-native';
+import { C } from '../../theme/colors';
 
 type TabItem<T extends string> = {
   key: T;
@@ -11,38 +18,77 @@ type ProfileTabsProps<T extends string> = {
   tabs: TabItem<T>[];
   activeTab: T;
   onChangeTab: (tab: T) => void;
+  iconOnly?: boolean;
 };
 
 export default function ProfileTabs<T extends string>({
   tabs,
   activeTab,
   onChangeTab,
+  iconOnly = true,
 }: ProfileTabsProps<T>) {
+  const isDark = useColorScheme() === 'dark';
+
+  const borderColor = isDark ? C.inkOverlay : '#F0F0F3';
+  const activeIconColor = isDark ? '#FFFFFF' : '#0D0E11';
+  const inactiveIconColor = C.contentFaint;
+  const indicatorColor = isDark ? '#FFFFFF' : '#0D0E11';
+  const labelActive = isDark ? C.onDark : '#0D0E11';
+  const labelInactive = isDark ? C.faintDark : C.contentMuted;
+
   return (
-    <View className="flex-row items-center gap-6 mt-6 px-5 border-b border-gray-200 dark:border-white/10">
+    <View
+      style={{
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: borderColor,
+        marginTop: 8,
+      }}
+    >
       {tabs.map(({ key, label, Icon }) => {
         const active = activeTab === key;
         return (
           <Pressable
             key={key}
             onPress={() => onChangeTab(key)}
-            className="flex-row items-center gap-1.5 pb-3"
-            style={
-              active
-                ? { borderBottomWidth: 2, borderBottomColor: '#6366F1', marginBottom: -1 }
-                : undefined
-            }
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: 'center',
+              paddingVertical: 12,
+              position: 'relative',
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Icon size={15} color={active ? '#6366F1' : '#9CA3AF'} />
-            <Text
-              className={
-                active
-                  ? 'text-sm font-medium text-gray-900 dark:text-white'
-                  : 'text-sm font-medium text-gray-500'
-              }
-            >
-              {label}
-            </Text>
+            {iconOnly ? (
+              <Icon size={20} color={active ? activeIconColor : inactiveIconColor} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Icon size={15} color={active ? C.brand : inactiveIconColor} />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '500',
+                    color: active ? labelActive : labelInactive,
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            )}
+
+            {/* Solid 32×3px bottom indicator */}
+            {active && (
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  width: 32,
+                  height: 3,
+                  borderRadius: 2,
+                  backgroundColor: indicatorColor,
+                }}
+              />
+            )}
           </Pressable>
         );
       })}

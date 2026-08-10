@@ -2,6 +2,7 @@ import { ComponentType } from 'react';
 import { Text, View } from 'react-native';
 import { CalendarIcon, MailIcon, PhoneIcon, UserIcon } from '../../assets/Icon';
 import { ProfileDetails } from '../../types';
+import Card from '../ui/Card';
 
 type AboutRow = { Icon: ComponentType<{ size?: number }>; text: string };
 
@@ -20,16 +21,20 @@ export default function AboutCard({ profile }: { profile: ProfileDetails }) {
   if (rows.length === 0) return null;
 
   return (
-    <View className="bg-gray-50 dark:bg-[#11131F] rounded-2xl p-4 border border-gray-200 dark:border-white/5">
-      <Text className="font-bold text-gray-900 dark:text-white mb-3">About</Text>
+    <Card className="p-4">
+      <Text className="font-bold text-content-strong dark:text-content-strong-dark mb-3">
+        About
+      </Text>
       <View style={{ gap: 10 }}>
         {rows.map((row, i) => (
           <View key={i} className="flex-row items-center gap-3">
             <row.Icon size={16} />
-            <Text className="text-gray-600 dark:text-gray-400 text-sm">{row.text}</Text>
+            <Text className="text-content-muted dark:text-content-muted-dark text-sm">
+              {row.text}
+            </Text>
           </View>
         ))}
       </View>
-    </View>
+    </Card>
   );
 }

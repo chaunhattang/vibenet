@@ -84,6 +84,9 @@ export const apiGet = <T>(path: string, query?: RequestOptions['query']) =>
 export const apiPost = <T>(path: string, body?: unknown, query?: RequestOptions['query']) =>
   request<T>(path, { method: 'POST', body, query });
 
+export const apiPostMultipart = <T>(path: string, formData: FormData) =>
+  request<T>(path, { method: 'POST', body: formData, isMultipart: true });
+
 export const apiPut = <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body });
 
 export const apiDelete = <T>(path: string) => request<T>(path, { method: 'DELETE' });

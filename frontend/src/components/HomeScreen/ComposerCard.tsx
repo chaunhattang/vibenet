@@ -1,8 +1,12 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { ImageIcon, SmileIcon } from '../../assets/Icon';
 import { RootStackParamList } from '../../navigation/types';
+import { PLACEHOLDER } from '../../theme/colors';
+import { PressableScale } from '../../theme/motion';
+import Avatar from '../ui/Avatar';
+import GradientButton from '../ui/GradientButton';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,60 +36,54 @@ export default function ComposerCard({
   const navigation = useNavigation<Nav>();
 
   return (
-    <View className="mx-4 bg-white dark:bg-[#181825] rounded-3xl p-4 border border-indigo-100 dark:border-indigo-500/10 shadow-sm">
+    <View className="mx-5 bg-paper-base dark:bg-ink-raised rounded-hero p-4 border border-brand/10 shadow-sm">
       <View className="flex-row gap-3">
-        <Pressable
-          onPress={() => navigation.navigate('Profile')}
-          className="w-11 h-11 rounded-full overflow-hidden border-2 border-indigo-100 dark:border-indigo-500/20"
-        >
-          <Image source={{ uri: avatar }} className="w-full h-full" />
+        <Pressable onPress={() => navigation.navigate('Profile')}>
+          <Avatar uri={avatar} size={44} shape="squircle" ring />
         </Pressable>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           onFocus={onFocus}
           placeholder="What's on your mind before it's gone?"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={PLACEHOLDER}
           multiline
           numberOfLines={expanded ? 3 : 1}
           textBreakStrategy="simple"
-          className="flex-1 text-base text-gray-800 dark:text-gray-100 pt-2"
+          className="flex-1 text-base text-content-strong dark:text-content-strong-dark pt-2"
         />
       </View>
 
       {expanded && (
-        <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
+        <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-hairline-light dark:border-hairline-dark">
           <View className="flex-row items-center gap-1">
-            <Pressable
+            <PressableScale
               onPress={onOpenMedia}
               hitSlop={8}
-              className="p-2 rounded-full active:bg-gray-100 dark:active:bg-white/5"
+              className="p-2 rounded-full active:bg-paper-raised dark:active:bg-white/5"
             >
               <ImageIcon size={20} />
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               hitSlop={8}
-              className="p-2 rounded-full active:bg-gray-100 dark:active:bg-white/5"
+              className="p-2 rounded-full active:bg-paper-raised dark:active:bg-white/5"
             >
               <SmileIcon size={20} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           <View className="flex-row items-center gap-2">
             <Pressable onPress={onCancel} className="px-4 py-2">
-              <Text className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              <Text className="text-sm font-semibold text-content-muted dark:text-content-muted-dark">
                 Cancel
               </Text>
             </Pressable>
-            <Pressable
+            <GradientButton
               onPress={onSubmit}
               disabled={!value.trim() || isSubmitting}
-              className="px-5 py-2 bg-indigo-600 rounded-full disabled:opacity-50"
-            >
-              <Text className="text-sm font-medium text-white">
-                {isSubmitting ? 'Whispering...' : 'Whisper'}
-              </Text>
-            </Pressable>
+              loading={isSubmitting}
+              label={isSubmitting ? 'Whispering...' : 'Whisper'}
+            />
           </View>
         </View>
       )}

@@ -1,6 +1,8 @@
-import { Image, Pressable, Text, View } from 'react-native';
-import { CheckIcon, CloseIcon } from '../../assets/Icon';
+import { Pressable, Text, View } from 'react-native';
+import { CloseIcon } from '../../assets/Icon';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import Avatar from '../ui/Avatar';
+import GradientButton from '../ui/GradientButton';
 
 type FriendRequestCardProps = {
   userId: string;
@@ -22,38 +24,29 @@ export default function FriendRequestCard({
   const goToProfile = useGoToProfile();
 
   return (
-    <View className="bg-gray-50 dark:bg-[#1A1A2E] rounded-2xl p-4 border border-gray-200 dark:border-white/5 flex-row items-center gap-3">
-      <Pressable
-        onPress={() => goToProfile(userId)}
-        className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700"
-      >
-        {avatarUrl && <Image source={{ uri: avatarUrl }} className="w-full h-full" />}
+    <View className="bg-paper-raised dark:bg-ink-raised rounded-card p-4 border border-hairline-light dark:border-hairline-dark flex-row items-center gap-3">
+      <Pressable onPress={() => goToProfile(userId)}>
+        <Avatar uri={avatarUrl ?? ''} size={48} />
       </Pressable>
 
       <View className="flex-1">
         <View className="flex-row items-center gap-1.5 mb-0.5">
           <Text>💜</Text>
-          <Text className="font-semibold text-gray-900 dark:text-white text-sm">
+          <Text className="font-semibold text-content-strong dark:text-content-strong-dark text-sm">
             New Soul Connection
           </Text>
         </View>
-        <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3">
+        <Text className="text-content-muted dark:text-content-muted-dark text-xs mb-3">
           {name} {message}
         </Text>
         <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={onAccept}
-            className="flex-row items-center gap-1.5 bg-indigo-600 px-4 py-2 rounded-full"
-          >
-            <CheckIcon size={14} color="#FFFFFF" />
-            <Text className="text-white text-xs font-medium">Accept</Text>
-          </Pressable>
+          <GradientButton onPress={() => onAccept?.()} label="Accept" />
           <Pressable
             onPress={onDrift}
-            className="flex-row items-center gap-1.5 px-3 py-2 rounded-full border border-gray-300 dark:border-white/10"
+            className="flex-row items-center gap-1.5 px-3 py-2 rounded-full border border-hairline-light dark:border-hairline-dark"
           >
             <CloseIcon size={14} />
-            <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium">
+            <Text className="text-content-muted dark:text-content-muted-dark text-xs font-medium">
               Drift Away
             </Text>
           </Pressable>

@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FriendRequestCard from '../components/notificationScreen/FriendRequestCard';
 import NotificationItem from '../components/notificationScreen/NotificationItem';
 import SuggestedConnectionItem from '../components/notificationScreen/SuggestedConnectionItem';
@@ -10,11 +11,13 @@ import { useFriends } from '../contexts/FriendsContext';
 import { mockNotifications, mockOnlineUsers, mockProfiles } from '../data/mockData';
 import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
 import { RootStackParamList } from '../navigation/types';
+import { animateNextLayout, FadeInUp } from '../theme/motion';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Notifications'>;
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const { getFriendStatus, sendRequest, acceptRequest, declineRequest } = useFriends();
 
@@ -25,10 +28,20 @@ export default function NotificationsScreen() {
   );
   const suggestions = mockOnlineUsers.filter(u => getFriendStatus(u.id) === 'NONE');
 
+  const handleAccept = (id: string) => {
+    animateNextLayout();
+    acceptRequest(id);
+  };
+
+  const handleDecline = (id: string) => {
+    animateNextLayout();
+    declineRequest(id);
+  };
+
   return (
-    <View className="flex-1 bg-white dark:bg-[#0a0a0a] mt-10">
-      <View className="px-4 pt-2 pb-3">
-        <Text className="text-xl font-bold text-gray-900 dark:text-white">
+    <View style={{ paddingTop: insets.top }} className="flex-1 bg-paper-base dark:bg-ink-base">
+      <View className="px-5 pt-2 pb-3">
+        <Text className="text-title text-content-strong dark:text-content-strong-dark">
           Notifications
         </Text>
       </View>
@@ -38,7 +51,7 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {pendingRequests.length > 0 && (
-          <View className="px-4" style={{ gap: 12 }}>
+          <View className="px-5" style={{ gap: 12 }}>
             {pendingRequests.map(user => (
               <FriendRequestCard
                 key={user.id}
@@ -49,28 +62,27 @@ export default function NotificationsScreen() {
                   'wants to resonate with your vibe.'
                 }
                 avatarUrl={user.avatar}
-                onAccept={() => acceptRequest(user.id)}
-                onDrift={() => declineRequest(user.id)}
+                onAccept={() => handleAccept(user.id)}
+                onDrift={() => handleDecline(user.id)}
               />
             ))}
           </View>
         )}
 
-        <View className="px-2">
-          <Text className="px-2 mb-1 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <View className="px-3">
+          <Text className="px-2 mb-1 text-xs font-bold text-content-faint dark:text-content-faint-dark uppercase tracking-wider">
             Recent Activity
           </Text>
-          {mockNotifications.map(notification => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-            />
+          {mockNotifications.map((notification, i) => (
+            <FadeInUp key={notification.id} delay={Math.min(i, 6) * 30}>
+              <NotificationItem notification={notification} />
+            </FadeInUp>
           ))}
         </View>
 
         {suggestions.length > 0 && (
-          <View className="px-2">
-            <Text className="px-2 mb-1 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <View className="px-3">
+            <Text className="px-2 mb-1 text-xs font-bold text-content-faint dark:text-content-faint-dark uppercase tracking-wider">
               Suggested Connections
             </Text>
             {suggestions.map(user => (

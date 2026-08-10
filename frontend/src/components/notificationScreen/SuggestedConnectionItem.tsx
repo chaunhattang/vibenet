@@ -1,6 +1,8 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, Text, View } from 'react-native';
 import { PlusIcon } from '../../assets/Icon';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import { usePop } from '../../theme/motion';
+import Avatar from '../ui/Avatar';
 
 type SuggestedConnectionItemProps = {
   userId: string;
@@ -18,31 +20,39 @@ export default function SuggestedConnectionItem({
   onConnect,
 }: SuggestedConnectionItemProps) {
   const goToProfile = useGoToProfile();
+  const { scale, pop } = usePop();
 
   return (
     <View className="flex-row items-center gap-3 py-2 px-4">
-      <Pressable
-        onPress={() => goToProfile(userId)}
-        className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-white/10"
-      >
-        {avatarUrl && <Image source={{ uri: avatarUrl }} className="w-full h-full" />}
+      <Pressable onPress={() => goToProfile(userId)}>
+        <Avatar uri={avatarUrl ?? ''} size={40} />
       </Pressable>
 
       <View className="flex-1">
-        <Text numberOfLines={1} className="text-sm font-semibold text-gray-900 dark:text-white">
+        <Text
+          numberOfLines={1}
+          className="text-sm font-semibold text-content-strong dark:text-content-strong-dark"
+        >
           {name}
         </Text>
-        <Text numberOfLines={1} className="text-xs text-gray-500">
+        <Text numberOfLines={1} className="text-xs text-content-muted dark:text-content-muted-dark">
           {reason}
         </Text>
       </View>
 
       <Pressable
-        onPress={onConnect}
+        onPress={() => {
+          pop();
+          onConnect?.();
+        }}
         hitSlop={8}
-        className="w-8 h-8 rounded-full bg-indigo-600 items-center justify-center"
       >
-        <PlusIcon size={16} />
+        <Animated.View
+          style={{ transform: [{ scale }] }}
+          className="w-8 h-8 rounded-full bg-brand items-center justify-center"
+        >
+          <PlusIcon size={16} />
+        </Animated.View>
       </Pressable>
     </View>
   );

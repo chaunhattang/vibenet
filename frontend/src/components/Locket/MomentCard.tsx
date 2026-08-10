@@ -1,30 +1,32 @@
-import { Image, Text, View } from 'react-native';
-import { PlayIcon } from '../../assets/Icon';
+import { Image, Pressable, Text, View } from 'react-native';
+import { MessageIcon, PlayIcon } from '../../assets/Icon';
 import { formatRelativeTime } from '../../utils/time';
 import { MomentFeedItem } from '../../types';
+import Avatar from '../ui/Avatar';
 import ReactionBar from './ReactionBar';
 
 type MomentCardProps = {
   moment: MomentFeedItem;
   onReact: (emoji: string) => void;
+  onReply: () => void;
 };
 
-export default function MomentCard({ moment, onReact }: MomentCardProps) {
+export default function MomentCard({ moment, onReact, onReply }: MomentCardProps) {
   const isUnread = moment.viewedAt === null;
 
   return (
-    <View className="mx-4 rounded-3xl overflow-hidden bg-gray-100 dark:bg-[#11131F] border border-gray-200 dark:border-white/5">
+    <View className="mx-5 rounded-hero overflow-hidden bg-paper-raised dark:bg-ink-raised border border-hairline-light dark:border-hairline-dark">
       <View className="flex-row items-center gap-3 p-4">
-        <View className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-          <Image source={{ uri: moment.senderAvatarUrl }} className="w-full h-full" />
-        </View>
+        <Avatar uri={moment.senderAvatarUrl} size={40} />
         <View className="flex-1">
-          <Text className="text-gray-900 dark:text-white font-semibold">
+          <Text className="text-content-strong dark:text-content-strong-dark font-semibold">
             {moment.senderName}
           </Text>
-          <Text className="text-gray-500 text-xs">{formatRelativeTime(moment.createdAt)}</Text>
+          <Text className="text-content-faint dark:text-content-faint-dark text-xs">
+            {formatRelativeTime(moment.createdAt)}
+          </Text>
         </View>
-        {isUnread && <View className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
+        {isUnread && <View className="w-2.5 h-2.5 rounded-full bg-accent" />}
       </View>
 
       <View className="w-full aspect-square bg-black">
@@ -41,14 +43,21 @@ export default function MomentCard({ moment, onReact }: MomentCardProps) {
         )}
 
         {moment.caption && (
-          <View className="absolute bottom-3 left-3 right-3 bg-black/40 rounded-xl px-3 py-2">
+          <View className="absolute bottom-3 left-3 right-3 bg-black/40 rounded-field px-3 py-2">
             <Text className="text-white text-sm">{moment.caption}</Text>
           </View>
         )}
       </View>
 
-      <View className="p-4">
-        <ReactionBar myReaction={moment.myReaction} onReact={onReact} />
+      <View className="p-4 flex-row items-center gap-3">
+        <ReactionBar myReaction={moment.myReaction} onReact={onReact} onMedia={false} />
+        <Pressable
+          onPress={onReply}
+          hitSlop={8}
+          className="w-9 h-9 rounded-full bg-paper-overlay dark:bg-white/5 items-center justify-center"
+        >
+          <MessageIcon size={16} />
+        </Pressable>
       </View>
     </View>
   );

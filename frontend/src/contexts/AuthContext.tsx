@@ -3,9 +3,16 @@ import { loginRequest, registerRequest } from '../api/auth';
 import { resolveMediaUrl, setTokens } from '../api/client';
 import { decodeJwtPayload } from '../api/jwt';
 import { getUserById } from '../api/users';
-import { CURRENT_USER_AVATAR } from '../constants';
-import { DEFAULT_COVER } from '../data/mockData';
+import { CURRENT_USER_AVATAR, CURRENT_USER_ID } from '../constants';
+import { DEFAULT_COVER, mockProfiles } from '../data/mockData';
 import { ProfileDetails, UserResponse } from '../types';
+
+// Lets the login screen work with no backend running — bypasses the real API entirely
+// and logs in as the pre-existing mock user ('me', keyed throughout mockData.ts) so the
+// rest of the still-mock screens (friends, chat, notifications, whispers) stay usable
+// for local UI testing. Not a security boundary — this is a demo/dev convenience only.
+const DEMO_USERNAME = CURRENT_USER_ID;
+const DEMO_PASSWORD = '123456';
 
 type LoginInput = { userName: string; password: string };
 type RegisterInput = { userName: string; email: string; password: string };
@@ -44,6 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<ProfileDetails | null>(null);
 
   const login = async ({ userName, password }: LoginInput) => {
+    if (userName.trim() === DEMO_USERNAME && password === DEMO_PASSWORD) {
+      setTokens(null);
+      setCurrentUserId(CURRENT_USER_ID);
+      setCurrentUser(mockProfiles[CURRENT_USER_ID]);
+      return;
+    }
+
     const tokenResponse = await loginRequest({ username: userName.trim(), password });
     if (!tokenResponse) throw new Error('Invalid username or password.');
     setTokens(tokenResponse);

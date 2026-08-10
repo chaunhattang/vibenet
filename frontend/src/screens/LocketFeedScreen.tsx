@@ -6,23 +6,23 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  Text,
   View,
   ViewToken,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeftIcon } from '../assets/Icon';
+import { CameraIcon, SendIcon } from '../assets/Icon';
 import MomentCard from '../components/Locket/MomentCard';
-import MomentFeedEmptyState from '../components/Locket/MomentFeedEmptyState';
+import EmptyState from '../components/ui/EmptyState';
+import GradientButton from '../components/ui/GradientButton';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useLocket } from '../contexts/LocketContext';
 import { RootStackParamList } from '../navigation/types';
+import { C } from '../theme/colors';
 import { MomentFeedItem } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LocketFeed'>;
 
 export default function LocketFeedScreen() {
   const navigation = useNavigation<Nav>();
-  const insets = useSafeAreaInsets();
   const { feed, feedLoading, feedError, hasMoreFeed, loadFeed, loadMoreFeed, markViewed, react } =
     useLocket();
 
@@ -44,32 +44,43 @@ export default function LocketFeedScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: MomentFeedItem }) => (
-      <MomentCard moment={item} onReact={emoji => react(item.momentId, emoji)} />
+      <MomentCard
+        moment={item}
+        onReact={emoji => react(item.momentId, emoji)}
+        onReply={() => navigation.navigate('LocketCapture', { replyToMomentId: item.momentId })}
+      />
     ),
-    [react],
+    [react, navigation],
   );
 
   return (
-    <View className="flex-1 bg-white dark:bg-[#0a0a0a]">
-      <View
-        style={{ paddingTop: insets.top + 10 }}
-        className="flex-row items-center gap-3 px-4 pb-3 border-b border-gray-200 dark:border-white/5"
-      >
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <ChevronLeftIcon />
-        </Pressable>
-        <Text className="text-base font-bold text-gray-900 dark:text-white flex-1">Locket</Text>
-      </View>
+    <View className="flex-1 bg-paper-base dark:bg-ink-base">
+      <ScreenHeader
+        title="Locket"
+        right={
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => navigation.navigate('SentMoments')}
+              hitSlop={8}
+              className="w-9 h-9 rounded-full bg-paper-raised dark:bg-white/5 items-center justify-center"
+            >
+              <SendIcon size={16} color={C.brand} />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('LocketCapture')}
+              hitSlop={8}
+              className="w-9 h-9 rounded-full bg-brand items-center justify-center"
+            >
+              <CameraIcon size={16} color={C.white} />
+            </Pressable>
+          </View>
+        }
+      />
 
       {feedError && feed.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-gray-600 dark:text-gray-400 text-center">{feedError}</Text>
-          <Pressable
-            onPress={() => loadFeed()}
-            className="mt-4 bg-indigo-600 rounded-xl px-5 py-2.5"
-          >
-            <Text className="text-white font-medium">Try Again</Text>
-          </Pressable>
+          <EmptyState icon={<CameraIcon size={26} color={C.danger} />} title={feedError} />
+          <GradientButton onPress={() => loadFeed()} label="Try Again" className="mt-4" />
         </View>
       ) : (
         <FlatList
@@ -84,17 +95,25 @@ export default function LocketFeedScreen() {
             <RefreshControl
               refreshing={feedLoading && feed.length === 0}
               onRefresh={() => loadFeed({ refresh: true })}
-              tintColor="#6366F1"
+              tintColor={C.brand}
             />
           }
           onEndReachedThreshold={0.4}
           onEndReached={() => {
             if (hasMoreFeed) loadMoreFeed();
           }}
-          ListEmptyComponent={!feedLoading ? <MomentFeedEmptyState /> : null}
+          ListEmptyComponent={
+            !feedLoading ? (
+              <EmptyState
+                icon={<CameraIcon size={26} color={C.brand} />}
+                title="No moments yet"
+                subtitle="When your friends share a Locket moment, it'll show up here."
+              />
+            ) : null
+          }
           ListFooterComponent={
             feedLoading && feed.length > 0 ? (
-              <ActivityIndicator size="small" color="#6366F1" style={{ marginTop: 8 }} />
+              <ActivityIndicator size="small" color={C.brand} style={{ marginTop: 8 }} />
             ) : null
           }
         />

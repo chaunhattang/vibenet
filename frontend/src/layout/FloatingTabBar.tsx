@@ -1,15 +1,11 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
-import {
-  BellIcon,
-  HomeIcon,
-  LogoutIcon,
-  MessageIcon,
-  PlusIcon,
-  UserIcon,
-} from '../assets/Icon';
+import GradientButton from '../components/ui/GradientButton';
+import { BellIcon, HomeIcon, LogoutIcon, MessageIcon, PlusIcon, UserIcon } from '../assets/Icon';
+import { C } from '../theme/colors';
+import { PressableScale } from '../theme/motion';
 
 export type TabKey = 'home' | 'messages' | 'notifications' | 'profile';
 
@@ -19,6 +15,36 @@ type FloatingTabBarProps = {
   onPressCreate: () => void;
   onLogout: () => void;
 };
+
+// Animated active-state pill behind a tab icon — fades/scales in rather than sliding
+// (a sliding indicator needs onLayout measurement of sibling positions, which can't be
+// visually verified without a device in this environment; see UI_REDESIGN_PLAN.md §4).
+function TabIcon({ active, onPress, onLongPress, children }: {
+  active: boolean;
+  onPress: () => void;
+  onLongPress?: () => void;
+  children: React.ReactNode;
+}) {
+  const pill = useRef(new Animated.Value(active ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(pill, { toValue: active ? 1 : 0, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
+  }, [active, pill]);
+
+  return (
+    <PressableScale onPress={onPress} onLongPress={onLongPress} hitSlop={10}>
+      <View className="w-11 h-11 items-center justify-center">
+        <Animated.View
+          style={{ transform: [{ scale: pill }], opacity: pill }}
+          className="absolute w-11 h-11 rounded-full bg-white"
+        />
+        <View style={{ opacity: active ? 1 : 0.55 }}>
+          {children}
+        </View>
+      </View>
+    </PressableScale>
+  );
+}
 
 export default function FloatingTabBar({
   activeTab,
@@ -33,46 +59,42 @@ export default function FloatingTabBar({
     <>
       <View
         style={{ bottom: insets.bottom + 12 }}
-        className="absolute left-6 right-6 flex-row items-center justify-between bg-white dark:bg-[#181825] rounded-full px-5 py-3 shadow-lg border border-gray-100 dark:border-white/5"
+        className="absolute left-6 right-6 flex-row items-center justify-between bg-paper-base dark:bg-ink-overlay rounded-full px-5 py-3 shadow-lg border border-hairline-light dark:border-hairline-dark"
       >
-        <Pressable onPress={() => onChangeTab('home')} hitSlop={10}>
-          <HomeIcon color={activeTab === 'home' ? '#6366F1' : '#9CA3AF'} />
-        </Pressable>
+        <TabIcon active={activeTab === 'home'} onPress={() => onChangeTab('home')}>
+          <HomeIcon color={activeTab === 'home' ? '#0F0F0F' : C.contentFaint} />
+        </TabIcon>
 
-        <Pressable onPress={() => onChangeTab('messages')} hitSlop={10}>
-          <MessageIcon
-            color={activeTab === 'messages' ? '#6366F1' : '#9CA3AF'}
-          />
-        </Pressable>
+        <TabIcon active={activeTab === 'messages'} onPress={() => onChangeTab('messages')}>
+          <MessageIcon color={activeTab === 'messages' ? '#0F0F0F' : C.contentFaint} />
+        </TabIcon>
 
-        <Pressable
+        <GradientButton
+          icon={<PlusIcon />}
           onPress={onPressCreate}
-          className="w-12 h-12 rounded-full bg-indigo-600 items-center justify-center -mt-8 shadow-lg shadow-indigo-500/40"
-        >
-          <PlusIcon />
-        </Pressable>
+          className="w-12 h-12 -mt-8 shadow-lg shadow-accent/40"
+        />
 
-        <Pressable onPress={() => onChangeTab('notifications')} hitSlop={10}>
-          <BellIcon
-            color={activeTab === 'notifications' ? '#6366F1' : '#9CA3AF'}
-          />
-        </Pressable>
+        <TabIcon active={activeTab === 'notifications'} onPress={() => onChangeTab('notifications')}>
+          <BellIcon color={activeTab === 'notifications' ? '#0F0F0F' : C.contentFaint} />
+        </TabIcon>
 
-        <Pressable
+        <TabIcon
+          active={activeTab === 'profile'}
           onPress={() => onChangeTab('profile')}
           onLongPress={() => setShowLogoutConfirm(true)}
-          hitSlop={10}
         >
-          <UserIcon color={activeTab === 'profile' ? '#6366F1' : '#9CA3AF'} />
-        </Pressable>
+          <UserIcon color={activeTab === 'profile' ? '#0F0F0F' : C.contentFaint} />
+        </TabIcon>
       </View>
 
       <ConfirmModal
         visible={showLogoutConfirm}
-        icon={<LogoutIcon size={28} color="#EF4444" />}
+        icon={<LogoutIcon size={28} color={C.danger} />}
         title="Log Out"
         message="Are you sure you want to let your session fade away? You will need to sign back in."
         confirmLabel="Log Out"
+        confirmColor={C.danger}
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {
           setShowLogoutConfirm(false);

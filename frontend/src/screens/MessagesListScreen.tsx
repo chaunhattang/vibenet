@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ChatRoomRow from '../components/chatScreen/ChatRoomRow';
 import FloatingTabBar from '../layout/FloatingTabBar';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,12 +10,14 @@ import { useChat } from '../contexts/ChatContext';
 import { useFriends } from '../contexts/FriendsContext';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
+import { PLACEHOLDER } from '../theme/colors';
 import OnlineUsers from '../layout/OnlineUsers';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'MessagesList'>;
 
 export default function MessagesListScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { rooms, getOrCreateRoomByFriend } = useChat();
   const { logout } = useAuth();
   const { getFriendStatus } = useFriends();
@@ -34,18 +37,21 @@ export default function MessagesListScreen() {
   );
 
   return (
-    <View className="flex-1 bg-white dark:bg-[#0a0a0a] mt-10">
-      <View className="px-4 pt-4">
-        <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+    <View
+      style={{ paddingTop: insets.top }}
+      className="flex-1 bg-paper-base dark:bg-ink-base"
+    >
+      <View className="px-5 pt-4">
+        <Text className="text-title text-content-strong dark:text-content-strong-dark mb-4">
           Vibenet
         </Text>
         <TextInput
           value={search}
           onChangeText={setSearch}
           placeholder="Search for a soul..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={PLACEHOLDER}
           textBreakStrategy="simple"
-          className="bg-gray-100 dark:bg-[#171717] text-gray-900 dark:text-gray-300 rounded-xl px-4 py-2.5 text-sm"
+          className="bg-paper-raised dark:bg-ink-input text-content-strong dark:text-content-strong-dark rounded-field px-4 py-2.5 text-sm"
         />
       </View>
 
@@ -63,13 +69,13 @@ export default function MessagesListScreen() {
           }
         />
 
-        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 mb-2">
+        <Text className="text-xs font-semibold text-content-faint dark:text-content-faint-dark uppercase tracking-wider px-5 mb-2">
           Active Whispers
         </Text>
 
-        <View className="px-2" style={{ gap: 4 }}>
+        <View className="px-3" style={{ gap: 4 }}>
           {filteredRooms.length === 0 ? (
-            <Text className="text-center py-8 text-gray-500 text-sm">
+            <Text className="text-center py-8 text-content-muted dark:text-content-muted-dark text-sm">
               {rooms.length === 0
                 ? 'Add friends to start whispering...'
                 : 'No results found.'}

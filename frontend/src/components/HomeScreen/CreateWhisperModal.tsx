@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon, ImageIcon } from '../../assets/Icon';
+import { PLACEHOLDER } from '../../theme/colors';
+import GradientButton from '../ui/GradientButton';
 
 type CreateWhisperModalProps = {
   visible: boolean;
@@ -42,10 +44,10 @@ export default function CreateWhisperModal({
         <Pressable className="flex-1" onPress={onClose} />
         <View
           style={{ paddingBottom: insets.bottom + 16 }}
-          className="bg-white dark:bg-[#181825] rounded-t-3xl p-5"
+          className="bg-paper-base dark:bg-ink-overlay rounded-t-hero p-5"
         >
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">
+            <Text className="text-headline text-content-strong dark:text-content-strong-dark">
               Create Whisper
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
@@ -57,22 +59,22 @@ export default function CreateWhisperModal({
             value={content}
             onChangeText={setContent}
             placeholder="Share a thought or a moment before it fades..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={PLACEHOLDER}
             multiline
             numberOfLines={4}
             autoFocus
             textBreakStrategy="simple"
-            className="min-h-[100px] text-base text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-black/20 rounded-2xl p-4"
+            className="min-h-[100px] text-base text-content-strong dark:text-content-strong-dark bg-paper-raised dark:bg-ink-input rounded-card p-4"
           />
 
-          <Pressable className="flex-row items-center gap-2 mt-3 p-3 rounded-2xl border border-dashed border-gray-300 dark:border-white/10">
+          <Pressable className="flex-row items-center gap-2 mt-3 p-3 rounded-card border border-dashed border-hairline-light dark:border-hairline-dark">
             <ImageIcon size={18} />
-            <Text className="text-sm text-gray-500 dark:text-gray-400">
+            <Text className="text-sm text-content-muted dark:text-content-muted-dark">
               Add photo or video
             </Text>
           </Pressable>
 
-          <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wider mt-5 mb-2">
+          <Text className="text-xs font-semibold text-content-faint dark:text-content-faint-dark tracking-wider mt-5 mb-2">
             VANISH AFTER
           </Text>
           <View className="flex-row gap-2">
@@ -82,15 +84,15 @@ export default function CreateWhisperModal({
                 onPress={() => setDuration(d.minutes)}
                 className={`px-4 py-2 rounded-full border ${
                   duration === d.minutes
-                    ? 'bg-indigo-600 border-indigo-600'
-                    : 'bg-transparent border-gray-200 dark:border-white/10'
+                    ? 'bg-brand border-brand'
+                    : 'bg-transparent border-hairline-light dark:border-hairline-dark'
                 }`}
               >
                 <Text
                   className={`text-xs font-semibold ${
                     duration === d.minutes
                       ? 'text-white'
-                      : 'text-gray-600 dark:text-gray-300'
+                      : 'text-content-muted dark:text-content-muted-dark'
                   }`}
                 >
                   {d.label}
@@ -99,15 +101,12 @@ export default function CreateWhisperModal({
             ))}
           </View>
 
-          <Pressable
+          <GradientButton
             onPress={handleSubmit}
             disabled={!content.trim()}
-            className="mt-6 bg-indigo-600 rounded-full py-3.5 items-center disabled:opacity-50"
-          >
-            <Text className="text-white font-semibold text-base">
-              Whisper it
-            </Text>
-          </Pressable>
+            label="Whisper it"
+            className="mt-6"
+          />
         </View>
       </View>
     </Modal>

@@ -4,15 +4,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Text,
   View,
 } from 'react-native';
+import { MessageIcon } from '../assets/Icon';
 import ChatComposer from '../components/chatScreen/ChatComposer';
 import ChatDetailHeader from '../components/chatScreen/ChatDetailHeader';
 import MessageBubble from '../components/chatScreen/MessageBubble';
+import EmptyState from '../components/ui/EmptyState';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { RootStackParamList } from '../navigation/types';
+import { animateNextLayout } from '../theme/motion';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChatDetail'>;
 type Route = { params: RootStackParamList['ChatDetail'] };
@@ -29,8 +31,13 @@ export default function ChatDetailScreen() {
 
   if (!room) return null;
 
+  const handleSend = (content: string) => {
+    animateNextLayout();
+    sendMessage(chatId, content);
+  };
+
   return (
-    <View className="flex-1 bg-white dark:bg-[#0a0a0a]">
+    <View className="flex-1 bg-paper-base dark:bg-ink-base">
       <ChatDetailHeader
         friendId={room.friendId}
         friendName={room.friendName}
@@ -49,11 +56,11 @@ export default function ChatDetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           {messages.length === 0 ? (
-            <View className="py-12 items-center">
-              <Text className="text-sm text-gray-500 dark:text-gray-600 text-center">
-                No messages yet. Say hello to {room.friendName}!
-              </Text>
-            </View>
+            <EmptyState
+              icon={<MessageIcon size={26} />}
+              title="No messages yet"
+              subtitle={`Say hello to ${room.friendName}!`}
+            />
           ) : (
             messages.map(msg => (
               <MessageBubble
@@ -71,7 +78,7 @@ export default function ChatDetailScreen() {
           )}
         </ScrollView>
 
-        <ChatComposer onSend={content => sendMessage(chatId, content)} />
+        <ChatComposer onSend={handleSend} />
       </KeyboardAvoidingView>
     </View>
   );

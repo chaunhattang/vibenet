@@ -1,24 +1,20 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeftIcon, PlusIcon, TrashIcon } from '../assets/Icon';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { StarIcon, TrashIcon } from '../assets/Icon';
 import { ApiError, resolveMediaUrl } from '../api/client';
 import { getFriends } from '../api/friends';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
 import AddCloseFriendSheet, { AddCloseFriendCandidate } from '../components/Locket/AddCloseFriendSheet';
 import CloseFriendRow from '../components/Locket/CloseFriendRow';
 import CloseFriendsLimitBanner from '../components/Locket/CloseFriendsLimitBanner';
+import EmptyState from '../components/ui/EmptyState';
+import GradientButton from '../components/ui/GradientButton';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocket } from '../contexts/LocketContext';
-import { RootStackParamList } from '../navigation/types';
-
-type Nav = NativeStackNavigationProp<RootStackParamList, 'CloseFriends'>;
+import { C } from '../theme/colors';
 
 export default function CloseFriendsScreen() {
-  const navigation = useNavigation<Nav>();
-  const insets = useSafeAreaInsets();
   const { currentUserId } = useAuth();
   const {
     closeFriends,
@@ -95,41 +91,28 @@ export default function CloseFriendsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-white dark:bg-[#0a0a0a]">
-      <View
-        style={{ paddingTop: insets.top + 10 }}
-        className="flex-row items-center gap-3 px-4 pb-3 border-b border-gray-200 dark:border-white/5"
-      >
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <ChevronLeftIcon />
-        </Pressable>
-        <Text className="text-base font-bold text-gray-900 dark:text-white flex-1">
-          Close Friends
-        </Text>
-        <Pressable
-          onPress={handleOpenAddSheet}
-          disabled={limitReached}
-          className="w-9 h-9 rounded-full bg-indigo-600 items-center justify-center disabled:opacity-40"
-        >
-          <PlusIcon size={18} />
-        </Pressable>
-      </View>
+    <View className="flex-1 bg-paper-base dark:bg-ink-base">
+      <ScreenHeader
+        title="Close Friends"
+        right={
+          <Pressable
+            onPress={handleOpenAddSheet}
+            disabled={limitReached}
+            className="w-9 h-9 rounded-full bg-brand items-center justify-center disabled:opacity-40"
+          >
+            <StarIcon size={16} color={C.white} filled />
+          </Pressable>
+        }
+      />
 
       {closeFriendsError && closeFriends.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-gray-600 dark:text-gray-400 text-center">
-            {closeFriendsError}
-          </Text>
-          <Pressable
-            onPress={() => loadCloseFriends()}
-            className="mt-4 bg-indigo-600 rounded-xl px-5 py-2.5"
-          >
-            <Text className="text-white font-medium">Try Again</Text>
-          </Pressable>
+          <EmptyState icon={<StarIcon size={26} color={C.danger} />} title={closeFriendsError} />
+          <GradientButton onPress={() => loadCloseFriends()} label="Try Again" className="mt-4" />
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 12 }}
           showsVerticalScrollIndicator={false}
         >
           <CloseFriendsLimitBanner count={closeFriends.length} limit={closeFriendsLimit} />
@@ -143,12 +126,11 @@ export default function CloseFriendsScreen() {
               />
             ))
           ) : !closeFriendsLoading ? (
-            <View className="items-center py-16">
-              <Text className="text-lg font-medium text-gray-400">No close friends yet</Text>
-              <Text className="text-sm text-gray-500 mt-1 text-center px-8">
-                Add friends here to control who sees your Locket moments.
-              </Text>
-            </View>
+            <EmptyState
+              icon={<StarIcon size={26} color={C.brand} />}
+              title="No close friends yet"
+              subtitle="Add friends here to control who sees your Locket moments."
+            />
           ) : null}
         </ScrollView>
       )}
@@ -164,7 +146,7 @@ export default function CloseFriendsScreen() {
 
       <ConfirmModal
         visible={pendingRemoveFriend !== null}
-        icon={<TrashIcon size={28} color="#EF4444" />}
+        icon={<TrashIcon size={28} color={C.danger} />}
         title="Remove Close Friend"
         message={
           pendingRemoveFriend
@@ -172,6 +154,7 @@ export default function CloseFriendsScreen() {
             : ''
         }
         confirmLabel="Remove"
+        confirmColor={C.danger}
         onCancel={() => setPendingRemoveId(null)}
         onConfirm={() => {
           if (pendingRemoveId) removeCloseFriend(pendingRemoveId);

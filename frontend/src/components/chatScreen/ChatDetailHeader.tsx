@@ -1,4 +1,4 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeftIcon,
@@ -7,6 +7,7 @@ import {
   VideoCameraIcon,
 } from '../../assets/Icon';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
+import Avatar from '../ui/Avatar';
 
 type ChatDetailHeaderProps = {
   friendId: string;
@@ -29,7 +30,7 @@ export default function ChatDetailHeader({
   return (
     <View
       style={{ paddingTop: insets.top + 10 }}
-      className="flex-row items-center justify-between px-4 pb-3 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#0a0a0a]"
+      className="flex-row items-center justify-between px-5 pb-3 border-b border-hairline-light dark:border-hairline-dark bg-paper-base dark:bg-ink-base"
     >
       <View className="flex-row items-center gap-3 flex-1">
         <Pressable onPress={onBack} hitSlop={8}>
@@ -41,26 +42,24 @@ export default function ChatDetailHeader({
           className="flex-row items-center gap-3 flex-1"
         >
           <View className="relative">
-            <View className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-              <Image source={{ uri: friendAvatar }} className="w-full h-full" />
-            </View>
+            <Avatar uri={friendAvatar} size={36} />
             {friendIsOnline && (
-              <View className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#0a0a0a]" />
+              <View className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-spark rounded-full border-2 border-paper-base dark:border-ink-base" />
             )}
           </View>
 
           <View className="flex-1">
             <Text
               numberOfLines={1}
-              className="text-base font-bold text-gray-900 dark:text-white"
+              className="text-base font-bold text-content-strong dark:text-content-strong-dark"
             >
               {friendName}
             </Text>
             <Text
               className={`text-xs ${
                 friendIsOnline
-                  ? 'text-green-500'
-                  : 'text-gray-400 dark:text-gray-500'
+                  ? 'text-success'
+                  : 'text-content-faint dark:text-content-faint-dark'
               }`}
             >
               {friendIsOnline ? 'Active now' : 'Offline'}
