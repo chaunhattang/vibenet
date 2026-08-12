@@ -79,7 +79,7 @@ export default function PostDetailModal({ visible, post, onClose }: PostDetailMo
           <BlurView
             className="absolute inset-0"
             blurType="light"
-            blurAmount={10}
+            blurAmount={20}
             reducedTransparencyFallbackColor="white"
           />
 
@@ -113,7 +113,7 @@ export default function PostDetailModal({ visible, post, onClose }: PostDetailMo
                   </Text>
                 </View>
               </View>
-
+avatar
               <View
                 className="border-t border-hairline-light dark:border-hairline-dark pt-4"
                 style={{ gap: 14 }}

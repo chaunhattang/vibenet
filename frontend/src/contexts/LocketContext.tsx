@@ -9,9 +9,14 @@ import {
   markMomentViewed,
   reactToMoment,
 } from '../api/locket';
+import { MOCK_CLOSE_FRIENDS, MOCK_MOMENT_FEED, MOCK_SENT_MOMENTS, MOCK_UNREAD_COUNT } from '../data/mockLocket';
 import { CloseFriend, CreateMomentInput, MomentCreation, MomentFeedItem, SentMoment } from '../types';
 
 const FEED_PAGE_SIZE = 20;
+
+// api/client.ts throws ApiError with code 0 specifically for "fetch itself failed" —
+// i.e. the backend isn't running/reachable, as opposed to a real HTTP error response.
+const isServerUnreachable = (err: unknown) => err instanceof ApiError && err.code === 0;
 
 type NewCloseFriend = Omit<CloseFriend, 'addedAt'>;
 
@@ -84,9 +89,17 @@ export function LocketProvider({ children }: { children: ReactNode }) {
       );
       setCloseFriendsLimit(result?.limit ?? 0);
     } catch (err) {
-      setCloseFriendsError(
-        err instanceof ApiError ? err.message : 'Could not load your close friends.',
-      );
+      // code 0 = server unreachable (see api/client.ts) — no backend running yet, fall
+      // back to mock data instead of an empty/error screen. Any other code means the
+      // backend DID respond, so surface that error for real.
+      if (isServerUnreachable(err)) {
+        setCloseFriends(MOCK_CLOSE_FRIENDS);
+        setCloseFriendsLimit(MOCK_CLOSE_FRIENDS.length);
+      } else {
+        setCloseFriendsError(
+          err instanceof ApiError ? err.message : 'Could not load your close friends.',
+        );
+      }
     } finally {
       setCloseFriendsLoading(false);
     }
@@ -119,8 +132,9 @@ export function LocketProvider({ children }: { children: ReactNode }) {
     try {
       const result = await getUnreadMomentCount();
       setUnreadCount(result?.unreadCount ?? 0);
-    } catch {
-      // Non-critical — leave the last known count on screen rather than erroring the feed.
+    } catch (err) {
+      if (isServerUnreachable(err)) setUnreadCount(MOCK_UNREAD_COUNT);
+      // Otherwise non-critical — leave the last known count on screen rather than erroring the feed.
     }
   }, []);
 
@@ -133,8 +147,15 @@ export function LocketProvider({ children }: { children: ReactNode }) {
       setPage(0);
       setHasMoreFeed((result?.totalPages ?? 0) > 1);
     } catch (err) {
-      setFeedError(err instanceof ApiError ? err.message : 'Could not load your Locket feed.');
-      if (!opts?.refresh) setFeed([]);
+      // No backend running yet — fall back to mock moments instead of an empty/error feed.
+      if (isServerUnreachable(err)) {
+        setFeed(MOCK_MOMENT_FEED);
+        setPage(0);
+        setHasMoreFeed(false);
+      } else {
+        setFeedError(err instanceof ApiError ? err.message : 'Could not load your Locket feed.');
+        if (!opts?.refresh) setFeed([]);
+      }
     } finally {
       setFeedLoading(false);
     }
@@ -177,10 +198,14 @@ export function LocketProvider({ children }: { children: ReactNode }) {
     setFeed(prev => prev.map(m => (m.momentId === momentId ? { ...m, myReaction: emoji } : m)));
     try {
       await reactToMoment(momentId, emoji);
-    } catch {
-      setFeed(prev =>
-        prev.map(m => (m.momentId === momentId ? { ...m, myReaction: previous } : m)),
-      );
+    } catch (err) {
+      // No backend to persist to — keep the optimistic reaction on screen instead of
+      // snapping it back, so the mock feed still feels interactive.
+      if (!isServerUnreachable(err)) {
+        setFeed(prev =>
+          prev.map(m => (m.momentId === momentId ? { ...m, myReaction: previous } : m)),
+        );
+      }
     }
   }, [feed]);
 
@@ -193,8 +218,15 @@ export function LocketProvider({ children }: { children: ReactNode }) {
       setSentPage(0);
       setHasMoreSent((result?.totalPages ?? 0) > 1);
     } catch (err) {
-      setSentError(err instanceof ApiError ? err.message : 'Could not load your sent moments.');
-      if (!opts?.refresh) setSentMoments([]);
+      // No backend running yet — fall back to mock sent moments instead of an empty/error screen.
+      if (isServerUnreachable(err)) {
+        setSentMoments(MOCK_SENT_MOMENTS);
+        setSentPage(0);
+        setHasMoreSent(false);
+      } else {
+        setSentError(err instanceof ApiError ? err.message : 'Could not load your sent moments.');
+        if (!opts?.refresh) setSentMoments([]);
+      }
     } finally {
       setSentLoading(false);
     }
@@ -217,7 +249,26 @@ export function LocketProvider({ children }: { children: ReactNode }) {
   }, [sentLoading, hasMoreSent, sentPage]);
 
   const createMoment = useCallback(async (input: CreateMomentInput) => {
-    const created = await createMomentRequest(input);
+    let created: MomentCreation | undefined;
+    try {
+      created = await createMomentRequest(input);
+    } catch (err) {
+      // No backend to actually upload/persist to — fabricate the response locally so the
+      // send flow still completes end to end in the mock feed instead of erroring out.
+      if (!isServerUnreachable(err)) throw err;
+      const recipientCount =
+        input.scope === 'SPECIFIC' ? (input.recipientIds?.length ?? 0) : MOCK_CLOSE_FRIENDS.length;
+      created = {
+        momentId: `local-${Date.now()}`,
+        mediaUrl: input.assetUri,
+        mediaType: input.assetType,
+        durationSeconds: input.durationSeconds ?? null,
+        caption: input.caption ?? null,
+        replyToMomentId: input.replyToMomentId ?? null,
+        createdAt: new Date().toISOString(),
+        recipientCount,
+      };
+    }
     if (created) {
       setSentMoments(prev => [
         {

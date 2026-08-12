@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import { resolveMediaUrl } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePosts } from '../../contexts/PostsContext';
@@ -170,7 +171,6 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
           {/* Top-Left Overlaid Glassmorphic User Badge */}
           <Pressable
             onPress={() => goToProfile(post.owner.id)}
-            className="bg-black/30 backdrop-blur-md"
             style={{
               position: 'absolute',
               top: 14,
@@ -179,10 +179,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 8,
-              backgroundColor: 'rgba(20, 20, 25, 0.35)',
               paddingHorizontal: 10,
               paddingVertical: 6,
               borderRadius: 9999,
+              overflow: 'hidden',
               borderWidth: 1,
               borderColor: 'rgba(255, 255, 255, 0.30)',
               shadowColor: '#000',
@@ -191,6 +191,12 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
               shadowRadius: 8,
             }}
           >
+            <BlurView
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              blurType="dark"
+              blurAmount={20}
+              reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+            />
             <Avatar uri={resolveMediaUrl(post.owner.avatarUrl)} size={32} />
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -211,52 +217,67 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
               <>
                 <Pressable
                   onPress={() => { setEditText(post.textContent); setIsEditing(true); }}
-                  className="bg-black/30 backdrop-blur-md"
                   style={{
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: 'rgba(20, 20, 25, 0.35)',
+                    overflow: 'hidden',
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
                     borderColor: 'rgba(255, 255, 255, 0.30)',
                   }}
                 >
+                  <BlurView
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                    blurType="dark"
+                    blurAmount={20}
+                    reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                  />
                   <EditIcon size={15} color="#FFFFFF" />
                 </Pressable>
                 <Pressable
                   onPress={() => setShowDeleteConfirm(true)}
-                  className="bg-black/30 backdrop-blur-md"
                   style={{
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: 'rgba(20, 20, 25, 0.35)',
+                    overflow: 'hidden',
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
                     borderColor: 'rgba(255, 255, 255, 0.30)',
                   }}
                 >
+                  <BlurView
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                    blurType="dark"
+                    blurAmount={20}
+                    reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                  />
                   <TrashIcon size={15} color={C.danger} />
                 </Pressable>
               </>
             ) : (
               <Pressable
                 onPress={() => setShowDetail(true)}
-                className="bg-black/30 backdrop-blur-md"
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: 'rgba(20, 20, 25, 0.35)',
+                  overflow: 'hidden',
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: 1,
                   borderColor: 'rgba(255, 255, 255, 0.30)',
                 }}
               >
+                <BlurView
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                  blurType="dark"
+                  blurAmount={20}
+                  reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                />
                 <MoreVerticalIcon size={18} color="#FFFFFF" />
               </Pressable>
             )}
@@ -278,13 +299,12 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
           >
             {/* Frosted Glass Pill Actions Row */}
             <View
-              className="bg-black/25 backdrop-blur-md"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: 'rgba(255, 255, 255, 0.24)',
                 borderRadius: 9999,
+                overflow: 'hidden',
                 paddingHorizontal: 16,
                 paddingVertical: 9,
                 borderWidth: 1,
@@ -295,6 +315,12 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
                 shadowRadius: 10,
               }}
             >
+              <BlurView
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                blurType="light"
+                blurAmount={15}
+                reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.55)"
+              />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 {/* Heart / Flame */}
                 <Pressable

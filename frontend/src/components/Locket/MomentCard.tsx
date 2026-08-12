@@ -1,8 +1,8 @@
+import { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { MessageIcon, PlayIcon } from '../../assets/Icon';
 import { formatRelativeTime } from '../../utils/time';
 import { MomentFeedItem } from '../../types';
-import Avatar from '../ui/Avatar';
 import ReactionBar from './ReactionBar';
 
 type MomentCardProps = {
@@ -11,54 +11,122 @@ type MomentCardProps = {
   onReply: () => void;
 };
 
+// The one big "widget" — Locket's whole app is built around this single rounded photo
+// card. Name + timestamp sit directly on the photo like the real home-screen widget;
+// tapping the photo reveals the reaction tray instead of it always being on screen.
 export default function MomentCard({ moment, onReact, onReply }: MomentCardProps) {
-  const isUnread = moment.viewedAt === null;
+  const [showReactions, setShowReactions] = useState(false);
 
   return (
-    <View className="mx-5 rounded-hero overflow-hidden bg-paper-raised dark:bg-ink-raised border border-hairline-light dark:border-hairline-dark">
-      <View className="flex-row items-center gap-3 p-4">
-        <Avatar uri={moment.senderAvatarUrl} size={40} />
-        <View className="flex-1">
-          <Text className="text-content-strong dark:text-content-strong-dark font-semibold">
-            {moment.senderName}
-          </Text>
-          <Text className="text-content-faint dark:text-content-faint-dark text-xs">
-            {formatRelativeTime(moment.createdAt)}
-          </Text>
-        </View>
-        {isUnread && <View className="w-2.5 h-2.5 rounded-full bg-accent" />}
-      </View>
-
-      <View className="w-full aspect-square bg-black">
+    <View
+      style={{
+        width: '100%',
+        aspectRatio: 1,
+        borderRadius: 36,
+        overflow: 'hidden',
+        backgroundColor: '#111',
+      }}
+    >
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={() => setShowReactions(v => !v)}
+      >
         {moment.mediaType === 'PHOTO' ? (
-          <Image source={{ uri: moment.mediaUrl }} className="w-full h-full" resizeMode="cover" />
+          <Image source={{ uri: moment.mediaUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
           // No video player lib installed yet (see LOCKET_FEATURE_PLAN.md §8) — placeholder only.
-          <View className="w-full h-full items-center justify-center bg-gray-900">
-            <View className="w-14 h-14 rounded-full bg-white/20 items-center justify-center">
-              <PlayIcon size={28} />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1a' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <PlayIcon size={30} />
             </View>
-            <Text className="text-white/70 text-xs mt-2">Video playback coming soon</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 10 }}>
+              Video playback coming soon
+            </Text>
           </View>
         )}
+      </Pressable>
 
-        {moment.caption && (
-          <View className="absolute bottom-3 left-3 right-3 bg-black/40 rounded-field px-3 py-2">
-            <Text className="text-white text-sm">{moment.caption}</Text>
-          </View>
-        )}
-      </View>
-
-      <View className="p-4 flex-row items-center gap-3">
-        <ReactionBar myReaction={moment.myReaction} onReact={onReact} onMedia={false} />
-        <Pressable
-          onPress={onReply}
-          hitSlop={8}
-          className="w-9 h-9 rounded-full bg-paper-overlay dark:bg-white/5 items-center justify-center"
+      {/* Name + timestamp, straight on the photo like the real widget */}
+      <View style={{ position: 'absolute', top: 20, left: 22, right: 22 }}>
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 17,
+            fontWeight: '800',
+            textShadowColor: 'rgba(0,0,0,0.5)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 6,
+          }}
         >
-          <MessageIcon size={16} />
-        </Pressable>
+          {moment.senderName}
+        </Text>
+        <Text
+          style={{
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 12,
+            fontWeight: '600',
+            marginTop: 2,
+            textShadowColor: 'rgba(0,0,0,0.5)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 6,
+          }}
+        >
+          {formatRelativeTime(moment.createdAt)} ago
+        </Text>
       </View>
+
+      {/* Caption, if any — small pill just above the reaction tray */}
+      {moment.caption && (
+        <View style={{ position: 'absolute', bottom: showReactions ? 86 : 22, left: 22, right: 70 }}>
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 14,
+              fontWeight: '600',
+              textShadowColor: 'rgba(0,0,0,0.6)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 6,
+            }}
+            numberOfLines={2}
+          >
+            {moment.caption}
+          </Text>
+        </View>
+      )}
+
+      {/* Reply — bottom-right circular button, always visible */}
+      <Pressable
+        onPress={onReply}
+        hitSlop={8}
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: 'rgba(255,255,255,0.18)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.35)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MessageIcon size={19} color="#FFFFFF" />
+      </Pressable>
+
+      {/* Reaction tray — tap the photo to reveal, matching Locket's tap-to-react */}
+      {showReactions && (
+        <View style={{ position: 'absolute', bottom: 20, left: 20 }}>
+          <ReactionBar
+            myReaction={moment.myReaction}
+            onReact={emoji => {
+              onReact(emoji);
+              setShowReactions(false);
+            }}
+          />
+        </View>
+      )}
     </View>
   );
 }

@@ -239,6 +239,15 @@ export default function GlassTopHeader({
                   <PlusIconSvg color={iconColor} />
                 </CircleIconButton>
               )}
+              {onPressLocket && (
+                <CircleIconButton
+                  onPress={onPressLocket}
+                  badgeCount={locketUnreadCount}
+                  isDark={isDark}
+                >
+                  <CameraIcon size={18} color={iconColor} />
+                </CircleIconButton>
+              )}
               {onPressBell && (
                 <CircleIconButton
                   onPress={onPressBell}
