@@ -1,15 +1,11 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ReactNode, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraIcon, ImageIcon, UserIcon } from '../assets/Icon';
 import GradientButton from '../components/ui/GradientButton';
-import { RootStackParamList } from '../navigation/types';
+import { useGoToTab } from '../hooks/useGoToTab';
 import { PLACEHOLDER } from '../theme/colors';
 import { Gender } from '../types';
-
-type Nav = NativeStackNavigationProp<RootStackParamList, 'SetupProfile'>;
 
 const GENDERS: Gender[] = ['MALE', 'FEMALE', 'OTHER'];
 
@@ -19,7 +15,7 @@ const notifyPickerUnavailable = () =>
   Alert.alert('Chưa hỗ trợ', 'Chọn ảnh chưa được hỗ trợ trong bản demo này.');
 
 export default function SetupProfileScreen() {
-  const navigation = useNavigation<Nav>();
+  const goToTab = useGoToTab();
   const insets = useSafeAreaInsets();
 
   const [fullName, setFullName] = useState('');
@@ -38,7 +34,7 @@ export default function SetupProfileScreen() {
     // Sau này có be thì: await createProfile({ fullName, bio, phoneNumber, gender, dateOfBirth, avatar, coverImage })
     setTimeout(() => {
       setSubmitting(false);
-      navigation.navigate('Home');
+      goToTab('home');
     }, 400);
   };
 
@@ -172,7 +168,7 @@ export default function SetupProfileScreen() {
         label={submitting ? 'Saving...' : 'Complete Setup'}
       />
 
-      <Pressable onPress={() => navigation.navigate('Home')} className="items-center py-2">
+      <Pressable onPress={() => goToTab('home')} className="items-center py-2">
         <Text className="text-content-muted dark:text-content-muted-dark text-sm font-medium">
           Skip for now
         </Text>

@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation/types';
+import { useGoToTab } from './useGoToTab';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -11,10 +12,11 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function useGoToProfile() {
   const navigation = useNavigation<Nav>();
   const { currentUserId } = useAuth();
+  const goToTab = useGoToTab();
 
   return (userId: string) => {
     if (userId === currentUserId) {
-      navigation.navigate('Profile');
+      goToTab('profile');
     } else {
       navigation.push('OtherProfile', { userId });
     }

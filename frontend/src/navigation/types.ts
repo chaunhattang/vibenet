@@ -3,7 +3,13 @@ import { MomentMediaType, SentMoment } from '../types';
 export type RootStackParamList = {
   Login: { registered?: boolean } | undefined;
   Register: undefined;
+  MainTabs: undefined;
+  // Leaf tab screens live inside MainTabs (see navigation/MainTabs.tsx).
+  // Kept here too so `navigation.navigate('Home' | 'Explore' | ...)` type-checks
+  // from anywhere in the app — React Navigation resolves these to the nested
+  // tab screen by name at runtime.
   Home: undefined;
+  Explore: undefined;
   MessagesList: undefined;
   ChatDetail: { chatId: string };
   Notifications: undefined;

@@ -121,10 +121,155 @@ type Route = RouteProp<RootStackParamList, 'Login'>;
 type AuthTab = 'login' | 'register';
 
 const { height: SCREEN_H } = Dimensions.get('window');
-const TTL_OPTIONS = [1, 6, 12, 24];
 
 const notifyOAuthUnavailable = () =>
   Alert.alert('Not available', 'Social sign-in is not yet supported in this demo.');
+
+// ── Sub-components (defined outside LoginScreen so they aren't recreated,
+// and TextInput doesn't lose focus, on every keystroke) ─────────────────────
+const InputField = ({
+  label,
+  icon,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
+  rightSlot,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address';
+  autoCapitalize?: 'none' | 'words';
+  rightSlot?: React.ReactNode;
+}) => (
+  <View style={{ gap: 6 }}>
+    <Text style={{ fontSize: 12, fontWeight: '600', color: TEXT_PRIMARY, marginLeft: 4 }}>
+      {label}
+    </Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: SURFACE_MUTED,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.04)',
+        height: 48,
+        paddingHorizontal: 14,
+        gap: 10,
+      }}
+    >
+      {icon}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={TEXT_TERTIARY}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType ?? 'default'}
+        autoCapitalize={autoCapitalize ?? 'none'}
+        textBreakStrategy="simple"
+        style={{
+          flex: 1,
+          fontSize: 14,
+          fontWeight: '500',
+          color: TEXT_PRIMARY,
+        }}
+      />
+      {rightSlot}
+    </View>
+  </View>
+);
+
+const EyeToggle = ({ show, onPress }: { show: boolean; onPress: () => void }) => (
+  <Pressable onPress={onPress} hitSlop={8}>
+    <IconEye color={TEXT_TERTIARY} off={!show} />
+  </Pressable>
+);
+
+const SsoButton = ({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode;
+  label: string;
+}) => (
+  <Pressable
+    onPress={notifyOAuthUnavailable}
+    style={({ pressed }) => ({
+      flex: 1,
+      height: 48,
+      backgroundColor: pressed ? '#F3F4F6' : '#FFFFFF',
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: 'rgba(0,0,0,0.08)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingHorizontal: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      elevation: 3,
+    })}
+  >
+    {icon}
+    <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY }}>{label}</Text>
+  </Pressable>
+);
+
+const SubmitButton = ({
+  label,
+  loading,
+  onPress,
+  submitScale,
+  pressIn,
+  pressOut,
+}: {
+  label: string;
+  loading: boolean;
+  onPress: () => void;
+  submitScale: Animated.Value;
+  pressIn: () => void;
+  pressOut: () => void;
+}) => (
+  <Animated.View style={{ transform: [{ scale: submitScale }] }}>
+    <Pressable
+      onPress={onPress}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+      disabled={loading}
+      style={{
+        height: 50,
+        borderRadius: 9999,
+        backgroundColor: loading ? '#4A4A52' : TEXT_PRIMARY,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 6,
+      }}
+    >
+      <Text style={{ fontSize: 14, fontWeight: '600', color: TEXT_ON_DARK }}>
+        {loading ? 'Please wait…' : label}
+      </Text>
+      {!loading && <IconArrow color={TEXT_ON_DARK} />}
+    </Pressable>
+  </Animated.View>
+);
 
 export default function LoginScreen() {
   const navigation = useNavigation<Nav>();
@@ -149,7 +294,6 @@ export default function LoginScreen() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPw, setShowRegPw] = useState(false);
-  const [regTtl, setRegTtl] = useState(12);
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
 
@@ -182,7 +326,7 @@ export default function LoginScreen() {
     setLoginLoading(true);
     try {
       await login({ userName: loginUsername, password: loginPassword });
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -207,147 +351,14 @@ export default function LoginScreen() {
     }
   };
 
-  // ── Sub-components ─────────────────────────────────────────────────────────
-  const InputField = ({
-    label,
-    icon,
-    value,
-    onChangeText,
-    placeholder,
-    secureTextEntry,
-    keyboardType,
-    autoCapitalize,
-    rightSlot,
-  }: {
-    label: string;
-    icon: React.ReactNode;
-    value: string;
-    onChangeText: (t: string) => void;
-    placeholder: string;
-    secureTextEntry?: boolean;
-    keyboardType?: 'default' | 'email-address';
-    autoCapitalize?: 'none' | 'words';
-    rightSlot?: React.ReactNode;
-  }) => (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontSize: 12, fontWeight: '600', color: TEXT_PRIMARY, marginLeft: 4 }}>
-        {label}
-      </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: SURFACE_MUTED,
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.04)',
-          height: 48,
-          paddingHorizontal: 14,
-          gap: 10,
-        }}
-      >
-        {icon}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={TEXT_TERTIARY}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType ?? 'default'}
-          autoCapitalize={autoCapitalize ?? 'none'}
-          textBreakStrategy="simple"
-          style={{
-            flex: 1,
-            fontSize: 14,
-            fontWeight: '500',
-            color: TEXT_PRIMARY,
-          }}
-        />
-        {rightSlot}
-      </View>
-    </View>
-  );
-
-  const EyeToggle = ({ show, onPress }: { show: boolean; onPress: () => void }) => (
-    <Pressable onPress={onPress} hitSlop={8}>
-      <IconEye color={TEXT_TERTIARY} off={!show} />
-    </Pressable>
-  );
-
-  const SsoButton = ({
-    icon,
-    label,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-  }) => (
-    <Pressable
-      onPress={notifyOAuthUnavailable}
-      style={({ pressed }) => ({
-        flex: 1,
-        height: 44,
-        backgroundColor: pressed ? SURFACE_MUTED : SURFACE_WHITE,
-        borderRadius: 9999,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.06)',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-      })}
-    >
-      {icon}
-      <Text style={{ fontSize: 13, fontWeight: '600', color: TEXT_PRIMARY }}>{label}</Text>
-    </Pressable>
-  );
-
-  const SubmitButton = ({
-    label,
-    loading,
-    onPress,
-  }: {
-    label: string;
-    loading: boolean;
-    onPress: () => void;
-  }) => (
-    <Animated.View style={{ transform: [{ scale: submitScale }] }}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={pressIn}
-        onPressOut={pressOut}
-        disabled={loading}
-        style={{
-          height: 50,
-          borderRadius: 9999,
-          backgroundColor: loading ? '#4A4A52' : TEXT_PRIMARY,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          marginTop: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.15,
-          shadowRadius: 16,
-          elevation: 6,
-        }}
-      >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: TEXT_ON_DARK }}>
-          {loading ? 'Please wait…' : label}
-        </Text>
-        {!loading && <IconArrow color={TEXT_ON_DARK} />}
-      </Pressable>
-    </Animated.View>
-  );
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Atmospheric image fills the top ~45% */}
-      <View style={{ flex: 1, backgroundColor: BG_MAIN }}>
+      {/* Full-bleed atmospheric background */}
+      <View style={{ flex: 1, backgroundColor: '#0D0E11' }}>
         <ImageBackground
           source={{ uri: BG_IMAGE_URI }}
           style={{
@@ -355,27 +366,19 @@ export default function LoginScreen() {
             top: 0,
             left: 0,
             right: 0,
-            height: SCREEN_H * 0.46,
+            bottom: 0,
           }}
           resizeMode="cover"
         >
-          {/* Dark-to-transparent gradient overlay */}
-          <View
-            style={{
-              ...{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-              backgroundColor: 'rgba(13, 14, 17, 0.28)',
-            }}
-          />
-          {/* Light fade at the bottom of the image into BG_MAIN */}
+          {/* Subtle gradient overlay */}
           <View
             style={{
               position: 'absolute',
-              bottom: 0,
+              top: 0,
               left: 0,
               right: 0,
-              height: 120,
-              backgroundColor: BG_MAIN,
-              opacity: 0.95,
+              bottom: 0,
+              backgroundColor: 'rgba(13, 14, 17, 0.32)',
             }}
           />
         </ImageBackground>
@@ -572,6 +575,9 @@ export default function LoginScreen() {
                   label="Sign In"
                   loading={loginLoading}
                   onPress={handleLogin}
+                  submitScale={submitScale}
+                  pressIn={pressIn}
+                  pressOut={pressOut}
                 />
 
                 {/* Demo hint */}
@@ -639,68 +645,6 @@ export default function LoginScreen() {
                   }
                 />
 
-                {/* Soul Sync TTL picker (Vibenet-specific feature) */}
-                <View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: TEXT_PRIMARY, marginLeft: 4 }}>
-                      ⏳ Post TTL (Soul Sync)
-                    </Text>
-                    <View
-                      style={{
-                        backgroundColor: 'rgba(108,76,255,0.12)',
-                        paddingHorizontal: 10,
-                        paddingVertical: 3,
-                        borderRadius: 9999,
-                      }}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: C.brand }}>
-                        {regTtl}h
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={{ fontSize: 11, color: TEXT_SECONDARY, marginBottom: 8, marginLeft: 4 }}>
-                    How long your posts survive before fading away.
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {TTL_OPTIONS.map(h => {
-                      const active = regTtl === h;
-                      return (
-                        <Pressable
-                          key={h}
-                          onPress={() => setRegTtl(h)}
-                          style={{
-                            flex: 1,
-                            height: 36,
-                            borderRadius: 9999,
-                            borderWidth: 1,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: active ? TEXT_PRIMARY : 'transparent',
-                            borderColor: active ? TEXT_PRIMARY : 'rgba(0,0,0,0.1)',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              fontWeight: '600',
-                              color: active ? SURFACE_WHITE : TEXT_SECONDARY,
-                            }}
-                          >
-                            {h}h
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-
                 {/* Terms */}
                 <Text style={{ fontSize: 11, color: TEXT_SECONDARY, textAlign: 'center' }}>
                   By registering you agree to our{' '}
@@ -711,39 +655,62 @@ export default function LoginScreen() {
                   label="Create Account"
                   loading={regLoading}
                   onPress={handleRegister}
+                  submitScale={submitScale}
+                  pressIn={pressIn}
+                  pressOut={pressOut}
                 />
               </View>
             )}
 
-            {/* ── Divider ──────────────────────────────────────────────── */}
+            {/* ── Social SSO Section Container (Div with padding & centering) ── */}
             <View
               style={{
-                flexDirection: 'row',
+                width: '100%',
                 alignItems: 'center',
-                gap: 12,
-                marginTop: 20,
-                marginBottom: 16,
+                justifyContent: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 8,
+                marginTop: 8,
               }}
             >
-              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(0,0,0,0.08)' }} />
-              <Text
+              {/* Divider */}
+              <View
                 style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  color: TEXT_TERTIARY,
-                  letterSpacing: 0.5,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  width: '100%',
+                  gap: 12,
+                  marginBottom: 20,
                 }}
               >
-                Or continue with
-              </Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(0,0,0,0.08)' }} />
-            </View>
+                <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(0,0,0,0.08)' }} />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    color: TEXT_TERTIARY,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Or continue with
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(0,0,0,0.08)' }} />
+              </View>
 
-            {/* ── Social SSO Buttons ───────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <SsoButton icon={<IconGoogle />} label="Google" />
-              <SsoButton icon={<IconApple color={TEXT_PRIMARY} />} label="Apple" />
+              {/* Centered SSO Buttons Row */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  gap: 14,
+                }}
+              >
+                <SsoButton icon={<IconGoogle />} label="Google" />
+                <SsoButton icon={<IconApple color={TEXT_PRIMARY} />} label="Apple" />
+              </View>
             </View>
           </View>
 

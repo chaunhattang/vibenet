@@ -1,39 +1,9 @@
-export type PostData = {
-  id: string;
-  author: string;
-  handle?: string;
-  avatar: string;
-  content: string;
-  media?: string;
-  mediaType?: 'image' | 'video' | 'audio';
-  type: 'moment' | 'thought';
-  likes: number;
-  comments: number;
-  timestamp: string;
-  timeLeft?: string;
-  isNew?: boolean;
-  // Khớp với post do chính "mình" tạo (dùng để hiện nút Edit/Delete), giống ownerId bên web
-  ownerId?: string;
-};
-
 export type OnlineUser = {
   id: string;
   name: string;
   handle: string;
   avatar: string;
   isOnline: boolean;
-};
-
-export type CommentData = {
-  id: string;
-  author: string;
-  // userId của người comment — dùng để bấm avatar nhảy sang profile của họ
-  userId: string;
-  avatar: string;
-  content: string;
-  timestamp: string;
-  // Có giá trị khi đây là reply — trỏ tới id của comment gốc (chỉ nested 1 cấp)
-  parentId?: string;
 };
 
 export type ChatRoomData = {
@@ -79,21 +49,29 @@ export type ProfileDetails = {
 
 export type FriendStatus = 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'FRIENDS';
 
-export type NotificationType = 'like' | 'reply' | 'mention' | 'faded';
+// Khớp trực tiếp NotificationResponse của backend (/api/notifications).
+// Lưu ý: JSON key là "read" (không phải "isRead").
+export type NotificationKind =
+  | 'FRIEND_REQUEST'
+  | 'FRIEND_ACCEPTED'
+  | 'REACTION'
+  | 'COMMENT'
+  | 'MOMENT_REPLY'
+  | 'LOCKET_MOMENT_RECEIVED'
+  | 'LOCKET_REACTION';
 
-export type NotificationData = {
+export type AppNotification = {
   id: string;
-  type: NotificationType;
-  // userId của người gây ra thông báo — dùng để bấm avatar nhảy sang profile của họ
-  userId?: string;
-  userName: string;
-  message: string;
-  timeAgo: string;
-  avatarUrl?: string;
+  actorId: string;
+  actorName: string;
+  actorAvatar: string;
+  type: NotificationKind;
+  relatedEntityId: string;
+  read: boolean;
+  createdAt: string;
 };
 
-// Locket feature — đặt tên "CloseFriend"/"LocketMoment" có tiền tố rõ ràng để tránh
-// đụng với PostData.type === 'moment' (tính năng Whisper, không liên quan).
+// Locket feature — moment ảnh/video ephemeral, tách biệt hẳn với Post thường (/api/posts).
 export type CloseFriend = {
   userId: string;
   userName: string;
@@ -207,4 +185,40 @@ export type UserResponse = {
   status: 'ACTIVE' | 'BANNED' | 'INACTIVE' | 'LOCKED' | 'DELETED';
   lastActiveAt: string;
   profileResponse: ProfileResponse | null;
+};
+
+// --- Posts / Comments / Reactions (khớp trực tiếp backend /api/posts*) -------------
+// Post "thật" (Instagram-style), wired vào /api/posts.
+
+export type ReactionType = 'LOVE' | 'FIRE';
+
+export type PostOwner = {
+  id: string;
+  username: string;
+  fullName: string;
+  avatarUrl: string;
+};
+
+export type Post = {
+  id: string;
+  owner: PostOwner;
+  textContent: string;
+  mediaUrl: string[]; // 0..n media — card render carousel khi > 1
+  commentCount: number;
+  reactionCount: number;
+  currentReaction: ReactionType | null; // reaction của chính mình, nếu có
+  createdAt: string;
+};
+
+export type Comment = {
+  id: string;
+  postId: string;
+  owner: PostOwner;
+  content: string;
+  createdAt: string;
+};
+
+export type CreatePostInput = {
+  textContent?: string;
+  media: { uri: string; mimeType: string; fileName: string }[]; // từ image-picker asset
 };

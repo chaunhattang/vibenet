@@ -2,4 +2,5 @@
 // Sau này có be thì bỏ file này, lấy CURRENT_USER_ID/avatar từ getCurrentUser() (lib/user) sau khi login
 export const CURRENT_USER_ID = 'me';
 export const CURRENT_USER_AVATAR =
-  'https://lienketbank.com/wp-content/uploads/2023/05/1676245765_401_Hinh-anh-Avatar-Trang-Dep-Cho-FB-Zalo-BI-AN.jpg';
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+

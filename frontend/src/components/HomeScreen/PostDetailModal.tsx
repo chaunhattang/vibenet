@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -10,105 +11,86 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveMediaUrl } from '../../api/client';
+import { addComment as addCommentRequest, getComments } from '../../api/posts';
 import { CURRENT_USER_AVATAR } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
-import { PLACEHOLDER } from '../../theme/colors';
-import { CommentData, PostData } from '../../types';
+import { formatRelativeTime } from '../../utils/time';
+import { PLACEHOLDER, C } from '../../theme/colors';
+import { Comment, Post } from '../../types';
 import { CloseIcon } from '../../assets/Icon';
 import Avatar from '../ui/Avatar';
 
+import { BlurView } from '@react-native-community/blur';
+
 type PostDetailModalProps = {
   visible: boolean;
-  post: PostData;
-  comments: CommentData[];
+  post: Post;
   onClose: () => void;
-  onAddComment: (content: string, parentId?: string) => void;
 };
 
-export default function PostDetailModal({
-  visible,
-  post,
-  comments,
-  onClose,
-  onAddComment,
-}: PostDetailModalProps) {
+const COMMENTS_PAGE_SIZE = 20;
+
+export default function PostDetailModal({ visible, post, onClose }: PostDetailModalProps) {
   const insets = useSafeAreaInsets();
   const { currentUser } = useAuth();
   const goToProfile = useGoToProfile();
   const inputRef = useRef<TextInput>(null);
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
-  const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(
-    null,
-  );
+  const [sending, setSending] = useState(false);
 
-  const topLevelComments = comments.filter(c => !c.parentId);
-  const repliesFor = (id: string) => comments.filter(c => c.parentId === id);
+  const loadComments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await getComments(post.id, 0, COMMENTS_PAGE_SIZE);
+      setComments(result?.data ?? []);
+    } catch {
+      setComments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [post.id]);
 
-  const handleReply = (comment: CommentData) => {
-    setReplyTo({ id: comment.id, author: comment.author });
-    setText(`@${comment.author} `);
-    inputRef.current?.focus();
+  useEffect(() => {
+    if (visible) loadComments();
+  }, [visible, loadComments]);
+
+  const handleSend = async () => {
+    const content = text.trim();
+    if (!content || sending) return;
+    setSending(true);
+    try {
+      const created = await addCommentRequest(post.id, content);
+      if (created) setComments(prev => [created, ...prev]);
+      setText('');
+    } finally {
+      setSending(false);
+    }
   };
-
-  const cancelReply = () => {
-    setReplyTo(null);
-    setText('');
-  };
-
-  const handleSend = () => {
-    if (!text.trim()) return;
-    onAddComment(text.trim(), replyTo?.id);
-    setText('');
-    setReplyTo(null);
-  };
-
-  const renderComment = (comment: CommentData, isReply: boolean) => (
-    <View key={comment.id} className="flex-row gap-3">
-      <Pressable onPress={() => goToProfile(comment.userId)}>
-        <Avatar uri={comment.avatar} size={isReply ? 28 : 32} />
-      </Pressable>
-      <View className="flex-1">
-        <Text className="text-sm text-content-strong dark:text-content-strong-dark">
-          <Text className="font-semibold">{comment.author} </Text>
-          {comment.content}
-        </Text>
-        <View className="flex-row items-center gap-3 mt-0.5">
-          <Text className="text-xs text-content-muted dark:text-content-muted-dark">
-            {comment.timestamp}
-          </Text>
-          {!isReply && (
-            <Pressable onPress={() => handleReply(comment)} hitSlop={6}>
-              <Text className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">
-                Reply
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-    </View>
-  );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <Pressable className="flex-1" onPress={onClose} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View className="flex-1 justify-end">
+          <BlurView
+            className="absolute inset-0"
+            blurType="light"
+            blurAmount={10}
+            reducedTransparencyFallbackColor="white"
+          />
+
+          <Pressable className="absolute inset-0 flex-1" onPress={onClose} />
           <View
             style={{ height: '75%', paddingBottom: insets.bottom }}
             className="bg-paper-base dark:bg-ink-overlay rounded-t-hero overflow-hidden"
           >
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-hairline-light dark:border-hairline-dark">
               <Text className="text-headline text-content-strong dark:text-content-strong-dark">
-                Whisper
+                Comments
               </Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <CloseIcon />
@@ -116,65 +98,55 @@ export default function PostDetailModal({
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-              <View className="flex-row items-center gap-3">
-                <Pressable onPress={() => post.ownerId && goToProfile(post.ownerId)}>
-                  <Avatar uri={post.avatar} size={36} />
+              {/* Original post */}
+              <View className="flex-row items-start gap-3">
+                <Pressable onPress={() => goToProfile(post.owner.id)}>
+                  <Avatar uri={resolveMediaUrl(post.owner.avatarUrl)} size={36} />
                 </Pressable>
-                <View>
-                  <Text className="text-sm font-semibold text-content-strong dark:text-content-strong-dark">
-                    {post.author}
+                <View className="flex-1">
+                  <Text className="text-sm text-content-strong dark:text-content-strong-dark">
+                    <Text className="font-semibold">{post.owner.username} </Text>
+                    {post.textContent}
                   </Text>
-                  <Text className="text-xs text-content-muted dark:text-content-muted-dark">
-                    {post.timestamp}
+                  <Text className="text-xs text-content-muted dark:text-content-muted-dark mt-0.5">
+                    {formatRelativeTime(post.createdAt)}
                   </Text>
                 </View>
               </View>
-
-              {!!post.content && (
-                <Text className="text-[15px] text-content-strong dark:text-content-strong-dark leading-relaxed">
-                  {post.content}
-                </Text>
-              )}
 
               <View
                 className="border-t border-hairline-light dark:border-hairline-dark pt-4"
                 style={{ gap: 14 }}
               >
-                {topLevelComments.length === 0 ? (
+                {loading ? (
+                  <ActivityIndicator color={C.brand} />
+                ) : comments.length === 0 ? (
                   <Text className="text-sm text-content-muted dark:text-content-muted-dark text-center py-6">
                     No comments yet. Be the first!
                   </Text>
                 ) : (
-                  topLevelComments.map(comment => (
-                    <View key={comment.id} style={{ gap: 12 }}>
-                      {renderComment(comment, false)}
-                      {repliesFor(comment.id).map(reply => (
-                        <View key={reply.id} className="ml-10">
-                          {renderComment(reply, true)}
-                        </View>
-                      ))}
+                  comments.map(comment => (
+                    <View key={comment.id} className="flex-row gap-3">
+                      <Pressable onPress={() => goToProfile(comment.owner.id)}>
+                        <Avatar uri={resolveMediaUrl(comment.owner.avatarUrl)} size={32} />
+                      </Pressable>
+                      <View className="flex-1">
+                        <Text className="text-sm text-content-strong dark:text-content-strong-dark">
+                          <Text className="font-semibold">{comment.owner.username} </Text>
+                          {comment.content}
+                        </Text>
+                        <Text className="text-xs text-content-muted dark:text-content-muted-dark mt-0.5">
+                          {formatRelativeTime(comment.createdAt)}
+                        </Text>
+                      </View>
                     </View>
                   ))
                 )}
               </View>
             </ScrollView>
 
-            {replyTo && (
-              <View className="flex-row items-center justify-between px-4 py-2 bg-paper-raised dark:bg-ink-input border-t border-hairline-light dark:border-hairline-dark">
-                <Text className="text-xs text-content-muted dark:text-content-muted-dark">
-                  Replying to{' '}
-                  <Text className="font-semibold">@{replyTo.author}</Text>
-                </Text>
-                <Pressable onPress={cancelReply} hitSlop={8}>
-                  <CloseIcon size={14} />
-                </Pressable>
-              </View>
-            )}
-
             <View className="flex-row items-center gap-3 px-4 py-3 border-t border-hairline-light dark:border-hairline-dark">
-              <Pressable onPress={() => currentUser && goToProfile(currentUser.userId)}>
-                <Avatar uri={currentUser?.avatar ?? CURRENT_USER_AVATAR} size={32} />
-              </Pressable>
+              <Avatar uri={currentUser?.avatar ?? CURRENT_USER_AVATAR} size={32} />
               <TextInput
                 ref={inputRef}
                 value={text}
@@ -184,11 +156,7 @@ export default function PostDetailModal({
                 textBreakStrategy="simple"
                 className="flex-1 text-sm text-content-strong dark:text-content-strong-dark"
               />
-              <Pressable
-                onPress={handleSend}
-                disabled={!text.trim()}
-                hitSlop={8}
-              >
+              <Pressable onPress={handleSend} disabled={!text.trim() || sending} hitSlop={8}>
                 <Text
                   className={
                     text.trim()

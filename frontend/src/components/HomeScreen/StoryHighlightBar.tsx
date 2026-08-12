@@ -8,13 +8,16 @@ import { StoryItem } from '../../data/mockStories';
 type Props = {
   stories: StoryItem[];
   onPressStory?: (story: StoryItem) => void;
+  /** id các user đã xem hết story → ring chuyển xám */
+  viewedIds?: Set<string>;
 };
 
-export default function StoryHighlightBar({ stories, onPressStory }: Props) {
+export default function StoryHighlightBar({ stories, onPressStory, viewedIds }: Props) {
   const isDark = useColorScheme() === 'dark';
 
   const nameColor = isDark ? '#9CA3AF' : '#6C727F';
   const ringDefault = isDark ? 'rgba(255,255,255,0.12)' : '#FFFFFF';
+  const ringViewed = isDark ? 'rgba(255,255,255,0.22)' : '#D1D5DB';
   const avatarBg = isDark ? '#1E1730' : '#FFFFFF';
 
   return (
@@ -24,7 +27,14 @@ export default function StoryHighlightBar({ stories, onPressStory }: Props) {
       keyExtractor={item => item.id}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16, gap: 16 }}
-      renderItem={({ item }) => (
+      renderItem={({ item }) => {
+        const viewed = viewedIds?.has(item.id) ?? false;
+        const ringColor = item.hasStory
+          ? viewed
+            ? ringViewed
+            : '#0084FF'
+          : ringDefault;
+        return (
         <Pressable
           onPress={() => onPressStory?.(item)}
           style={({ pressed }) => ({ alignItems: 'center', gap: 6, opacity: pressed ? 0.75 : 1 })}
@@ -38,7 +48,7 @@ export default function StoryHighlightBar({ stories, onPressStory }: Props) {
                 height: 64,
                 borderRadius: 9999,
                 borderWidth: 2,
-                borderColor: item.hasStory ? '#0084FF' : ringDefault,
+                borderColor: ringColor,
                 padding: item.hasStory ? 2 : 0,
                 backgroundColor: avatarBg,
                 shadowColor: '#000',
@@ -99,7 +109,8 @@ export default function StoryHighlightBar({ stories, onPressStory }: Props) {
             {item.name}
           </Text>
         </Pressable>
-      )}
+        );
+      }}
     />
   );
 }

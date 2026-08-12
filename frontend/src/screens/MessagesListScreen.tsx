@@ -8,6 +8,7 @@ import FloatingTabBar from '../layout/FloatingTabBar';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { useFriends } from '../contexts/FriendsContext';
+import { useGoToTab } from '../hooks/useGoToTab';
 import { mockOnlineUsers } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
 import { PLACEHOLDER } from '../theme/colors';
@@ -21,6 +22,7 @@ export default function MessagesListScreen() {
   const { rooms, getOrCreateRoomByFriend } = useChat();
   const { logout } = useAuth();
   const { getFriendStatus } = useFriends();
+  const goToTab = useGoToTab();
   const [search, setSearch] = useState('');
 
   const filteredRooms = useMemo(
@@ -97,13 +99,7 @@ export default function MessagesListScreen() {
 
       <FloatingTabBar
         activeTab={null}
-        onChangeTab={tab => {
-          if (tab === 'home') navigation.navigate('Home');
-          else if (tab === 'explore') navigation.navigate('Home');
-          else if (tab === 'notifications')
-            navigation.navigate('Notifications');
-          else if (tab === 'profile') navigation.navigate('Profile');
-        }}
+        onChangeTab={goToTab}
         onLogout={() => {
           logout();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });

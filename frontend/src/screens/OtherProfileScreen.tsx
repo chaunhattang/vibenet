@@ -1,6 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import {
   AddFriendIcon,
@@ -17,32 +17,39 @@ import ConfirmModal from '../components/HomeScreen/ConfirmModal';
 import PostCard from '../components/HomeScreen/PostCard';
 import EmptyState from '../components/ui/EmptyState';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import { getUserPosts } from '../api/posts';
 import { useFriends } from '../contexts/FriendsContext';
-import { usePosts } from '../contexts/PostsContext';
 import { mockFriendsByUser, mockProfiles } from '../data/mockData';
 import { RootStackParamList } from '../navigation/types';
 import { C } from '../theme/colors';
+import { Post } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'OtherProfile'>;
 type Route = { params: RootStackParamList['OtherProfile'] };
-type OtherProfileTab = 'thoughts' | 'friends';
+type OtherProfileTab = 'posts' | 'friends';
 
 export default function OtherProfileScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute() as Route;
   const { userId } = route.params;
 
-  const { posts } = usePosts();
   const { getFriendStatus, sendRequest, cancelRequest, unfriend } = useFriends();
   const profile = mockProfiles[userId];
   const [friends] = useState(mockFriendsByUser[userId] ?? []);
   const friendStatus = getFriendStatus(userId);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'unfriend' | null>(null);
-  const [activeTab, setActiveTab] = useState<OtherProfileTab>('thoughts');
+  const [activeTab, setActiveTab] = useState<OtherProfileTab>('posts');
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+
+  // Post thật của user này (GET /api/posts/user/{id}/page).
+  useEffect(() => {
+    getUserPosts(userId, 0, 20)
+      .then(res => setUserPosts(res?.data ?? []))
+      .catch(() => setUserPosts([]));
+  }, [userId]);
 
   if (!profile) return null;
 
-  const userPosts = posts.filter(p => p.ownerId === userId);
   // followersCount / followingCount are mocked — replace with real API data when backend lands
   const followersCount = friends.length * 12;
   const followingCount = friends.length * 8;
@@ -129,21 +136,21 @@ export default function OtherProfileScreen() {
           onChangeTab={setActiveTab}
           iconOnly={false}
           tabs={[
-            { key: 'thoughts', label: 'Current Thoughts', Icon: ArchiveIcon },
+            { key: 'posts', label: 'Posts', Icon: ArchiveIcon },
             { key: 'friends', label: 'Friends', Icon: UsersIcon },
           ]}
         />
 
         <View className="px-5 mt-5" style={{ gap: 16 }}>
-          {activeTab === 'thoughts' &&
+          {activeTab === 'posts' &&
             (userPosts.length > 0 ? (
               <View style={{ gap: 16 }}>
                 {userPosts.map(post => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard key={post.id} post={post} editable={false} />
                 ))}
               </View>
             ) : (
-              <EmptyState icon={<ArchiveIcon size={26} color={C.brand} />} title="No thoughts yet" />
+              <EmptyState icon={<ArchiveIcon size={26} color={C.brand} />} title="No posts yet" />
             ))}
 
           {activeTab === 'friends' &&

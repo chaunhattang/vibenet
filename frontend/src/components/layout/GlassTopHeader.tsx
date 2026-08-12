@@ -1,25 +1,32 @@
 /**
- * GlassTopHeader — Babagang 56px sticky top navigation bar.
- * Spec: design.md §5A + mock HTML lines 601-620.
- *
- * Phase G — Dark mode:
- *   Light → rgba(246,246,248,0.92) bg, dark borders, dark icons
- *   Dark  → rgba(14,14,16,0.90) bg, white-alpha borders, light icons
+ * GlassTopHeader — Redesigned top navigation bar (Babagang design system).
+ * Features left Grid Menu pill button, centered Vibenet title, and right action pills.
  */
 import { useColorScheme } from 'react-native';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
-import { C } from '../../theme/colors';
+import { CameraIcon, CloseIcon, MessageIcon, SearchIcon } from '../../assets/Icon';
+import { C, PLACEHOLDER } from '../../theme/colors';
+import { OnlineUser } from '../../types';
 
 type GlassTopHeaderProps = {
-  title: string;
+  title?: string;
   onPressMenu?: () => void;
   onPressBell?: () => void;
   unreadCount?: number;
-  // Compose entry point — the sketch's nav bar has no centre "+", so posting
-  // is re-homed here (Phase H). Omit to hide the button entirely.
   onPressAdd?: () => void;
+  onPressMessages?: () => void;
+  onPressLocket?: () => void;
+  locketUnreadCount?: number;
+  // Search props
+  searchOpen?: boolean;
+  onToggleSearch?: () => void;
+  searchQuery?: string;
+  onChangeSearchQuery?: (value: string) => void;
+  searchResults?: OnlineUser[];
+  isSearching?: boolean;
+  onSelectUser?: (user: OnlineUser) => void;
 };
 
 function GridMenuIcon({ color }: { color: string }) {
@@ -54,11 +61,13 @@ function PlusIconSvg({ color }: { color: string }) {
 function CircleIconButton({
   onPress,
   children,
+  badgeCount,
   dotColor,
   isDark,
 }: {
   onPress?: () => void;
   children: React.ReactNode;
+  badgeCount?: number;
   dotColor?: string;
   isDark: boolean;
 }) {
@@ -66,45 +75,76 @@ function CircleIconButton({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 36,
-        height: 36,
-        borderRadius: 9999,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         borderWidth: 1,
-        borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+        borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
         backgroundColor: pressed
-          ? isDark ? 'rgba(255,255,255,0.10)' : '#F0F0F3'
-          : isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+          ? isDark ? 'rgba(255,255,255,0.16)' : '#E5E5EA'
+          : isDark ? 'rgba(255,255,255,0.08)' : '#F0F0F3',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
       })}
     >
       {children}
-      {dotColor && (
+      {!!badgeCount && badgeCount > 0 ? (
         <View
           style={{
             position: 'absolute',
-            top: 6,
-            right: 6,
+            top: -2,
+            right: -2,
+            minWidth: 16,
+            height: 16,
+            paddingHorizontal: 3,
+            borderRadius: 9999,
+            backgroundColor: '#FF3B30',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: isDark ? C.inkBase : '#FFFFFF',
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </Text>
+        </View>
+      ) : dotColor ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 5,
+            right: 5,
             width: 8,
             height: 8,
             borderRadius: 9999,
             backgroundColor: dotColor,
-            borderWidth: 2,
+            borderWidth: 1.5,
             borderColor: isDark ? C.inkBase : '#FFFFFF',
           }}
         />
-      )}
+      ) : null}
     </Pressable>
   );
 }
 
 export default function GlassTopHeader({
-  title,
+  title = 'Vibenet',
   onPressMenu,
   onPressBell,
   unreadCount = 0,
   onPressAdd,
+  onPressMessages,
+  onPressLocket,
+  locketUnreadCount = 0,
+  searchOpen = false,
+  onToggleSearch,
+  searchQuery = '',
+  onChangeSearchQuery,
+  searchResults = [],
+  isSearching = false,
+  onSelectUser,
 }: GlassTopHeaderProps) {
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === 'dark';
@@ -115,47 +155,175 @@ export default function GlassTopHeader({
   return (
     <View
       style={{
+        zIndex: 50,
         paddingTop: insets.top,
-        backgroundColor: isDark ? 'rgba(14, 14, 16, 0.90)' : 'rgba(246, 246, 248, 0.92)',
+        backgroundColor: isDark ? 'rgba(14, 14, 16, 0.94)' : 'rgba(255, 255, 255, 0.94)',
         borderBottomWidth: 1,
-        borderBottomColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+        borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
       }}
     >
       <View
         style={{
           height: 56,
-          paddingHorizontal: 20,
+          paddingHorizontal: 16,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
-        <CircleIconButton onPress={onPressMenu} isDark={isDark}>
-          <GridMenuIcon color={iconColor} />
-        </CircleIconButton>
-
-        <Text
-          style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.5, color: titleColor }}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {onPressAdd && (
-            <CircleIconButton onPress={onPressAdd} isDark={isDark}>
-              <PlusIconSvg color={iconColor} />
-            </CircleIconButton>
-          )}
-          <CircleIconButton
-            onPress={onPressBell}
-            dotColor={unreadCount > 0 ? '#FF3B30' : undefined}
-            isDark={isDark}
+        {searchOpen ? (
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#F0F0F4',
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 9999,
+              borderWidth: 1,
+              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
+            }}
           >
-            <BellIconSvg color={iconColor} />
-          </CircleIconButton>
-        </View>
+            <SearchIcon size={18} color={iconColor} />
+            <TextInput
+              autoFocus
+              value={searchQuery}
+              onChangeText={onChangeSearchQuery}
+              placeholder="Search users..."
+              placeholderTextColor={PLACEHOLDER}
+              textBreakStrategy="simple"
+              style={{
+                flex: 1,
+                fontSize: 14,
+                fontWeight: '500',
+                color: titleColor,
+                paddingVertical: 0,
+              }}
+            />
+            {isSearching && <ActivityIndicator size="small" color={C.brand} />}
+            <Pressable onPress={onToggleSearch} hitSlop={8}>
+              <CloseIcon size={18} color={iconColor} />
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            {/* Left side: Grid Menu Icon Button */}
+            <CircleIconButton onPress={onPressMenu} isDark={isDark}>
+              <GridMenuIcon color={iconColor} />
+            </CircleIconButton>
+
+            {/* Center: Vibenet Logo Title */}
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: '800',
+                letterSpacing: -0.5,
+                color: titleColor,
+                textAlign: 'center',
+              }}
+            >
+              {title}
+            </Text>
+
+            {/* Right side: Action Pill Buttons (Search, Notifications, Messages) */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {onToggleSearch && (
+                <CircleIconButton onPress={onToggleSearch} isDark={isDark}>
+                  <SearchIcon size={18} color={iconColor} />
+                </CircleIconButton>
+              )}
+              {onPressAdd && (
+                <CircleIconButton onPress={onPressAdd} isDark={isDark}>
+                  <PlusIconSvg color={iconColor} />
+                </CircleIconButton>
+              )}
+              {onPressBell && (
+                <CircleIconButton
+                  onPress={onPressBell}
+                  badgeCount={unreadCount}
+                  isDark={isDark}
+                >
+                  <BellIconSvg color={iconColor} />
+                </CircleIconButton>
+              )}
+              {onPressMessages && (
+                <CircleIconButton onPress={onPressMessages} isDark={isDark}>
+                  <MessageIcon size={18} color={iconColor} />
+                </CircleIconButton>
+              )}
+            </View>
+          </>
+        )}
       </View>
+
+      {/* Search results dropdown panel */}
+      {searchOpen && searchQuery.trim().length > 0 && (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 12,
+            borderRadius: 20,
+            overflow: 'hidden',
+            backgroundColor: isDark ? C.inkOverlay : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+            maxHeight: 280,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
+            elevation: 8,
+          }}
+        >
+          {isSearching ? (
+            <Text style={{ padding: 16, textAlign: 'center', fontSize: 13, color: C.contentMuted }}>
+              Searching...
+            </Text>
+          ) : searchResults.length > 0 ? (
+            searchResults.map(user => (
+              <Pressable
+                key={user.id}
+                onPress={() => onSelectUser?.(user)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  backgroundColor: pressed
+                    ? isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F7'
+                    : 'transparent',
+                })}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    overflow: 'hidden',
+                    backgroundColor: '#E5E7EB',
+                  }}
+                >
+                  <Image source={{ uri: user.avatar }} style={{ width: '100%', height: '100%' }} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: titleColor }}>
+                    {user.name}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: C.contentMuted }}>
+                    @{user.handle}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          ) : (
+            <Text style={{ padding: 16, textAlign: 'center', fontSize: 13, color: C.contentMuted }}>
+              No users found
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }

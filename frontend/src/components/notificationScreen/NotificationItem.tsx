@@ -1,39 +1,45 @@
 import { Pressable, Text, View } from 'react-native';
+import { resolveMediaUrl } from '../../api/client';
 import { UserIcon } from '../../assets/Icon';
 import { useGoToProfile } from '../../hooks/useGoToProfile';
 import { PressableScale } from '../../theme/motion';
-import { NotificationData, NotificationType } from '../../types';
+import { formatRelativeTime } from '../../utils/time';
+import { AppNotification, NotificationKind } from '../../types';
 import Avatar from '../ui/Avatar';
 
-// Retokenized from an unrelated pink/blue/purple/gray palette to the app's actual
-// semantic colors: like -> accent (energy), reply -> brand (primary), mention -> spark
-// (acid-lime highlight, dark text for contrast), faded -> muted content tone.
-const BADGE_CONFIG: Record<NotificationType, { emoji: string; className: string; textClassName: string }> = {
-  like: { emoji: '❤️', className: 'bg-accent', textClassName: 'text-white' },
-  reply: { emoji: '💬', className: 'bg-brand', textClassName: 'text-white' },
-  mention: { emoji: '@', className: 'bg-spark', textClassName: 'text-ink-base' },
-  faded: { emoji: '👤', className: 'bg-content-faint dark:bg-content-faint-dark', textClassName: 'text-white' },
+// Map từng loại notification thật của backend → câu chữ + huy hiệu emoji/màu.
+const KIND_CONFIG: Record<
+  NotificationKind,
+  { emoji: string; message: string; className: string; textClassName: string }
+> = {
+  FRIEND_REQUEST: { emoji: '👋', message: 'sent you a friend request.', className: 'bg-brand', textClassName: 'text-white' },
+  FRIEND_ACCEPTED: { emoji: '🤝', message: 'accepted your friend request.', className: 'bg-brand', textClassName: 'text-white' },
+  REACTION: { emoji: '❤️', message: 'reacted to your post.', className: 'bg-accent', textClassName: 'text-white' },
+  COMMENT: { emoji: '💬', message: 'commented on your post.', className: 'bg-brand', textClassName: 'text-white' },
+  MOMENT_REPLY: { emoji: '↩️', message: 'replied to your moment.', className: 'bg-spark', textClassName: 'text-ink-base' },
+  LOCKET_MOMENT_RECEIVED: { emoji: '📸', message: 'sent you a moment.', className: 'bg-accent', textClassName: 'text-white' },
+  LOCKET_REACTION: { emoji: '🔥', message: 'reacted to your moment.', className: 'bg-accent', textClassName: 'text-white' },
 };
 
 type NotificationItemProps = {
-  notification: NotificationData;
+  notification: AppNotification;
   onPress?: () => void;
 };
 
 export default function NotificationItem({ notification, onPress }: NotificationItemProps) {
-  const { type, userId, userName, message, timeAgo, avatarUrl } = notification;
-  const badge = BADGE_CONFIG[type];
-  const isFaded = type === 'faded';
+  const { type, actorId, actorName, actorAvatar, read, createdAt } = notification;
+  const badge = KIND_CONFIG[type];
   const goToProfile = useGoToProfile();
+  const avatarUrl = resolveMediaUrl(actorAvatar);
 
   return (
     <PressableScale
       onPress={onPress}
       className={`flex-row items-center gap-3 py-3 px-4 rounded-field active:bg-paper-raised dark:active:bg-white/5 ${
-        isFaded ? 'opacity-60' : ''
+        read ? '' : 'bg-brand/5'
       }`}
     >
-      <Pressable onPress={() => userId && goToProfile(userId)} className="relative">
+      <Pressable onPress={() => actorId && goToProfile(actorId)} className="relative">
         {avatarUrl ? (
           <Avatar uri={avatarUrl} size={44} />
         ) : (
@@ -50,12 +56,15 @@ export default function NotificationItem({ notification, onPress }: Notification
 
       <View className="flex-1">
         <Text className="text-sm text-content-strong dark:text-content-strong-dark">
-          <Text className="font-semibold">{userName} </Text>
-          {message}
+          <Text className="font-semibold">{actorName} </Text>
+          {badge.message}
         </Text>
       </View>
 
-      <Text className="text-xs text-content-muted dark:text-content-muted-dark">{timeAgo}</Text>
+      {!read && <View className="w-2 h-2 rounded-full bg-brand" />}
+      <Text className="text-xs text-content-muted dark:text-content-muted-dark">
+        {formatRelativeTime(createdAt)}
+      </Text>
     </PressableScale>
   );
 }

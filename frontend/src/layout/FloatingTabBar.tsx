@@ -6,21 +6,14 @@ import { ExploreIcon, HeartIcon, HomeIcon, LogoutIcon, UserIcon } from '../asset
 import { C } from '../theme/colors';
 import { PressableScale } from '../theme/motion';
 
-// Sketch nav is exactly 4 icons — Home / Explore / Notifications / Profile —
-// with no centre "+" and no messages tab (see GLASSMORPHIC_MOBILE_RESTRUCTURE_PLAN.md Phase H).
 export type TabKey = 'home' | 'explore' | 'notifications' | 'profile';
 
 type FloatingTabBarProps = {
-  // null when the current screen (e.g. Messages) has no corresponding tab —
-  // all four icons render inactive rather than falsely highlighting one.
   activeTab: TabKey | null;
   onChangeTab: (tab: TabKey) => void;
   onLogout: () => void;
 };
 
-// Animated active-state pill behind a tab icon — fades/scales in rather than sliding
-// (a sliding indicator needs onLayout measurement of sibling positions, which can't be
-// visually verified without a device in this environment; see UI_REDESIGN_PLAN.md §4).
 function TabIcon({ active, onPress, onLongPress, children }: {
   active: boolean;
   onPress: () => void;
@@ -35,12 +28,24 @@ function TabIcon({ active, onPress, onLongPress, children }: {
 
   return (
     <PressableScale onPress={onPress} onLongPress={onLongPress} hitSlop={10}>
-      <View className="w-11 h-11 items-center justify-center">
+      <View style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         <Animated.View
-          style={{ transform: [{ scale: pill }], opacity: pill }}
-          className="absolute w-11 h-11 rounded-full bg-white"
+          style={{
+            transform: [{ scale: pill }],
+            opacity: pill,
+            position: 'absolute',
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 4,
+          }}
         />
-        <View style={{ opacity: active ? 1 : 0.55 }}>
+        <View style={{ zIndex: 10 }}>
           {children}
         </View>
       </View>
@@ -56,30 +61,53 @@ export default function FloatingTabBar({
   const insets = useSafeAreaInsets();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const handlePressTab = (tab: TabKey) => {
+    if (activeTab === tab) return;
+    onChangeTab(tab);
+  };
+
   return (
     <>
       <View
-        style={{ bottom: insets.bottom + 12 }}
-        className="absolute left-6 right-6 flex-row items-center justify-between bg-paper-base dark:bg-ink-overlay rounded-full px-5 py-3 shadow-lg border border-hairline-light dark:border-hairline-dark"
+        style={{
+          position: 'absolute',
+          left: 24,
+          right: 24,
+          bottom: insets.bottom + 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'rgba(28, 28, 32, 0.88)',
+          borderRadius: 9999,
+          paddingHorizontal: 20,
+          paddingVertical: 8,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.16)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.35,
+          shadowRadius: 20,
+          elevation: 10,
+        }}
       >
-        <TabIcon active={activeTab === 'home'} onPress={() => onChangeTab('home')}>
-          <HomeIcon color={activeTab === 'home' ? '#0F0F0F' : C.contentFaint} />
+        <TabIcon active={activeTab === 'home'} onPress={() => handlePressTab('home')}>
+          <HomeIcon size={22} color={activeTab === 'home' ? '#000000' : 'rgba(255, 255, 255, 0.70)'} />
         </TabIcon>
 
-        <TabIcon active={activeTab === 'explore'} onPress={() => onChangeTab('explore')}>
-          <ExploreIcon color={activeTab === 'explore' ? '#0F0F0F' : C.contentFaint} />
+        <TabIcon active={activeTab === 'explore'} onPress={() => handlePressTab('explore')}>
+          <ExploreIcon size={22} color={activeTab === 'explore' ? '#000000' : 'rgba(255, 255, 255, 0.70)'} />
         </TabIcon>
 
-        <TabIcon active={activeTab === 'notifications'} onPress={() => onChangeTab('notifications')}>
-          <HeartIcon color={activeTab === 'notifications' ? '#0F0F0F' : C.contentFaint} />
+        <TabIcon active={activeTab === 'notifications'} onPress={() => handlePressTab('notifications')}>
+          <HeartIcon size={22} color={activeTab === 'notifications' ? '#000000' : 'rgba(255, 255, 255, 0.70)'} />
         </TabIcon>
 
         <TabIcon
           active={activeTab === 'profile'}
-          onPress={() => onChangeTab('profile')}
+          onPress={() => handlePressTab('profile')}
           onLongPress={() => setShowLogoutConfirm(true)}
         >
-          <UserIcon color={activeTab === 'profile' ? '#0F0F0F' : C.contentFaint} />
+          <UserIcon size={22} color={activeTab === 'profile' ? '#000000' : 'rgba(255, 255, 255, 0.70)'} />
         </TabIcon>
       </View>
 

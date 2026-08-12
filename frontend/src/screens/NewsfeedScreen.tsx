@@ -2,89 +2,82 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
+  FlatList,
   Pressable,
-  ScrollView,
+  RefreshControl,
   Text,
   View,
 } from 'react-native';
-import ComposerCard from '../components/HomeScreen/ComposerCard';
-import CreateWhisperModal from '../components/HomeScreen/CreateWhisperModal';
-import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
-import Search from '../components/HomeScreen/Search';
+import { launchImageLibrary } from 'react-native-image-picker';
+import CreatePostModal from '../components/HomeScreen/CreatePostModal';
 import GlassTopHeader from '../components/layout/GlassTopHeader';
 import StoryHighlightBar from '../components/HomeScreen/StoryHighlightBar';
-import MediaFeedCard from '../components/HomeScreen/MediaFeedCard';
+import StoryViewer from '../components/Stories/StoryViewer';
 import { CameraIcon, ChevronDownIcon } from '../assets/Icon';
 import EmptyState from '../components/ui/EmptyState';
-import OnlineUsers from '../layout/OnlineUsers';
 import PostCard from '../components/HomeScreen/PostCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import { useFriends } from '../contexts/FriendsContext';
 import { useLocket } from '../contexts/LocketContext';
 import { usePosts } from '../contexts/PostsContext';
+import { useStories } from '../contexts/StoriesContext';
 import { useGoToProfile } from '../hooks/useGoToProfile';
+import { useGoToTab } from '../hooks/useGoToTab';
 import { mockOnlineUsers } from '../data/mockData';
-import { MOCK_STORIES } from '../data/mockStories';
-import { MOCK_MEDIA_FEED } from '../data/mockMediaFeed';
+import { StoryItem } from '../data/mockStories';
 import { C } from '../theme/colors';
-import { animateNextLayout, FadeInUp } from '../theme/motion';
+import { FadeInUp } from '../theme/motion';
 import { RootStackParamList } from '../navigation/types';
-import { OnlineUser, PostData, ProfileDetails } from '../types';
+import { OnlineUser, Post } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
-// Cái này là post giả (chưa có backend), sau này có be thì bỏ
-function createLocalPost(
-  author: ProfileDetails,
-  content: string,
-  timeLeft: string,
-): PostData {
-  return {
-    id: `local-${Date.now()}`,
-    author: author.fullName,
-    handle: `@${author.handle}`,
-    avatar: author.avatar,
-    content,
-    type: 'thought',
-    likes: 0,
-    comments: 0,
-    timestamp: 'JUST NOW',
-    timeLeft,
-    isNew: true,
-    ownerId: author.userId,
-  };
-}
-
 export default function NewsfeedScreen() {
   const navigation = useNavigation<Nav>();
-  const { currentUser, logout } = useAuth();
+  const { currentUser } = useAuth();
   const goToProfile = useGoToProfile();
+  const goToTab = useGoToTab();
   const { getOrCreateRoomByFriend } = useChat();
   const { getFriendStatus } = useFriends();
   const { unreadCount: locketUnreadCount, refreshUnreadCount } = useLocket();
-
-  useEffect(() => {
-    refreshUnreadCount();
-    // Chỉ cần gọi khi Home mount — refreshUnreadCount có identity ổn định (useCallback).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // posts giờ nằm trong PostsContext (dùng chung với trang Profile), không phải state riêng nữa
-  const { posts, addPost, deletePost } = usePosts();
-  const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const { feed, feedLoading, feedError, loadFeed, loadMoreFeed } = usePosts();
+  const { stories, viewedIds, markViewed, addMyStoryFrame } = useStories();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [composerValue, setComposerValue] = useState('');
-  const [composerExpanded, setComposerExpanded] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
+  const [storyStartIndex, setStoryStartIndex] = useState(0);
 
-  // Sau này có be thì đổi thành: gọi searchUsers(query) (debounce như web), bỏ filter local này
+  // StoryViewer chỉ nhận những user thật sự có frame để xem.
+  const usersWithStories = useMemo(() => stories.filter(s => s.frames.length > 0), [stories]);
+
+  const handlePressStory = async (story: StoryItem) => {
+    // "My Story" chưa có gì → mở picker thêm frame (mock). Sau này: POST /api/stories.
+    if (story.id === 'mine' && story.frames.length === 0) {
+      const res = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
+      if (res.didCancel || !res.assets?.[0]?.uri) return;
+      addMyStoryFrame(res.assets[0].uri);
+      return;
+    }
+    const idx = usersWithStories.findIndex(s => s.id === story.id);
+    if (idx >= 0) {
+      setStoryStartIndex(idx);
+      setStoryViewerVisible(true);
+    }
+  };
+
+  useEffect(() => {
+    refreshUnreadCount();
+    loadFeed();
+    // Chỉ chạy khi Home mount — cả hai hàm đều có identity ổn định (useCallback).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sau này có be thì đổi thành searchUsers(query) (debounce như web), bỏ filter local này
   const searchResults = useMemo<OnlineUser[]>(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.trim().toLowerCase();
@@ -95,11 +88,9 @@ export default function NewsfeedScreen() {
     );
   }, [searchQuery]);
 
-  // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị, nhưng vẫn
-  // cần guard vì kiểu của nó là ProfileDetails | null.
+  // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị.
   if (!currentUser) return null;
 
-  // "Online Now" chỉ hiện bạn bè thật sự (đã FRIENDS) đang online, không hiện người lạ
   const onlineFriends = mockOnlineUsers.filter(
     u => u.isOnline && getFriendStatus(u.id) === 'FRIENDS',
   );
@@ -109,43 +100,42 @@ export default function NewsfeedScreen() {
     setSearchQuery('');
   };
 
-  const handleInlineSubmit = () => {
-    if (!composerValue.trim()) return;
-    setIsSubmitting(true);
-    // Sau này có be thì try catch ở đây
-    setTimeout(() => {
-      animateNextLayout();
-      addPost(createLocalPost(currentUser, composerValue.trim(), '12H 00M REMAINING'));
-      setComposerValue('');
-      setComposerExpanded(false);
-      setIsSubmitting(false);
-    }, 400);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadFeed({ refresh: true });
+    setRefreshing(false);
   };
 
-  const handleModalSubmit = (content: string, durationMinutes: number) => {
-    // Sau này có be thì try catch ở đây
-    const hours = Math.floor(durationMinutes / 60);
-    const timeLeft = `${String(hours).padStart(2, '0')}H 00M REMAINING`;
-    animateNextLayout();
-    addPost(createLocalPost(currentUser, content, timeLeft));
-    setModalVisible(false);
-  };
+  const renderItem = ({ item, index }: { item: Post; index: number }) => (
+    <View className="px-5">
+      <FadeInUp delay={Math.min(index, 5) * 40}>
+        <PostCard post={item} />
+      </FadeInUp>
+    </View>
+  );
 
-  const handleDeletePost = (id: string) => {
-    animateNextLayout();
-    deletePost(id);
-  };
+  const listHeader = (
+    <View style={{ gap: 16, paddingTop: 12 }}>
+      <StoryHighlightBar stories={stories} onPressStory={handlePressStory} viewedIds={viewedIds} />
+    </View>
+  );
+
+  const listEmpty = feedLoading ? (
+    <View className="py-10">
+      <ActivityIndicator color={C.brand} />
+    </View>
+  ) : (
+    <EmptyState
+      icon={<CameraIcon size={26} color={C.brand} />}
+      title={feedError ?? 'No posts yet'}
+      subtitle={feedError ? 'Pull to refresh.' : 'Be the first to share something.'}
+    />
+  );
 
   return (
     <View className="flex-1 bg-paper-base dark:bg-ink-base">
       <GlassTopHeader
         title="Vibenet"
-        unreadCount={locketUnreadCount}
-        onPressMenu={() => navigation.navigate('MessagesList')}
-        onPressAdd={() => setModalVisible(true)}
-        onPressBell={() => navigation.navigate('Notifications')}
-      />
-      <Search
         searchOpen={searchOpen}
         onToggleSearch={handleToggleSearch}
         searchQuery={searchQuery}
@@ -158,98 +148,41 @@ export default function NewsfeedScreen() {
         }}
         onPressLocket={() => navigation.navigate('LocketFeed')}
         locketUnreadCount={locketUnreadCount}
+        onPressAdd={() => setModalVisible(true)}
+        onPressBell={() => goToTab('notifications')}
+        onPressMessages={() => navigation.navigate('MessagesList')}
       />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 120, gap: 16 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <StoryHighlightBar stories={MOCK_STORIES} />
-
-          {/* Sau này có be thì đổi mockOnlineUsers thành kết quả getOnlineUsers() (đã fetch) */}
-          <OnlineUsers
-            users={onlineFriends}
-            onSelectUser={user =>
-              navigation.navigate('ChatDetail', {
-                chatId: getOrCreateRoomByFriend(user),
-              })
-            }
-          />
-
-          <ComposerCard
-            avatar={currentUser.avatar}
-            value={composerValue}
-            onChangeText={setComposerValue}
-            expanded={composerExpanded}
-            onFocus={() => setComposerExpanded(true)}
-            onCancel={() => {
-              setComposerExpanded(false);
-              setComposerValue('');
-            }}
-            onSubmit={handleInlineSubmit}
-            onOpenMedia={() => setModalVisible(true)}
-            isSubmitting={isSubmitting}
-          />
-
-          <View className="flex-row items-center justify-between px-5">
-            <Text className="text-title text-content-strong dark:text-content-strong-dark">
-              The Feed
-            </Text>
-            <Pressable className="flex-row items-center gap-1.5 bg-paper-raised dark:bg-ink-overlay px-3 py-1.5 rounded-full">
-              <Text className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">
-                Newest First
-              </Text>
-              <ChevronDownIcon />
-            </Pressable>
-          </View>
-
-          {/* MediaFeedCard section */}
-          <View style={{ paddingHorizontal: 20, gap: 20 }}>
-            {MOCK_MEDIA_FEED.map(post => (
-              <MediaFeedCard key={post.id} post={post} />
-            ))}
-          </View>
-
-          <View style={{ gap: 16 }}>
-            {posts.length > 0 ? (
-              posts.map((post, i) => (
-                <FadeInUp key={post.id} delay={Math.min(i, 5) * 40}>
-                  <PostCard post={post} onDelete={handleDeletePost} />
-                </FadeInUp>
-              ))
-            ) : (
-              <EmptyState
-                icon={<CameraIcon size={26} color={C.brand} />}
-                title="No whispers yet"
-                subtitle="Share your first thought before it fades away."
-              />
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <FloatingTabBar
-        activeTab={activeTab}
-        onChangeTab={tab => {
-          setActiveTab(tab);
-          if (tab === 'explore') handleToggleSearch();
-          if (tab === 'notifications') navigation.navigate('Notifications');
-          if (tab === 'profile') navigation.navigate('Profile');
-        }}
-        onLogout={() => {
-          logout();
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        }}
+      <FlatList
+        data={feed}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={{ paddingBottom: 120, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        onEndReached={() => loadMoreFeed()}
+        onEndReachedThreshold={0.4}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.brand} />
+        }
+        ListFooterComponent={
+          feedLoading && feed.length > 0 ? (
+            <View className="py-4">
+              <ActivityIndicator color={C.brand} />
+            </View>
+          ) : null
+        }
       />
 
-      <CreateWhisperModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSubmit={handleModalSubmit}
+      <CreatePostModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+
+      <StoryViewer
+        visible={storyViewerVisible}
+        users={usersWithStories}
+        startUserIndex={storyStartIndex}
+        onClose={() => setStoryViewerVisible(false)}
+        onViewedUser={markViewed}
       />
     </View>
   );

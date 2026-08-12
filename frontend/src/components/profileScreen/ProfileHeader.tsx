@@ -14,6 +14,8 @@ import { ReactNode } from 'react';
 import { Image, Pressable, Text, View, useColorScheme } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { CameraIcon } from '../../assets/Icon';
+import { resolveMediaUrl } from '../../api/client';
+import { CURRENT_USER_AVATAR } from '../../constants';
 import { C } from '../../theme/colors';
 
 function VerifiedBadge({ color }: { color: string }) {
@@ -159,7 +161,7 @@ export default function ProfileHeader({
           }}
         >
           <Image
-            source={{ uri: avatar }}
+            source={{ uri: resolveMediaUrl(avatar) || CURRENT_USER_AVATAR }}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />

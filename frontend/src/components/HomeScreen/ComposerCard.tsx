@@ -1,92 +1,40 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import { ImageIcon, SmileIcon } from '../../assets/Icon';
-import { RootStackParamList } from '../../navigation/types';
-import { PLACEHOLDER } from '../../theme/colors';
+import { Pressable, Text, View } from 'react-native';
+import { ImageIcon } from '../../assets/Icon';
+import { useGoToTab } from '../../hooks/useGoToTab';
 import { PressableScale } from '../../theme/motion';
 import Avatar from '../ui/Avatar';
-import GradientButton from '../ui/GradientButton';
-
-type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 type ComposerCardProps = {
   avatar: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  expanded: boolean;
-  onFocus: () => void;
-  onCancel: () => void;
-  onSubmit: () => void;
-  onOpenMedia: () => void;
-  isSubmitting: boolean;
+  // Mở CreatePostModal (create flow thật, POST /api/posts).
+  onOpenComposer: () => void;
 };
 
-export default function ComposerCard({
-  avatar,
-  value,
-  onChangeText,
-  expanded,
-  onFocus,
-  onCancel,
-  onSubmit,
-  onOpenMedia,
-  isSubmitting,
-}: ComposerCardProps) {
-  const navigation = useNavigation<Nav>();
+export default function ComposerCard({ avatar, onOpenComposer }: ComposerCardProps) {
+  const goToTab = useGoToTab();
 
   return (
     <View className="mx-5 bg-paper-base dark:bg-ink-raised rounded-hero p-4 border border-brand/10 shadow-sm">
-      <View className="flex-row gap-3">
-        <Pressable onPress={() => navigation.navigate('Profile')}>
+      <View className="flex-row items-center gap-3">
+        <Pressable onPress={() => goToTab('profile')}>
           <Avatar uri={avatar} size={44} shape="squircle" ring />
         </Pressable>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
-          placeholder="What's on your mind before it's gone?"
-          placeholderTextColor={PLACEHOLDER}
-          multiline
-          numberOfLines={expanded ? 3 : 1}
-          textBreakStrategy="simple"
-          className="flex-1 text-base text-content-strong dark:text-content-strong-dark pt-2"
-        />
+        <Pressable
+          onPress={onOpenComposer}
+          className="flex-1 bg-paper-raised dark:bg-black/20 rounded-full px-4 py-3"
+        >
+          <Text className="text-base text-content-faint dark:text-content-faint-dark">
+            What's on your mind?
+          </Text>
+        </Pressable>
+        <PressableScale
+          onPress={onOpenComposer}
+          hitSlop={8}
+          className="p-2 rounded-full active:bg-paper-raised dark:active:bg-white/5"
+        >
+          <ImageIcon size={22} />
+        </PressableScale>
       </View>
-
-      {expanded && (
-        <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-hairline-light dark:border-hairline-dark">
-          <View className="flex-row items-center gap-1">
-            <PressableScale
-              onPress={onOpenMedia}
-              hitSlop={8}
-              className="p-2 rounded-full active:bg-paper-raised dark:active:bg-white/5"
-            >
-              <ImageIcon size={20} />
-            </PressableScale>
-            <PressableScale
-              hitSlop={8}
-              className="p-2 rounded-full active:bg-paper-raised dark:active:bg-white/5"
-            >
-              <SmileIcon size={20} />
-            </PressableScale>
-          </View>
-
-          <View className="flex-row items-center gap-2">
-            <Pressable onPress={onCancel} className="px-4 py-2">
-              <Text className="text-sm font-semibold text-content-muted dark:text-content-muted-dark">
-                Cancel
-              </Text>
-            </Pressable>
-            <GradientButton
-              onPress={onSubmit}
-              disabled={!value.trim() || isSubmitting}
-              loading={isSubmitting}
-              label={isSubmitting ? 'Whispering...' : 'Whisper'}
-            />
-          </View>
-        </View>
-      )}
     </View>
   );
 }

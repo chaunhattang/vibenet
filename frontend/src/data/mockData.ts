@@ -2,17 +2,17 @@ import { CURRENT_USER_AVATAR, CURRENT_USER_ID } from '../constants';
 import {
   ChatMessageData,
   ChatRoomData,
-  CommentData,
+  Comment,
   Drifter,
   FriendStatus,
-  NotificationData,
   OnlineUser,
-  PostData,
+  Post,
+  PostOwner,
   ProfileDetails,
 } from '../types';
 
 // Toàn bộ file này là data giả — sau này có be thì xoá file, thay bằng:
-// getOnlineUsers() -> mockOnlineUsers, getFeedPosts() -> mockPosts, getCommentsByPostId() -> mockComments
+// getOnlineUsers() -> mockOnlineUsers (posts/comments giờ đã dùng API thật /api/posts)
 export const mockOnlineUsers: OnlineUser[] = [
   {
     id: 'u1',
@@ -55,97 +55,6 @@ export const mockOnlineUsers: OnlineUser[] = [
     isOnline: true,
   },
 ];
-
-export const mockPosts: PostData[] = [
-  {
-    id: 'p1',
-    author: 'Minh Anh',
-    handle: '@minhanh',
-    avatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-    content: 'Cà phê sáng nay ngon xuất sắc, ai muốn qua uống cùng không?',
-    type: 'thought',
-    likes: 12,
-    comments: 3,
-    timestamp: '5M AGO',
-    timeLeft: '00H 45M REMAINING',
-    isNew: true,
-    ownerId: 'u1',
-  },
-  {
-    id: 'p2',
-    author: 'Duy Khang',
-    handle: '@duykhang',
-    avatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-    content: 'Hoàng hôn hôm nay ở ban công, đẹp không chịu nổi.',
-    media: 'https://picsum.photos/seed/fade1/800/600',
-    mediaType: 'image',
-    type: 'moment',
-    likes: 34,
-    comments: 8,
-    timestamp: '20M AGO',
-    timeLeft: '02H 10M REMAINING',
-    ownerId: 'u2',
-  },
-  {
-    id: 'p3',
-    author: 'Linh Vu',
-    handle: '@linhvu',
-    avatar: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-    content:
-      'Deadline dí sát rồi mà vẫn chưa xong slide, cầu nguyện giúp mình.',
-    type: 'thought',
-    likes: 7,
-    comments: 5,
-    timestamp: '1 HOURS AGO',
-    ownerId: 'u3',
-  },
-  {
-    id: 'p4',
-    author: 'Bao Tran',
-    handle: '@baotran',
-    avatar: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-    content: 'Chill cuối tuần với playlist lofi.',
-    media: 'https://picsum.photos/seed/fade2/800/600',
-    mediaType: 'image',
-    type: 'moment',
-    likes: 21,
-    comments: 2,
-    timestamp: '3 HOURS AGO',
-    ownerId: 'u4',
-  },
-];
-
-// Comment có sẵn cho từng post, key = post.id
-export const mockComments: Record<string, CommentData[]> = {
-  p1: [
-    {
-      id: 'c1',
-      author: 'Duy Khang',
-      userId: 'u2',
-      avatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-      content: 'Cho mình xin địa chỉ quán với!',
-      timestamp: '3M AGO',
-    },
-  ],
-  p2: [
-    {
-      id: 'c2',
-      author: 'Linh Vu',
-      userId: 'u3',
-      avatar: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-      content: 'Đẹp quá trời luôn',
-      timestamp: '15M AGO',
-    },
-    {
-      id: 'c3',
-      author: 'Gia Han',
-      userId: 'u5',
-      avatar: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
-      content: 'View này chụp ở đâu vậy bạn',
-      timestamp: '10M AGO',
-    },
-  ],
-};
 
 export const mockChatRooms: ChatRoomData[] = [
   {
@@ -350,42 +259,208 @@ export const mockFriendStatusByUser: Record<string, FriendStatus> = {
   u5: 'PENDING_RECEIVED',
 };
 
-// Thông báo giả cho trang Notifications — sau này có be thì bỏ, gọi getNotifications()
-export const mockNotifications: NotificationData[] = [
+export const mockPosts: Post[] = [
   {
-    id: 'n1',
-    type: 'like',
-    userId: 'u1',
-    userName: 'Minh Anh',
-    message: 'liked your whisper "Cà phê sáng nay ngon xuất sắc..."',
-    timeAgo: '2M AGO',
-    avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
+    id: 'post-1',
+    owner: {
+      id: 'u2',
+      username: 'duykhang',
+      fullName: 'Duy Khang',
+      avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
+    },
+    textContent:
+      'Hoàng hôn chiều nay ở Phú Quốc đẹp ngỡ ngàng 🌅 Vừa săn được góc này siêu chill! #sunset #phuquoc #travel #vibenet',
+    mediaUrl: [
+      'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
+    ],
+    commentCount: 4,
+    reactionCount: 42,
+    currentReaction: 'LOVE',
+    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
   },
   {
-    id: 'n2',
-    type: 'reply',
-    userId: 'u2',
-    userName: 'Duy Khang',
-    message: 'replied: "Cho mình xin địa chỉ quán với!"',
-    timeAgo: '10M AGO',
-    avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
+    id: 'post-2',
+    owner: {
+      id: 'u1',
+      username: 'minhanh',
+      fullName: 'Minh Anh',
+      avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
+    },
+    textContent:
+      'Góc làm việc nhỏ xinh đón nắng sáng ☕💻 Hôm nay quyết tâm làm xong UI cho Vibenet. Fighting! #workspace #coding #coffee',
+    mediaUrl: [
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
+    ],
+    commentCount: 2,
+    reactionCount: 28,
+    currentReaction: 'FIRE',
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
   },
   {
-    id: 'n3',
-    type: 'mention',
-    userId: 'u3',
-    userName: 'Linh Vu',
-    message: 'mentioned you in a comment',
-    timeAgo: '30M AGO',
-    avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
+    id: 'post-3',
+    owner: {
+      id: CURRENT_USER_ID,
+      username: 'me',
+      fullName: 'You',
+      avatarUrl: CURRENT_USER_AVATAR,
+    },
+    textContent:
+      'Cuối tuần đi trốn ở Đà Lạt, không khí mát lành dễ chịu cực kỳ 🌿🍃 #dalat #chill #nature',
+    mediaUrl: [
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80',
+    ],
+    commentCount: 1,
+    reactionCount: 65,
+    currentReaction: null,
+    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
   },
   {
-    id: 'n4',
-    type: 'faded',
-    userId: 'u4',
-    userName: 'Bao Tran',
-    message: 'Your whisper faded away after reaching its time limit.',
-    timeAgo: '5H AGO',
-    avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
+    id: 'post-4',
+    owner: {
+      id: 'u4',
+      username: 'baotran',
+      fullName: 'Bao Tran',
+      avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
+    },
+    textContent:
+      'Thêm một bản Lofi mix cho những đêm thức muộn. Ai nghe cùng không? 🎧✨ #lofi #music #vibes',
+    mediaUrl: [],
+    commentCount: 0,
+    reactionCount: 19,
+    currentReaction: null,
+    createdAt: new Date(Date.now() - 8 * 3600000).toISOString(),
+  },
+  {
+    id: 'post-5',
+    owner: {
+      id: 'u5',
+      username: 'giahan',
+      fullName: 'Gia Han',
+      avatarUrl: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
+    },
+    textContent:
+      'Sài Gòn ngày nắng đẹp. Bữa trưa nhẹ nhàng tại quán ruột 🥗🍹 #saigon #foody #lifestyle',
+    mediaUrl: [
+      'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80',
+    ],
+    commentCount: 0,
+    reactionCount: 34,
+    currentReaction: 'LOVE',
+    createdAt: new Date(Date.now() - 14 * 3600000).toISOString(),
+  },
+  {
+    id: 'post-6',
+    owner: {
+      id: 'u3',
+      username: 'linhvu',
+      fullName: 'Linh Vu',
+      avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
+    },
+    textContent:
+      'Chuyến đi khám phá phố cổ Hà Nội vừa qua. Mùa thu Hà Nội thật sự rất đặc biệt 🍂🍁 #hanoi #autumn #photography',
+    mediaUrl: [
+      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80',
+    ],
+    commentCount: 0,
+    reactionCount: 51,
+    currentReaction: 'FIRE',
+    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
   },
 ];
+
+export const mockComments: Record<string, Comment[]> = {
+  'post-1': [
+    {
+      id: 'c1',
+      postId: 'post-1',
+      owner: {
+        id: 'u1',
+        username: 'minhanh',
+        fullName: 'Minh Anh',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
+      },
+      content: 'Góc chụp đỉnh quá Khang ơi! 🌅',
+      createdAt: new Date(Date.now() - 30 * 60000).toISOString(),
+    },
+    {
+      id: 'c2',
+      postId: 'post-1',
+      owner: {
+        id: 'u5',
+        username: 'giahan',
+        fullName: 'Gia Han',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
+      },
+      content: 'Đẹp tuyệt vời luôn ✨ Cho xin location cụ thể đi bạn!',
+      createdAt: new Date(Date.now() - 20 * 60000).toISOString(),
+    },
+    {
+      id: 'c3',
+      postId: 'post-1',
+      owner: {
+        id: 'u2',
+        username: 'duykhang',
+        fullName: 'Duy Khang',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
+      },
+      content: '@giahan ở Sunset Sanato nha Han!',
+      createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    },
+    {
+      id: 'c4',
+      postId: 'post-1',
+      owner: {
+        id: CURRENT_USER_ID,
+        username: 'me',
+        fullName: 'You',
+        avatarUrl: CURRENT_USER_AVATAR,
+      },
+      content: 'Chất lượng ảnh nét căng luôn!',
+      createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
+    },
+  ],
+  'post-2': [
+    {
+      id: 'c5',
+      postId: 'post-2',
+      owner: {
+        id: 'u3',
+        username: 'linhvu',
+        fullName: 'Linh Vu',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
+      },
+      content: 'Góc làm việc xịn xò ghê, cố lên nè! 🔥',
+      createdAt: new Date(Date.now() - 90 * 60000).toISOString(),
+    },
+    {
+      id: 'c6',
+      postId: 'post-2',
+      owner: {
+        id: 'u4',
+        username: 'baotran',
+        fullName: 'Bao Tran',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
+      },
+      content: 'Nhìn chill ghê, xin list nhạc code với nha haha',
+      createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
+    },
+  ],
+  'post-3': [
+    {
+      id: 'c7',
+      postId: 'post-3',
+      owner: {
+        id: 'u1',
+        username: 'minhanh',
+        fullName: 'Minh Anh',
+        avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
+      },
+      content: 'Đà Lạt mùa này đẹp nhất rồi, ghen tị quá!',
+      createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+    },
+  ],
+};
+

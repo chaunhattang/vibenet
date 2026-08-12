@@ -1,28 +1,29 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FriendRequestCard from '../components/notificationScreen/FriendRequestCard';
 import NotificationItem from '../components/notificationScreen/NotificationItem';
 import SuggestedConnectionItem from '../components/notificationScreen/SuggestedConnectionItem';
-import { useAuth } from '../contexts/AuthContext';
 import { useFriends } from '../contexts/FriendsContext';
-import { mockNotifications, mockOnlineUsers, mockProfiles } from '../data/mockData';
-import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
-import { RootStackParamList } from '../navigation/types';
+import { useNotifications } from '../contexts/NotificationsContext';
+import { useGoToProfile } from '../hooks/useGoToProfile';
+import { mockOnlineUsers, mockProfiles } from '../data/mockData';
+import { C } from '../theme/colors';
 import { animateNextLayout, FadeInUp } from '../theme/motion';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'Notifications'>;
-
 export default function NotificationsScreen() {
-  const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
   const { getFriendStatus, sendRequest, acceptRequest, declineRequest } = useFriends();
+  const { notifications, loading, error, unreadCount, load, markRead, markAllRead } =
+    useNotifications();
+  const goToProfile = useGoToProfile();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('notifications');
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Friend requests + suggestions vẫn mock (Bucket B2 — Friends chưa migrate).
   const pendingRequests = mockOnlineUsers.filter(
     u => getFriendStatus(u.id) === 'PENDING_RECEIVED',
   );
@@ -40,10 +41,15 @@ export default function NotificationsScreen() {
 
   return (
     <View style={{ paddingTop: insets.top }} className="flex-1 bg-paper-base dark:bg-ink-base">
-      <View className="px-5 pt-2 pb-3">
+      <View className="px-5 pt-2 pb-3 flex-row items-center justify-between">
         <Text className="text-title text-content-strong dark:text-content-strong-dark">
           Notifications
         </Text>
+        {unreadCount > 0 && (
+          <Pressable onPress={markAllRead} hitSlop={8}>
+            <Text className="text-xs font-semibold text-brand">Mark all read</Text>
+          </Pressable>
+        )}
       </View>
 
       <ScrollView
@@ -73,11 +79,32 @@ export default function NotificationsScreen() {
           <Text className="px-2 mb-1 text-xs font-bold text-content-faint dark:text-content-faint-dark uppercase tracking-wider">
             Recent Activity
           </Text>
-          {mockNotifications.map((notification, i) => (
-            <FadeInUp key={notification.id} delay={Math.min(i, 6) * 30}>
-              <NotificationItem notification={notification} />
-            </FadeInUp>
-          ))}
+          {loading && notifications.length === 0 ? (
+            <View className="py-8">
+              <ActivityIndicator color={C.brand} />
+            </View>
+          ) : notifications.length === 0 ? (
+            <Text className="px-2 py-6 text-sm text-content-muted dark:text-content-muted-dark text-center">
+              {error ?? 'No activity yet.'}
+            </Text>
+          ) : (
+            notifications.map((notification, i) => (
+              <FadeInUp key={notification.id} delay={Math.min(i, 6) * 30}>
+                <NotificationItem
+                  notification={notification}
+                  onPress={() => {
+                    markRead(notification.id);
+                    if (
+                      notification.type === 'FRIEND_REQUEST' ||
+                      notification.type === 'FRIEND_ACCEPTED'
+                    ) {
+                      goToProfile(notification.actorId);
+                    }
+                  }}
+                />
+              </FadeInUp>
+            ))
+          )}
         </View>
 
         {suggestions.length > 0 && (
@@ -100,20 +127,6 @@ export default function NotificationsScreen() {
           </View>
         )}
       </ScrollView>
-
-      <FloatingTabBar
-        activeTab={activeTab}
-        onChangeTab={tab => {
-          setActiveTab(tab);
-          if (tab === 'home') navigation.navigate('Home');
-          else if (tab === 'explore') navigation.navigate('Home');
-          else if (tab === 'profile') navigation.navigate('Profile');
-        }}
-        onLogout={() => {
-          logout();
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        }}
-      />
     </View>
   );
 }

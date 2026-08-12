@@ -14,10 +14,12 @@
  */
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   ArchiveIcon,
+  BookmarkIcon,
+  HeartIcon,
   LogoutIcon,
   SendIcon,
   SettingsIcon,
@@ -25,7 +27,7 @@ import {
   UsersIcon,
 } from '../assets/Icon';
 import ConfirmModal from '../components/HomeScreen/ConfirmModal';
-import CreateWhisperModal from '../components/HomeScreen/CreateWhisperModal';
+import CreatePostModal from '../components/HomeScreen/CreatePostModal';
 import AboutCard from '../components/profileScreen/AboutCard';
 import EditProfileModal from '../components/profileScreen/EditProfileModal';
 import FriendCard from '../components/profileScreen/FriendCard';
@@ -35,16 +37,24 @@ import ProfileHeader from '../components/profileScreen/ProfileHeader';
 import ProfileTabs from '../components/profileScreen/ProfileTabs';
 import GlassTopHeader from '../components/layout/GlassTopHeader';
 import EmptyState from '../components/ui/EmptyState';
+import { getUserPosts } from '../api/posts';
+import { resolveMediaUrl } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { usePosts } from '../contexts/PostsContext';
+import { useGoToTab } from '../hooks/useGoToTab';
+import { useSaved } from '../contexts/SavedContext';
+import { useLiked } from '../contexts/LikedContext';
 import { mockFriendsByUser } from '../data/mockData';
-import FloatingTabBar, { TabKey } from '../layout/FloatingTabBar';
 import { RootStackParamList } from '../navigation/types';
 import { C } from '../theme/colors';
-import { animateNextLayout } from '../theme/motion';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
-type ProfileTab = 'posts' | 'friends' | 'settings';
+type ProfileTab = 'posts' | 'liked' | 'saved' | 'friends' | 'settings';
+
+// Post (có media) → ô masonry.
+const toGridItems = (posts: { id: string; mediaUrl: string[]; reactionCount: number }[]): GridItem[] =>
+  posts
+    .filter(p => p.mediaUrl.length > 0)
+    .map(p => ({ id: p.id, imageUri: resolveMediaUrl(p.mediaUrl[0]), likeCount: p.reactionCount }));
 
 // ── Mock masonry grid data (replace with real API data when backend is ready) ─
 const MOCK_GRID_ITEMS: GridItem[] = [
@@ -82,14 +92,35 @@ const MOCK_GRID_ITEMS: GridItem[] = [
 
 export default function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { posts, addPost } = usePosts();
   const { currentUser, logout, updateCurrentUser } = useAuth();
+  const goToTab = useGoToTab();
+  const { saved } = useSaved();
+  const { liked } = useLiked();
+
+  const savedGridItems = toGridItems(saved);
+  const likedGridItems = toGridItems(liked);
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
-  const [tabBarActive, setTabBarActive] = useState<TabKey>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [whisperModalVisible, setWhisperModalVisible] = useState(false);
+  const [composerVisible, setComposerVisible] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  const [myPosts, setMyPosts] = useState<{ id: string; mediaUrl: string[]; reactionCount: number }[]>([]);
+  const [postsCount, setPostsCount] = useState(0);
+
+  // Đếm post thật của mình (GET /api/posts/user/{id}/page).
+  useEffect(() => {
+    if (!currentUser) return;
+    getUserPosts(currentUser.userId, 0, 50)
+      .then(res => {
+        const posts = res?.data ?? [];
+        setMyPosts(posts);
+        setPostsCount(res?.totalElements ?? posts.length);
+      })
+      .catch(() => {
+        setMyPosts([]);
+        setPostsCount(0);
+      });
+  }, [currentUser]);
 
   const handleLogout = () => {
     logout();
@@ -100,27 +131,6 @@ export default function ProfileScreen() {
   if (!currentUser) return null;
 
   const friends = mockFriendsByUser[currentUser.userId] ?? [];
-  const myPosts = posts.filter(p => p.ownerId === currentUser.userId);
-
-  const handleWhisperSubmit = (content: string, durationMinutes: number) => {
-    const hours = Math.floor(durationMinutes / 60);
-    animateNextLayout();
-    addPost({
-      id: `local-${Date.now()}`,
-      author: currentUser.fullName,
-      handle: `@${currentUser.handle}`,
-      avatar: currentUser.avatar,
-      content,
-      type: 'thought',
-      likes: 0,
-      comments: 0,
-      timestamp: 'JUST NOW',
-      timeLeft: `${String(hours).padStart(2, '0')}H 00M REMAINING`,
-      isNew: true,
-      ownerId: currentUser.userId,
-    });
-    setWhisperModalVisible(false);
-  };
 
   return (
     <View className="flex-1 bg-paper-base dark:bg-ink-base">
@@ -128,8 +138,8 @@ export default function ProfileScreen() {
       <GlassTopHeader
         title="Profile"
         onPressMenu={() => setEditModalVisible(true)}
-        onPressAdd={() => setWhisperModalVisible(true)}
-        onPressBell={() => navigation.navigate('Notifications')}
+        onPressAdd={() => setComposerVisible(true)}
+        onPressBell={() => goToTab('notifications')}
       />
 
       <ScrollView
@@ -143,7 +153,7 @@ export default function ProfileScreen() {
           displayName={currentUser.fullName}
           handle={currentUser.handle}
           bio={currentUser.bio}
-          postsCount={myPosts.length}
+          postsCount={postsCount}
           followersCount={friends.length * 12} // mock — swap with real data
           followingCount={friends.length * 8}  // mock — swap with real data
           showChangeCover
@@ -153,7 +163,7 @@ export default function ProfileScreen() {
           actions={
             <ProfileActionButtons
               onFollow={() => Alert.alert('Follow', 'This is your own profile!')}
-              onMessage={() => setWhisperModalVisible(true)}
+              onMessage={() => setComposerVisible(true)}
               onInsight={() => Alert.alert('Insight', 'Analytics coming soon.')}
             />
           }
@@ -166,6 +176,8 @@ export default function ProfileScreen() {
           iconOnly
           tabs={[
             { key: 'posts', label: 'Posts', Icon: ArchiveIcon },
+            { key: 'liked', label: 'Liked', Icon: HeartIcon },
+            { key: 'saved', label: 'Saved', Icon: BookmarkIcon },
             { key: 'friends', label: 'Friends', Icon: UsersIcon },
             { key: 'settings', label: 'Settings', Icon: SettingsIcon },
           ]}
@@ -173,7 +185,9 @@ export default function ProfileScreen() {
 
         {/* ── Tab: Posts → Staggered Masonry Grid ───────────────────────── */}
         {activeTab === 'posts' && (
-          MOCK_GRID_ITEMS.length > 0 ? (
+          toGridItems(myPosts).length > 0 ? (
+            <MasonryGrid items={toGridItems(myPosts)} />
+          ) : MOCK_GRID_ITEMS.length > 0 ? (
             <MasonryGrid items={MOCK_GRID_ITEMS} />
           ) : (
             <View className="px-5 mt-5">
@@ -181,6 +195,36 @@ export default function ProfileScreen() {
                 icon={<ArchiveIcon size={26} color={C.brand} />}
                 title="No posts yet"
                 subtitle="Your first vibe awaits…"
+              />
+            </View>
+          )
+        )}
+
+        {/* ── Tab: Liked → bài mình đã thả tim/lửa (mock, in-memory) ────── */}
+        {activeTab === 'liked' && (
+          likedGridItems.length > 0 ? (
+            <MasonryGrid items={likedGridItems} />
+          ) : (
+            <View className="px-5 mt-5">
+              <EmptyState
+                icon={<HeartIcon size={26} color={C.brand} />}
+                title="No liked posts"
+                subtitle="Posts you react to show up here."
+              />
+            </View>
+          )
+        )}
+
+        {/* ── Tab: Saved → bài đã bookmark (mock, in-memory) ────────────── */}
+        {activeTab === 'saved' && (
+          savedGridItems.length > 0 ? (
+            <MasonryGrid items={savedGridItems} />
+          ) : (
+            <View className="px-5 mt-5">
+              <EmptyState
+                icon={<BookmarkIcon size={26} color={C.brand} />}
+                title="No saved posts"
+                subtitle="Tap the bookmark on any post to save it here."
               />
             </View>
           )
@@ -239,17 +283,6 @@ export default function ProfileScreen() {
         )}
       </ScrollView>
 
-      <FloatingTabBar
-        activeTab={tabBarActive}
-        onChangeTab={tab => {
-          setTabBarActive(tab);
-          if (tab === 'home') navigation.navigate('Home');
-          else if (tab === 'explore') navigation.navigate('Home');
-          else if (tab === 'notifications') navigation.navigate('Notifications');
-        }}
-        onLogout={handleLogout}
-      />
-
       <ConfirmModal
         visible={logoutConfirmVisible}
         icon={<LogoutIcon size={28} color={C.danger} />}
@@ -274,10 +307,9 @@ export default function ProfileScreen() {
         }}
       />
 
-      <CreateWhisperModal
-        visible={whisperModalVisible}
-        onClose={() => setWhisperModalVisible(false)}
-        onSubmit={handleWhisperSubmit}
+      <CreatePostModal
+        visible={composerVisible}
+        onClose={() => setComposerVisible(false)}
       />
     </View>
   );
