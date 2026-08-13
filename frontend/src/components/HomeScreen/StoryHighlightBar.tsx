@@ -1,8 +1,11 @@
 /**
  * StoryHighlightBar — Horizontal scrolling story strip.
- * Phase G: dark-mode aware + Pressable touch feedback on each story bubble.
+ * Styled to match docs/mockDashboard&Profile.txt's story-bar spec precisely
+ * (60px avatars, accent-blue ring, dark-glass LIVE badge).
  */
+import { useRef } from 'react';
 import { FlatList, Image, Pressable, Text, View, useColorScheme } from 'react-native';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import { StoryItem } from '../../data/mockStories';
 
 type Props = {
@@ -11,6 +14,93 @@ type Props = {
   /** id các user đã xem hết story → ring chuyển xám */
   viewedIds?: Set<string>;
 };
+
+// mock .avatar-img: 60px, 2px border. .story-item.has-story: 2px accent-blue border.
+const AVATAR_SIZE = 60;
+
+function StoryAvatar({
+  item,
+  viewed,
+  ringDefault,
+  ringViewed,
+  avatarBg,
+  isDark,
+}: {
+  item: StoryItem;
+  viewed: boolean;
+  ringDefault: string;
+  ringViewed: string;
+  avatarBg: string;
+  isDark: boolean;
+}) {
+  const blurTargetRef = useRef<View>(null);
+  const ringColor = item.hasStory ? (viewed ? ringViewed : '#0084FF') : ringDefault;
+
+  return (
+    <View style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, position: 'relative' }}>
+      <BlurTargetView
+        ref={blurTargetRef}
+        style={{
+          width: AVATAR_SIZE,
+          height: AVATAR_SIZE,
+          borderRadius: 9999,
+          borderWidth: 2,
+          borderColor: ringColor,
+          padding: item.hasStory ? 2 : 0,
+          backgroundColor: avatarBg,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.4 : 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        }}
+      >
+        <Image
+          source={item.avatarSource as any}
+          style={{ width: '100%', height: '100%', borderRadius: 9999 }}
+          resizeMode="cover"
+        />
+      </BlurTargetView>
+
+      {/* mock .live-badge: surface-dark-glass + glass-blur-medium, bottom -3px, pill radius */}
+      {item.isLive && (
+        <View style={{ position: 'absolute', bottom: -3, left: 0, right: 0, alignItems: 'center' }}>
+          <View
+            style={{
+              overflow: 'hidden',
+              borderRadius: 9999,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <BlurView
+              tint="dark"
+              intensity={40}
+              blurMethod="dimezisBlurView"
+              blurTarget={blurTargetRef}
+              style={{
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                backgroundColor: 'rgba(20, 20, 22, 0.65)',
+              }}
+            >
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 9,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Live
+              </Text>
+            </BlurView>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function StoryHighlightBar({ stories, onPressStory, viewedIds }: Props) {
   const isDark = useColorScheme() === 'dark';
@@ -29,86 +119,28 @@ export default function StoryHighlightBar({ stories, onPressStory, viewedIds }: 
       contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16, gap: 16 }}
       renderItem={({ item }) => {
         const viewed = viewedIds?.has(item.id) ?? false;
-        const ringColor = item.hasStory
-          ? viewed
-            ? ringViewed
-            : '#0084FF'
-          : ringDefault;
         return (
-        <Pressable
-          onPress={() => onPressStory?.(item)}
-          style={({ pressed }) => ({ alignItems: 'center', gap: 6, opacity: pressed ? 0.75 : 1 })}
-        >
-          {/* Avatar wrapper */}
-          <View style={{ width: 64, height: 64, position: 'relative' }}>
-            {/* Story ring */}
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 9999,
-                borderWidth: 2,
-                borderColor: ringColor,
-                padding: item.hasStory ? 2 : 0,
-                backgroundColor: avatarBg,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: isDark ? 0.4 : 0.08,
-                shadowRadius: 8,
-                elevation: 3,
-              }}
-            >
-              <Image
-                source={item.avatarSource as any}
-                style={{ width: '100%', height: '100%', borderRadius: 9999 }}
-                resizeMode="cover"
-              />
-            </View>
-
-            {/* LIVE glass badge */}
-            {item.isLive && (
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: -3,
-                  left: 0,
-                  right: 0,
-                  alignItems: 'center',
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: 'rgba(20, 20, 22, 0.82)',
-                    paddingHorizontal: 7,
-                    paddingVertical: 2,
-                    borderRadius: 9999,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.22)',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: '#FFFFFF',
-                      fontSize: 9,
-                      fontWeight: '700',
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    LIVE
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Name label */}
-          <Text
-            numberOfLines={1}
-            style={{ fontSize: 12, fontWeight: '500', color: nameColor, maxWidth: 64 }}
+          <Pressable
+            onPress={() => onPressStory?.(item)}
+            style={({ pressed }) => ({ alignItems: 'center', gap: 6, opacity: pressed ? 0.75 : 1 })}
           >
-            {item.name}
-          </Text>
-        </Pressable>
+            <StoryAvatar
+              item={item}
+              viewed={viewed}
+              ringDefault={ringDefault}
+              ringViewed={ringViewed}
+              avatarBg={avatarBg}
+              isDark={isDark}
+            />
+
+            {/* mock .story-name: 12px/500/text-secondary, 64px max-width */}
+            <Text
+              numberOfLines={1}
+              style={{ fontSize: 12, fontWeight: '500', color: nameColor, maxWidth: 64 }}
+            >
+              {item.name}
+            </Text>
+          </Pressable>
         );
       }}
     />

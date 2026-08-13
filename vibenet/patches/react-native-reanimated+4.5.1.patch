@@ -1,0 +1,27 @@
+diff --git a/node_modules/react-native-reanimated/android/build.gradle.kts b/node_modules/react-native-reanimated/android/build.gradle.kts
+index 2cf91d0..30143bd 100644
+--- a/node_modules/react-native-reanimated/android/build.gradle.kts
++++ b/node_modules/react-native-reanimated/android/build.gradle.kts
+@@ -7,7 +7,6 @@ import javax.inject.Inject
+ plugins {
+     id("com.android.library")
+     id("maven-publish")
+-    id("com.diffplug.spotless") version "8.4.0"
+     id("org.jetbrains.kotlin.android")
+ }
+ 
+@@ -142,14 +141,6 @@ fun reactNativeArchitectures(): List<String> {
+         ?: listOf("armeabi-v7a", "x86", "x86_64", "arm64-v8a")
+ }
+ 
+-if (project == rootProject) {
+-    spotless {
+-        kotlin {
+-            target("src/**/*.kt")
+-            ktlint()
+-        }
+-    }
+-}
+ 
+ apply(from = "./generate-stub-pch.gradle.kts")
+ 

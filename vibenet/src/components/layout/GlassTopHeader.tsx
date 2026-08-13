@@ -58,8 +58,6 @@ function PlusIconSvg({ color }: { color: string }) {
   );
 }
 
-// docs/mockDashboard&Profile.txt .icon-btn-circular: 36px, 1px hairline border,
-// surface-white fill. .notification-dot: 8px, 2px surface-white border.
 function CircleIconButton({
   onPress,
   children,
@@ -77,14 +75,14 @@ function CircleIconButton({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         borderWidth: 1,
-        borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+        borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
         backgroundColor: pressed
-          ? isDark ? 'rgba(255,255,255,0.16)' : '#F0F0F3'
-          : isDark ? C.inkRaised : '#FFFFFF',
+          ? isDark ? 'rgba(255,255,255,0.16)' : '#E5E5EA'
+          : isDark ? 'rgba(255,255,255,0.08)' : '#F0F0F3',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
@@ -116,13 +114,13 @@ function CircleIconButton({
         <View
           style={{
             position: 'absolute',
-            top: 6,
-            right: 6,
+            top: 5,
+            right: 5,
             width: 8,
             height: 8,
             borderRadius: 9999,
             backgroundColor: dotColor,
-            borderWidth: 2,
+            borderWidth: 1.5,
             borderColor: isDark ? C.inkBase : '#FFFFFF',
           }}
         />
@@ -159,14 +157,15 @@ export default function GlassTopHeader({
       style={{
         zIndex: 50,
         paddingTop: insets.top,
-        // docs/mockDashboard&Profile.txt .top-header: rgba(246, 246, 248, 0.85)
-        backgroundColor: isDark ? 'rgba(14, 14, 16, 0.85)' : 'rgba(246, 246, 248, 0.85)',
+        backgroundColor: isDark ? 'rgba(14, 14, 16, 0.94)' : 'rgba(255, 255, 255, 0.94)',
+        borderBottomWidth: 1,
+        borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
       }}
     >
       <View
         style={{
           height: 56,
-          paddingHorizontal: 20,
+          paddingHorizontal: 16,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -215,11 +214,11 @@ export default function GlassTopHeader({
               <GridMenuIcon color={iconColor} />
             </CircleIconButton>
 
-            {/* Center: Vibenet Logo Title — mock .header-title: 20px/700/-0.5px */}
+            {/* Center: Vibenet Logo Title */}
             <Text
               style={{
-                fontSize: 20,
-                fontWeight: '700',
+                fontSize: 22,
+                fontWeight: '800',
                 letterSpacing: -0.5,
                 color: titleColor,
                 textAlign: 'center',
