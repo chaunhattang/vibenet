@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { loginRequest, registerRequest } from '../api/auth';
 import { resolveMediaUrl, setTokens } from '../api/client';
 import { decodeJwtPayload } from '../api/jwt';
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<ProfileDetails | null>(null);
 
-  const login = async ({ userName, password }: LoginInput) => {
+  const login = useCallback(async ({ userName, password }: LoginInput) => {
     if (userName.trim() === DEMO_USERNAME && password === DEMO_PASSWORD) {
       setTokens(null);
       setCurrentUserId(CURRENT_USER_ID);
@@ -71,27 +71,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setCurrentUserId(user.id);
     setCurrentUser(toProfileDetails(user));
-  };
+  }, []);
 
-  const register = async ({ userName, email, password }: RegisterInput) => {
+  const register = useCallback(async ({ userName, email, password }: RegisterInput) => {
     await registerRequest({ username: userName.trim(), email: email.trim(), password });
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setTokens(null);
     setCurrentUserId(null);
     setCurrentUser(null);
-  };
+  }, []);
 
-  const updateCurrentUser = (updated: ProfileDetails) => setCurrentUser(updated);
+  const updateCurrentUser = useCallback((updated: ProfileDetails) => setCurrentUser(updated), []);
 
-  return (
-    <AuthContext.Provider
-      value={{ currentUserId, currentUser, login, register, logout, updateCurrentUser }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ currentUserId, currentUser, login, register, logout, updateCurrentUser }),
+    [currentUserId, currentUser, login, register, logout, updateCurrentUser],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

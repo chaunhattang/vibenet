@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { Post } from '../types';
 
 type SavedContextValue = {
@@ -24,11 +24,9 @@ export function SavedProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  return (
-    <SavedContext.Provider value={{ saved, isSaved, toggleSave }}>
-      {children}
-    </SavedContext.Provider>
-  );
+  const value = useMemo(() => ({ saved, isSaved, toggleSave }), [saved, isSaved, toggleSave]);
+
+  return <SavedContext.Provider value={value}>{children}</SavedContext.Provider>;
 }
 
 export function useSaved() {

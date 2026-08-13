@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
+import { BlurView, BlurTargetView } from 'expo-blur';
 import { resolveMediaUrl } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePosts } from '../../contexts/PostsContext';
@@ -66,7 +66,7 @@ function renderCaption(text: string) {
   );
 }
 
-export default function PostCard({ post, editable = true }: PostCardProps) {
+function PostCard({ post, editable = true }: PostCardProps) {
   const { currentUser } = useAuth();
   const { react, deletePost, updatePost } = usePosts();
   const { isSaved, toggleSave } = useSaved();
@@ -91,6 +91,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
 
   const [carouselWidth, setCarouselWidth] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Android's real blur (blurMethod="dimezisBlurView") needs a ref to the content
+  // being blurred — without it, expo-blur silently falls back to a flat tint.
+  const mediaBlurTargetRef = useRef<View>(null);
 
   const media = post.mediaUrl ?? [];
   const loved = post.currentReaction === 'LOVE';
@@ -125,7 +129,11 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
     <View className="rounded-[28px] overflow-hidden bg-paper-base dark:bg-ink-raised border border-hairline-light dark:border-hairline-dark shadow-sm">
       {/* ── Media Post Layout (Babagang Overlaid Glassmorphic Design) ────── */}
       {media.length > 0 ? (
-        <View style={{ position: 'relative' }} onLayout={e => setCarouselWidth(e.nativeEvent.layout.width)}>
+        <BlurTargetView
+          ref={mediaBlurTargetRef}
+          style={{ position: 'relative' }}
+          onLayout={e => setCarouselWidth(e.nativeEvent.layout.width)}
+        >
           {/* Main Media Image / Carousel */}
           {media.length === 1 ? (
             <Image
@@ -193,9 +201,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
           >
             <BlurView
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              blurType="dark"
-              blurAmount={20}
-              reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+              tint="dark"
+              intensity={40}
+              blurMethod="dimezisBlurView"
+              blurTarget={mediaBlurTargetRef}
             />
             <Avatar uri={resolveMediaUrl(post.owner.avatarUrl)} size={32} />
             <View>
@@ -230,9 +239,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
                 >
                   <BlurView
                     style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                    blurType="dark"
-                    blurAmount={20}
-                    reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                    tint="dark"
+                    intensity={40}
+                    blurMethod="dimezisBlurView"
+                    blurTarget={mediaBlurTargetRef}
                   />
                   <EditIcon size={15} color="#FFFFFF" />
                 </Pressable>
@@ -251,9 +261,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
                 >
                   <BlurView
                     style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                    blurType="dark"
-                    blurAmount={20}
-                    reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                    tint="dark"
+                    intensity={40}
+                    blurMethod="dimezisBlurView"
+                    blurTarget={mediaBlurTargetRef}
                   />
                   <TrashIcon size={15} color={C.danger} />
                 </Pressable>
@@ -274,9 +285,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
               >
                 <BlurView
                   style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                  blurType="dark"
-                  blurAmount={20}
-                  reducedTransparencyFallbackColor="rgba(20, 20, 25, 0.65)"
+                  tint="dark"
+                  intensity={40}
+                  blurMethod="dimezisBlurView"
+                  blurTarget={mediaBlurTargetRef}
                 />
                 <MoreVerticalIcon size={18} color="#FFFFFF" />
               </Pressable>
@@ -317,9 +329,10 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
             >
               <BlurView
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                blurType="light"
-                blurAmount={15}
-                reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.55)"
+                tint="light"
+                intensity={30}
+                blurMethod="dimezisBlurView"
+                blurTarget={mediaBlurTargetRef}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 {/* Heart / Flame */}
@@ -386,7 +399,7 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
               </Text>
             )}
           </View>
-        </View>
+        </BlurTargetView>
       ) : (
         /* Text-only post layout */
         <View style={{ padding: 16 }}>
@@ -490,3 +503,5 @@ export default function PostCard({ post, editable = true }: PostCardProps) {
     </View>
   );
 }
+
+export default memo(PostCard);

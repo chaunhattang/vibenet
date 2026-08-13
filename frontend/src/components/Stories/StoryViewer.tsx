@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
   Dimensions,
-  Easing,
   Image,
   Modal,
   Pressable,
@@ -10,6 +8,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseIcon } from '../../assets/Icon';
 import { StoryItem } from '../../data/mockStories';
@@ -37,10 +43,13 @@ export default function StoryViewer({
   const [userIndex, setUserIndex] = useState(startUserIndex);
   const [frameIndex, setFrameIndex] = useState(0);
 
-  const progress = useRef(new Animated.Value(0)).current;
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
+  const progress = useSharedValue(0);
   const pausedValue = useRef(0);
   const pausedRef = useRef(false);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%`,
+  }));
 
   const user = users[userIndex];
   const frame = user?.frames[frameIndex];
@@ -54,22 +63,18 @@ export default function StoryViewer({
   }, [visible, startUserIndex]);
 
   const stopTimer = () => {
-    animRef.current?.stop();
-    animRef.current = null;
+    cancelAnimation(progress);
   };
 
   const startTimer = (fromValue = 0) => {
-    progress.setValue(fromValue);
-    const anim = Animated.timing(progress, {
-      toValue: 1,
-      duration: FRAME_MS * (1 - fromValue),
-      easing: Easing.linear,
-      useNativeDriver: false,
-    });
-    animRef.current = anim;
-    anim.start(({ finished }) => {
-      if (finished) goNext();
-    });
+    progress.value = fromValue;
+    progress.value = withTiming(
+      1,
+      { duration: FRAME_MS * (1 - fromValue), easing: Easing.linear },
+      finished => {
+        if (finished) runOnJS(goNext)();
+      },
+    );
   };
 
   // (Re)chạy timer khi đổi frame/user hoặc khi mở.
@@ -111,10 +116,8 @@ export default function StoryViewer({
 
   const pause = () => {
     pausedRef.current = true;
-    progress.stopAnimation(v => {
-      pausedValue.current = v;
-    });
-    animRef.current = null;
+    cancelAnimation(progress);
+    pausedValue.current = progress.value;
   };
 
   const resume = () => {
@@ -165,11 +168,7 @@ export default function StoryViewer({
                 {i < frameIndex && <View style={{ height: '100%', width: '100%', backgroundColor: '#fff' }} />}
                 {i === frameIndex && (
                   <Animated.View
-                    style={{
-                      height: '100%',
-                      backgroundColor: '#fff',
-                      width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                    }}
+                    style={[{ height: '100%', backgroundColor: '#fff' }, progressStyle]}
                   />
                 )}
               </View>

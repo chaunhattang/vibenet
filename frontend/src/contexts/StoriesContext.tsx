@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { MOCK_STORIES, StoryFrame, StoryItem } from '../data/mockStories';
 
 type StoriesContextValue = {
@@ -42,11 +42,12 @@ export function StoriesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  return (
-    <StoriesContext.Provider value={{ stories, viewedIds, markViewed, addMyStoryFrame }}>
-      {children}
-    </StoriesContext.Provider>
+  const value = useMemo(
+    () => ({ stories, viewedIds, markViewed, addMyStoryFrame }),
+    [stories, viewedIds, markViewed, addMyStoryFrame],
   );
+
+  return <StoriesContext.Provider value={value}>{children}</StoriesContext.Provider>;
 }
 
 export function useStories() {

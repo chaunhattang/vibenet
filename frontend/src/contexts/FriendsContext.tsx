@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { mockFriendStatusByUser } from '../data/mockData';
 import { FriendStatus } from '../types';
 
@@ -20,27 +20,27 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   const [friendStatusByUser, setFriendStatusByUser] =
     useState<Record<string, FriendStatus>>(mockFriendStatusByUser);
 
-  const setStatus = (userId: string, status: FriendStatus) =>
-    setFriendStatusByUser(prev => ({ ...prev, [userId]: status }));
+  const setStatus = useCallback((userId: string, status: FriendStatus) =>
+    setFriendStatusByUser(prev => ({ ...prev, [userId]: status })), []);
 
-  const getFriendStatus = (userId: string): FriendStatus =>
-    friendStatusByUser[userId] ?? 'NONE';
-
-  return (
-    <FriendsContext.Provider
-      value={{
-        getFriendStatus,
-        // Sau này có be thì mỗi hàm dưới đây gọi API tương ứng rồi mới cập nhật state
-        sendRequest: userId => setStatus(userId, 'PENDING_SENT'),
-        cancelRequest: userId => setStatus(userId, 'NONE'),
-        acceptRequest: userId => setStatus(userId, 'FRIENDS'),
-        declineRequest: userId => setStatus(userId, 'NONE'),
-        unfriend: userId => setStatus(userId, 'NONE'),
-      }}
-    >
-      {children}
-    </FriendsContext.Provider>
+  const getFriendStatus = useCallback(
+    (userId: string): FriendStatus => friendStatusByUser[userId] ?? 'NONE',
+    [friendStatusByUser],
   );
+
+  // Sau này có be thì mỗi hàm dưới đây gọi API tương ứng rồi mới cập nhật state
+  const sendRequest = useCallback((userId: string) => setStatus(userId, 'PENDING_SENT'), [setStatus]);
+  const cancelRequest = useCallback((userId: string) => setStatus(userId, 'NONE'), [setStatus]);
+  const acceptRequest = useCallback((userId: string) => setStatus(userId, 'FRIENDS'), [setStatus]);
+  const declineRequest = useCallback((userId: string) => setStatus(userId, 'NONE'), [setStatus]);
+  const unfriend = useCallback((userId: string) => setStatus(userId, 'NONE'), [setStatus]);
+
+  const value = useMemo(
+    () => ({ getFriendStatus, sendRequest, cancelRequest, acceptRequest, declineRequest, unfriend }),
+    [getFriendStatus, sendRequest, cancelRequest, acceptRequest, declineRequest, unfriend],
+  );
+
+  return <FriendsContext.Provider value={value}>{children}</FriendsContext.Provider>;
 }
 
 export function useFriends() {

@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -88,12 +88,22 @@ export default function NewsfeedScreen() {
     );
   }, [searchQuery]);
 
+  const renderItem = useCallback(
+    ({ item, index }: { item: Post; index: number }) => (
+      <View className="px-5">
+        <FadeInUp delay={Math.min(index, 5) * 40}>
+          <PostCard post={item} />
+        </FadeInUp>
+      </View>
+    ),
+    [],
+  );
+
+  const keyExtractor = useCallback((item: Post) => item.id, []);
+  const onEndReached = useCallback(() => loadMoreFeed(), [loadMoreFeed]);
+
   // Màn này chỉ vào được sau khi đăng nhập nên currentUser luôn có giá trị.
   if (!currentUser) return null;
-
-  const onlineFriends = mockOnlineUsers.filter(
-    u => u.isOnline && getFriendStatus(u.id) === 'FRIENDS',
-  );
 
   const handleToggleSearch = () => {
     setSearchOpen(v => !v);
@@ -105,14 +115,6 @@ export default function NewsfeedScreen() {
     await loadFeed({ refresh: true });
     setRefreshing(false);
   };
-
-  const renderItem = ({ item, index }: { item: Post; index: number }) => (
-    <View className="px-5">
-      <FadeInUp delay={Math.min(index, 5) * 40}>
-        <PostCard post={item} />
-      </FadeInUp>
-    </View>
-  );
 
   const listHeader = (
     <View style={{ gap: 16, paddingTop: 12 }}>
@@ -155,14 +157,20 @@ export default function NewsfeedScreen() {
 
       <FlatList
         data={feed}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractor}
         renderItem={renderItem}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
         contentContainerStyle={{ paddingBottom: 120, gap: 16 }}
         showsVerticalScrollIndicator={false}
-        onEndReached={() => loadMoreFeed()}
+        onEndReached={onEndReached}
         onEndReachedThreshold={0.4}
+        // Feed items are media-heavy (images + blur overlays) — keep the render
+        // window small so scrolling doesn't have to keep dozens of them mounted.
+        removeClippedSubviews
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.brand} />
         }

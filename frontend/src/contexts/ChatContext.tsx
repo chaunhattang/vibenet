@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { CURRENT_USER_ID } from '../constants';
 import { mockChatMessages, mockChatRooms } from '../data/mockData';
 import { ChatMessageData, ChatRoomData, OnlineUser } from '../types';
@@ -33,9 +33,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messagesByChat, setMessagesByChat] =
     useState<Record<string, ChatMessageData[]>>(mockChatMessages);
 
-  const getMessages = (chatId: string) => messagesByChat[chatId] ?? [];
+  const getMessages = useCallback(
+    (chatId: string) => messagesByChat[chatId] ?? [],
+    [messagesByChat],
+  );
 
-  const sendMessage = (chatId: string, content: string) => {
+  const sendMessage = useCallback((chatId: string, content: string) => {
     const timestamp = new Date().toISOString();
     const newMessage: ChatMessageData = {
       id: `msg-${Date.now()}`,
@@ -60,9 +63,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         ),
       ),
     );
-  };
+  }, [currentUserId, currentUser]);
 
-  const getOrCreateRoomByFriend = (friend: OnlineUser) => {
+  const getOrCreateRoomByFriend = useCallback((friend: OnlineUser) => {
     const existing = rooms.find(r => r.friendId === friend.id);
     if (existing) return existing.chatId;
 
@@ -78,15 +81,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
     setRooms(prev => sortRooms([...prev, newRoom]));
     return chatId;
-  };
+  }, [rooms]);
 
-  return (
-    <ChatContext.Provider
-      value={{ rooms, getMessages, sendMessage, getOrCreateRoomByFriend }}
-    >
-      {children}
-    </ChatContext.Provider>
+  const value = useMemo(
+    () => ({ rooms, getMessages, sendMessage, getOrCreateRoomByFriend }),
+    [rooms, getMessages, sendMessage, getOrCreateRoomByFriend],
   );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
 export function useChat() {

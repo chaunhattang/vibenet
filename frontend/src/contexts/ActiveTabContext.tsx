@@ -4,7 +4,7 @@
  * screen (including ones outside MainTabs, e.g. MessagesListScreen) can
  * jump straight to a tab via useGoToTab().
  */
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
 import { TabKey } from '../layout/FloatingTabBar';
 
 type ActiveTabContextValue = {
@@ -16,11 +16,8 @@ const ActiveTabContext = createContext<ActiveTabContextValue | null>(null);
 
 export function ActiveTabProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
-  return (
-    <ActiveTabContext.Provider value={{ activeTab, setActiveTab }}>
-      {children}
-    </ActiveTabContext.Provider>
-  );
+  const value = useMemo(() => ({ activeTab, setActiveTab }), [activeTab]);
+  return <ActiveTabContext.Provider value={value}>{children}</ActiveTabContext.Provider>;
 }
 
 export function useActiveTab() {

@@ -56,15 +56,24 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (tokens?.accessToken) headers.Authorization = `Bearer ${tokens.accessToken}`;
   if (!isMultipart && body !== undefined) headers['Content-Type'] = 'application/json';
 
+  // Without a timeout, an unreachable host (e.g. 10.0.2.2 from a physical device) hangs
+  // indefinitely instead of failing — callers rely on this rejecting promptly to fall
+  // back to mock data.
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 8000);
+
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       headers,
       body: isMultipart ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
+      signal: abortController.signal,
     });
   } catch {
     throw new ApiError('Could not reach the server. Check your connection and try again.', 0);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const envelope: ApiEnvelope<T> = await response

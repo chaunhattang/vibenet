@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
   createPost as createPostRequest,
@@ -147,24 +147,23 @@ export function PostsProvider({ children }: { children: ReactNode }) {
     }
   }, [feed]);
 
-  return (
-    <PostsContext.Provider
-      value={{
-        feed,
-        feedLoading,
-        feedError,
-        hasMoreFeed,
-        loadFeed,
-        loadMoreFeed,
-        createPost,
-        updatePost,
-        deletePost,
-        react,
-      }}
-    >
-      {children}
-    </PostsContext.Provider>
+  const value = useMemo(
+    () => ({
+      feed,
+      feedLoading,
+      feedError,
+      hasMoreFeed,
+      loadFeed,
+      loadMoreFeed,
+      createPost,
+      updatePost,
+      deletePost,
+      react,
+    }),
+    [feed, feedLoading, feedError, hasMoreFeed, loadFeed, loadMoreFeed, createPost, updatePost, deletePost, react],
   );
+
+  return <PostsContext.Provider value={value}>{children}</PostsContext.Provider>;
 }
 
 export function usePosts() {

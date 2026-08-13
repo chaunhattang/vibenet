@@ -3,8 +3,8 @@
  * Active tab renders as a rounded pill with a sliding indicator animation.
  */
 import { ComponentType, useRef, useState } from 'react';
-import { Animated, LayoutChangeEvent, Pressable, Text, View, useColorScheme } from 'react-native';
-import { C } from '../../theme/colors';
+import { LayoutChangeEvent, Pressable, Text, View, useColorScheme } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 type TabItem<T extends string> = {
   key: T;
@@ -35,25 +35,20 @@ export default function ProfileTabs<T extends string>({
   const activePillBg = isDark ? '#FFFFFF' : '#0D0E11';
 
   const layoutsRef = useRef<Partial<Record<T, TabLayout>>>({});
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const indicatorWidth = useRef(new Animated.Value(0)).current;
+  const indicatorX = useSharedValue(0);
+  const indicatorWidth = useSharedValue(0);
   const [indicatorReady, setIndicatorReady] = useState(false);
 
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: indicatorReady ? 1 : 0,
+    transform: [{ translateX: indicatorX.value }],
+    width: indicatorWidth.value,
+  }));
+
   const animateTo = (layout: TabLayout) => {
-    Animated.parallel([
-      Animated.spring(indicatorX, {
-        toValue: layout.x,
-        useNativeDriver: false,
-        speed: 16,
-        bounciness: 6,
-      }),
-      Animated.spring(indicatorWidth, {
-        toValue: layout.width,
-        useNativeDriver: false,
-        speed: 16,
-        bounciness: 6,
-      }),
-    ]).start();
+    const springConfig = { damping: 16, stiffness: 260 };
+    indicatorX.value = withSpring(layout.x, springConfig);
+    indicatorWidth.value = withSpring(layout.width, springConfig);
   };
 
   const handleTabLayout = (key: T) => (e: LayoutChangeEvent) => {
@@ -61,8 +56,8 @@ export default function ProfileTabs<T extends string>({
     layoutsRef.current[key] = { x, width };
 
     if (key === activeTab) {
-      indicatorX.setValue(x);
-      indicatorWidth.setValue(width);
+      indicatorX.value = x;
+      indicatorWidth.value = width;
       setIndicatorReady(true);
     }
   };
@@ -94,17 +89,17 @@ export default function ProfileTabs<T extends string>({
         {/* Sliding active-pill indicator */}
         <Animated.View
           pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: 0,
-            borderRadius: 16,
-            backgroundColor: activePillBg,
-            opacity: indicatorReady ? 1 : 0,
-            transform: [{ translateX: indicatorX }],
-            width: indicatorWidth,
-          }}
+          style={[
+            {
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              borderRadius: 16,
+              backgroundColor: activePillBg,
+            },
+            indicatorStyle,
+          ]}
         />
 
         {tabs.map(({ key, label, Icon }) => {

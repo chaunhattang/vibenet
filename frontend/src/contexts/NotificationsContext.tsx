@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
   getNotifications,
@@ -102,24 +102,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, [notifications, refreshUnreadCount]);
 
-  return (
-    <NotificationsContext.Provider
-      value={{
-        notifications,
-        loading,
-        error,
-        hasMore,
-        unreadCount,
-        load,
-        loadMore,
-        markRead,
-        markAllRead,
-        refreshUnreadCount,
-      }}
-    >
-      {children}
-    </NotificationsContext.Provider>
+  const value = useMemo(
+    () => ({
+      notifications,
+      loading,
+      error,
+      hasMore,
+      unreadCount,
+      load,
+      loadMore,
+      markRead,
+      markAllRead,
+      refreshUnreadCount,
+    }),
+    [notifications, loading, error, hasMore, unreadCount, load, loadMore, markRead, markAllRead, refreshUnreadCount],
   );
+
+  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }
 
 export function useNotifications() {

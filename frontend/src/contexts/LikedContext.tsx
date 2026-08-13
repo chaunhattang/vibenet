@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { Post } from '../types';
 
 type LikedContextValue = {
@@ -28,11 +28,9 @@ export function LikedProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  return (
-    <LikedContext.Provider value={{ liked, isLiked, setLikedEntry }}>
-      {children}
-    </LikedContext.Provider>
-  );
+  const value = useMemo(() => ({ liked, isLiked, setLikedEntry }), [liked, isLiked, setLikedEntry]);
+
+  return <LikedContext.Provider value={value}>{children}</LikedContext.Provider>;
 }
 
 export function useLiked() {

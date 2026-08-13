@@ -22,7 +22,7 @@ import { Comment, Post } from '../../types';
 import { CloseIcon } from '../../assets/Icon';
 import Avatar from '../ui/Avatar';
 
-import { BlurView } from '@react-native-community/blur';
+import { BlurView } from 'expo-blur';
 
 type PostDetailModalProps = {
   visible: boolean;
@@ -78,9 +78,8 @@ export default function PostDetailModal({ visible, post, onClose }: PostDetailMo
         <View className="flex-1 justify-end">
           <BlurView
             className="absolute inset-0"
-            blurType="light"
-            blurAmount={20}
-            reducedTransparencyFallbackColor="white"
+            tint="light"
+            intensity={40}
           />
 
           <Pressable className="absolute inset-0 flex-1" onPress={onClose} />

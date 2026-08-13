@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { ApiError, resolveMediaUrl } from '../api/client';
 import { addCloseFriendRequest, getCloseFriends, removeCloseFriendRequest } from '../api/closeFriends';
 import {
@@ -77,7 +77,10 @@ export function LocketProvider({ children }: { children: ReactNode }) {
   const [sentPage, setSentPage] = useState(0);
   const [hasMoreSent, setHasMoreSent] = useState(true);
 
-  const isCloseFriend = (userId: string) => closeFriends.some(f => f.userId === userId);
+  const isCloseFriend = useCallback(
+    (userId: string) => closeFriends.some(f => f.userId === userId),
+    [closeFriends],
+  );
 
   const loadCloseFriends = useCallback(async () => {
     setCloseFriendsLoading(true);
@@ -286,39 +289,64 @@ export function LocketProvider({ children }: { children: ReactNode }) {
     return created;
   }, []);
 
-  return (
-    <LocketContext.Provider
-      value={{
-        closeFriends,
-        closeFriendsLimit,
-        closeFriendsLoading,
-        closeFriendsError,
-        isCloseFriend,
-        loadCloseFriends,
-        addCloseFriend,
-        removeCloseFriend,
-        feed,
-        feedLoading,
-        feedError,
-        hasMoreFeed,
-        unreadCount,
-        refreshUnreadCount,
-        loadFeed,
-        loadMoreFeed,
-        markViewed,
-        react,
-        sentMoments,
-        sentLoading,
-        sentError,
-        hasMoreSent,
-        loadSentMoments,
-        loadMoreSentMoments,
-        createMoment,
-      }}
-    >
-      {children}
-    </LocketContext.Provider>
+  const value = useMemo(
+    () => ({
+      closeFriends,
+      closeFriendsLimit,
+      closeFriendsLoading,
+      closeFriendsError,
+      isCloseFriend,
+      loadCloseFriends,
+      addCloseFriend,
+      removeCloseFriend,
+      feed,
+      feedLoading,
+      feedError,
+      hasMoreFeed,
+      unreadCount,
+      refreshUnreadCount,
+      loadFeed,
+      loadMoreFeed,
+      markViewed,
+      react,
+      sentMoments,
+      sentLoading,
+      sentError,
+      hasMoreSent,
+      loadSentMoments,
+      loadMoreSentMoments,
+      createMoment,
+    }),
+    [
+      closeFriends,
+      closeFriendsLimit,
+      closeFriendsLoading,
+      closeFriendsError,
+      isCloseFriend,
+      loadCloseFriends,
+      addCloseFriend,
+      removeCloseFriend,
+      feed,
+      feedLoading,
+      feedError,
+      hasMoreFeed,
+      unreadCount,
+      refreshUnreadCount,
+      loadFeed,
+      loadMoreFeed,
+      markViewed,
+      react,
+      sentMoments,
+      sentLoading,
+      sentError,
+      hasMoreSent,
+      loadSentMoments,
+      loadMoreSentMoments,
+      createMoment,
+    ],
   );
+
+  return <LocketContext.Provider value={value}>{children}</LocketContext.Provider>;
 }
 
 export function useLocket() {
