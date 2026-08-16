@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babagang - Messages</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f2f2f6;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      color: #000;
+    }
+
+    /* Mobile Frame Container */
+    .app-screen {
+      width: 100%;
+      max-width: 412px;
+      background: #ffffff;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 100px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      overflow-x: hidden;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .dynamic-island {
+      width: 90px;
+      height: 28px;
+      background: #000;
+      border-radius: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid #eaeaea;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      color: #000;
+      text-decoration: none;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    /* Search Bar */
+    .search-container {
+      padding: 8px 20px 16px;
+    }
+
+    .search-box {
+      background: #f2f2f7;
+      border-radius: 20px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #8e8e93;
+    }
+
+    .search-box input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 14px;
+      width: 100%;
+      color: #000;
+    }
+
+    /* Active Users Row */
+    .active-section {
+      padding: 0 0 16px;
+      border-bottom: 1px solid #f2f2f7;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #8e8e93;
+      padding: 0 20px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .active-users-list {
+      display: flex;
+      gap: 16px;
+      padding: 0 20px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .active-users-list::-webkit-scrollbar { display: none; }
+
+    .active-user {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 58px;
+    }
+
+    .active-avatar-wrapper {
+      position: relative;
+      width: 54px;
+      height: 54px;
+    }
+
+    .active-avatar-wrapper img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .online-indicator {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #34c759;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+    }
+
+    .active-name {
+      font-size: 11px;
+      color: #000;
+      font-weight: 500;
+    }
+
+    /* Messages List */
+    .messages-list {
+      display: flex;
+      flex-direction: column;
+      padding: 8px 0;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s ease;
+    }
+
+    .chat-item:active {
+      background: #f8f8fa;
+    }
+
+    .chat-avatar-wrapper {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+
+    .chat-avatar-wrapper img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .chat-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .chat-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #000000;
+    }
+
+    .chat-time {
+      font-size: 12px;
+      color: #8e8e93;
+    }
+
+    .chat-message-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-snippet {
+      font-size: 13px;
+      color: #8e8e93;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .chat-snippet.unread {
+      color: #000000;
+      font-weight: 600;
+    }
+
+    .unread-badge {
+      background: #000000;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
+
+    /* Floating Navigation Bar */
+    .floating-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 64px);
+      max-width: 348px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 40px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-item {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8e8e93;
+      text-decoration: none;
+      font-size: 18px;
+    }
+
+    .nav-item.active {
+      background: #ffffff;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-screen">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="dynamic-island"></div>
+      <div style="display: flex; gap: 6px; font-size: 12px;">
+        <i class="fa-solid fa-signal"></i>
+        <i class="fa-solid fa-wifi"></i>
+        <i class="fa-solid fa-battery-full"></i>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+      <a href="feed.html" class="icon-btn"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="header-title">Messages</div>
+      <button class="icon-btn"><i class="fa-regular fa-pen-to-square"></i></button>
+    </header>
+
+    <!-- Search Input -->
+    <div class="search-container">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Search messages or people...">
+      </div>
+    </div>
+
+    <!-- Active Now Horizontal List -->
+    <div class="active-section">
+      <div class="section-title">Online Now</div>
+      <div class="active-users-list">
+        <div class="active-user">
+          <div class="active-avatar-wrapper">
+            <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" alt="Amanda">
+            <span class="online-indicator"></span>
+          </div>
+          <span class="active-name">Amanda</span>
+        </div>
+
+        <div class="active-user">
+          <div class="active-avatar-wrapper">
+            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Luiz">
+            <span class="online-indicator"></span>
+          </div>
+          <span class="active-name">Luiz</span>
+        </div>
+
+        <div class="active-user">
+          <div class="active-avatar-wrapper">
+            <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150" alt="Nina">
+            <span class="online-indicator"></span>
+          </div>
+          <span class="active-name">Nina</span>
+        </div>
+
+        <div class="active-user">
+          <div class="active-avatar-wrapper">
+            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" alt="Izaa">
+            <span class="online-indicator"></span>
+          </div>
+          <span class="active-name">Izaa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages Threads List -->
+    <div class="messages-list">
+      
+      <!-- Thread 1 -->
+      <a href="#" class="chat-item">
+        <div class="chat-avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" alt="Katty Abrahams">
+          <span class="online-indicator"></span>
+        </div>
+        <div class="chat-content">
+          <div class="chat-header-row">
+            <span class="chat-name">Katty Abrahams</span>
+            <span class="chat-time">2m ago</span>
+          </div>
+          <div class="chat-message-row">
+            <span class="chat-snippet unread">Hey! Did you check out the new design system preview? 🔥</span>
+            <span class="unread-badge">2</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Thread 2 -->
+      <a href="#" class="chat-item">
+        <div class="chat-avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" alt="Alana maesya">
+        </div>
+        <div class="chat-content">
+          <div class="chat-header-row">
+            <span class="chat-name">Alana maesya</span>
+            <span class="chat-time">15m ago</span>
+          </div>
+          <div class="chat-message-row">
+            <span class="chat-snippet unread">See you at the photoshoot studio tomorrow!</span>
+            <span class="unread-badge">1</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Thread 3 -->
+      <a href="#" class="chat-item">
+        <div class="chat-avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Luiz Santos">
+        </div>
+        <div class="chat-content">
+          <div class="chat-header-row">
+            <span class="chat-name">Luiz Santos</span>
+            <span class="chat-time">1h ago</span>
+          </div>
+          <div class="chat-message-row">
+            <span class="chat-snippet">Thanks for sharing the post links!</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Thread 4 -->
+      <a href="#" class="chat-item">
+        <div class="chat-avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150" alt="Nina Ross">
+        </div>
+        <div class="chat-content">
+          <div class="chat-header-row">
+            <span class="chat-name">Nina Ross</span>
+            <span class="chat-time">3h ago</span>
+          </div>
+          <div class="chat-message-row">
+            <span class="chat-snippet">Let's catch up over coffee this weekend.</span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Floating Navbar -->
+    <nav class="floating-nav">
+      <a href="feed.html" class="nav-item"><i class="fa-regular fa-house"></i></a>
+      <a href="#" class="nav-item"><i class="fa-regular fa-compass"></i></a>
+      <a href="notifications.html" class="nav-item"><i class="fa-regular fa-heart"></i></a>
+      <a href="profile.html" class="nav-item"><i class="fa-regular fa-user"></i></a>
+    </nav>
+  </div>
+
+</body>
+</html>

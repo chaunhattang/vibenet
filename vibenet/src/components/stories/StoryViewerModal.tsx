@@ -1,0 +1,374 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Dimensions,
+  Animated,
+  Platform,
+  SafeAreaView,
+  TextInput,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { StoryItem } from '../../data/mockData';
+import { Radii, Spacing, Typography } from '../../constants/theme';
+
+interface StoryViewerModalProps {
+  visible: boolean;
+  stories: StoryItem[];
+  initialStoryIndex?: number;
+  onClose: () => void;
+}
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
+  visible,
+  stories,
+  initialStoryIndex = 0,
+  onClose,
+}) => {
+  const [currentStoryIdx, setCurrentStoryIdx] = useState(initialStoryIndex);
+  const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [replyText, setReplyText] = useState('');
+
+  const activeStory = stories[currentStoryIdx] || stories[0];
+  const activeFrame = activeStory?.frames[currentFrameIdx] || activeStory?.frames[0];
+  const totalFrames = activeStory?.frames?.length || 1;
+
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  const handleNext = useCallback(() => {
+    if (currentFrameIdx < totalFrames - 1) {
+      setCurrentFrameIdx((prev) => prev + 1);
+    } else if (currentStoryIdx < stories.length - 1) {
+      setCurrentStoryIdx((prev) => prev + 1);
+      setCurrentFrameIdx(0);
+    } else {
+      onClose();
+    }
+  }, [currentFrameIdx, totalFrames, currentStoryIdx, stories.length, onClose]);
+
+  const handlePrev = useCallback(() => {
+    if (currentFrameIdx > 0) {
+      setCurrentFrameIdx((prev) => prev - 1);
+    } else if (currentStoryIdx > 0) {
+      setCurrentStoryIdx((prev) => prev - 1);
+      setCurrentFrameIdx(0);
+    }
+  }, [currentFrameIdx, currentStoryIdx]);
+
+  useEffect(() => {
+    if (!visible || !activeStory) return;
+
+    progressAnim.setValue(0);
+    if (!isPaused) {
+      const anim = Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: (activeFrame?.durationSeconds || 5) * 1000,
+        useNativeDriver: false,
+      });
+
+      anim.start(({ finished }) => {
+        if (finished) {
+          handleNext();
+        }
+      });
+
+      return () => {
+        progressAnim.stopAnimation();
+      };
+    }
+  }, [currentStoryIdx, currentFrameIdx, isPaused, visible, activeStory, activeFrame, handleNext, progressAnim]);
+
+  const handlePressZone = (e: any) => {
+    const x = e.nativeEvent.locationX;
+    if (x < SCREEN_WIDTH * 0.3) {
+      handlePrev();
+    } else {
+      handleNext();
+    }
+  };
+
+  if (!visible || !activeStory || !activeFrame) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent={false}
+      onRequestClose={onClose}>
+      <SafeAreaView style={styles.container}>
+        {/* Story Background Image */}
+        <Image
+          source={{ uri: activeFrame.mediaUrl }}
+          style={styles.storyImage}
+          contentFit="cover"
+        />
+
+        {/* Dark subtle gradient overlays */}
+        <View style={styles.topGradient} />
+        <View style={styles.bottomGradient} />
+
+        {/* Touch zones for Seek Left / Right and Hold to Pause */}
+        <TouchableWithoutFeedback
+          onPress={handlePressZone}
+          onPressIn={() => setIsPaused(true)}
+          onPressOut={() => setIsPaused(false)}>
+          <View style={styles.touchArea} />
+        </TouchableWithoutFeedback>
+
+        {/* Top Header & Segmented Progress Bars */}
+        <View style={styles.topOverlay}>
+          {/* Segmented Progress Bars */}
+          <View style={styles.progressRow}>
+            {activeStory.frames.map((_, idx) => (
+              <View key={idx} style={styles.progressBarTrack}>
+                <Animated.View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width:
+                        idx < currentFrameIdx
+                          ? '100%'
+                          : idx === currentFrameIdx
+                          ? progressAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%'],
+                            })
+                          : '0%',
+                    },
+                  ]}
+                />
+              </View>
+            ))}
+          </View>
+
+          {/* User Info & Close Button */}
+          <View style={styles.userInfoRow}>
+            <View style={styles.userLeft}>
+              <Image
+                source={{ uri: activeStory.user.avatarUrl }}
+                style={styles.authorAvatar}
+              />
+              <View>
+                <Text style={styles.authorName}>
+                  {activeStory.user.fullName}
+                </Text>
+                <Text style={styles.storyTime}>
+                  {activeFrame.createdAt || '1h ago'}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={onClose}
+              style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Caption Overlay */}
+        {activeFrame.caption ? (
+          <View style={styles.captionContainer}>
+            <Text style={styles.captionText}>{activeFrame.caption}</Text>
+          </View>
+        ) : null}
+
+        {/* Bottom Quick Reply & Reaction Bar */}
+        <View style={styles.bottomBar}>
+          <View style={styles.replyInputContainer}>
+            <TextInput
+              placeholder="Send message..."
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
+              value={replyText}
+              onChangeText={setReplyText}
+              style={styles.replyInput}
+            />
+            {replyText ? (
+              <TouchableOpacity
+                onPress={() => setReplyText('')}
+                style={styles.sendButton}>
+                <Feather name="send" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.quickEmojisRow}>
+            {['❤️', '🔥', '😂', '👏'].map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                activeOpacity={0.7}
+                onPress={() => {}}
+                style={styles.quickEmojiBtn}>
+                <Text style={styles.quickEmojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+    position: 'relative',
+  },
+  storyImage: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  touchArea: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 1,
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: Spacing.four,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: Spacing.three,
+  },
+  progressBarTrack: {
+    flex: 1,
+    height: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two + 2,
+  },
+  authorAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  authorName: {
+    ...Typography.bodyMedium,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  storyTime: {
+    ...Typography.caption,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 10,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  captionContainer: {
+    position: 'absolute',
+    bottom: 90,
+    left: Spacing.four,
+    right: Spacing.four,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two + 2,
+    borderRadius: Radii.lg,
+    zIndex: 10,
+  },
+  captionText: {
+    ...Typography.bodyMedium,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 25 : 15,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: Spacing.four,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  replyInputContainer: {
+    flex: 1,
+    height: 44,
+    borderRadius: Radii.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four,
+  },
+  replyInput: {
+    flex: 1,
+    height: '100%',
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  sendButton: {
+    padding: Spacing.one,
+  },
+  quickEmojisRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  quickEmojiBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickEmojiText: {
+    fontSize: 18,
+  },
+});

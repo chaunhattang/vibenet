@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babagang - Profile</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f2f2f6;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      color: #000;
+    }
+
+    /* Mobile Frame Container */
+    .app-screen {
+      width: 100%;
+      max-width: 412px;
+      background: #ffffff;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 100px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      overflow-x: hidden;
+    }
+
+    /* Status Bar (Overlaid on Cover Banner) */
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      z-index: 10;
+    }
+
+    .dynamic-island {
+      width: 90px;
+      height: 28px;
+      background: #000000;
+      border-radius: 20px;
+    }
+
+    /* Cover Banner Section */
+    .cover-container {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: #000000;
+    }
+
+    .cover-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.85;
+    }
+
+    /* Avatar Floating Center */
+    .profile-avatar-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      margin-top: -55px;
+      z-index: 5;
+    }
+
+    .profile-avatar {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 4px solid #ffffff;
+      object-fit: cover;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* User Information Header */
+    .profile-info {
+      text-align: center;
+      padding: 12px 24px 16px;
+    }
+
+    .profile-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #000000;
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    .profile-bio {
+      font-size: 13px;
+      color: #666666;
+      line-height: 1.4;
+      max-width: 280px;
+      margin: 0 auto 20px;
+    }
+
+    /* Stats Counter Section */
+    .stats-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 0 20px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 18px;
+      font-weight: 700;
+      color: #000000;
+      margin-bottom: 2px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #8e8e93;
+      font-weight: 400;
+    }
+
+    /* Action Buttons Row */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      padding: 0 20px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      height: 42px;
+      border-radius: 22px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #e5e5ea;
+      background: #f8f8fa;
+      color: #000000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #f2f2f7;
+      border: none;
+    }
+
+    /* Content Tabs Header */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 16px;
+    }
+
+    .tab-item {
+      flex: 1;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8e8e93;
+      font-size: 18px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .tab-item.active {
+      color: #000000;
+    }
+
+    .tab-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 40px;
+      height: 2px;
+      background-color: #000000;
+      border-radius: 2px;
+    }
+
+    /* Media Grid Section */
+    .media-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    .grid-card {
+      width: 100%;
+      height: 230px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #f0f0f0;
+    }
+
+    .grid-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Floating Navigation Bar */
+    .floating-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 64px);
+      max-width: 348px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 40px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-item {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8e8e93;
+      text-decoration: none;
+      font-size: 18px;
+    }
+
+    .nav-item.active {
+      background: #ffffff;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-screen">
+    <!-- Status Bar over Dark Cover Banner -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="dynamic-island"></div>
+      <div style="display: flex; gap: 6px; font-size: 12px;">
+        <i class="fa-solid fa-signal"></i>
+        <i class="fa-solid fa-wifi"></i>
+        <i class="fa-solid fa-battery-full"></i>
+      </div>
+    </div>
+
+    <!-- Cover Image Banner -->
+    <div class="cover-container">
+      <img class="cover-image" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800" alt="Cover Landscape">
+    </div>
+
+    <!-- Avatar Center Overlap -->
+    <div class="profile-avatar-container">
+      <img class="profile-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300" alt="Katty Abrahams">
+    </div>
+
+    <!-- Profile Details -->
+    <div class="profile-info">
+      <h2 class="profile-name">Katty Abrahams</h2>
+      <p class="profile-bio">I'm delighted to introduce myself as a professional model 👋</p>
+    </div>
+
+    <!-- Followers / Following / Posts Stats -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-number">567 K</div>
+        <div class="stat-label">Followers</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number">1665</div>
+        <div class="stat-label">Followings</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number">166</div>
+        <div class="stat-label">Posts</div>
+      </div>
+    </div>
+
+    <!-- Primary Action Buttons -->
+    <div class="action-buttons">
+      <button class="btn btn-primary">Follow</button>
+      <button class="btn">Message</button>
+      <button class="btn">Insight</button>
+    </div>
+
+    <!-- Profile Grid Navigation Tabs -->
+    <div class="tab-bar">
+      <div class="tab-item active"><i class="fa-solid fa-border-all"></i></div>
+      <div class="tab-item"><i class="fa-solid fa-video"></i></div>
+      <div class="tab-item"><i class="fa-regular fa-heart"></i></div>
+      <div class="tab-item"><i class="fa-regular fa-bookmark"></i></div>
+    </div>
+
+    <!-- 2-Column Photo Grid -->
+    <div class="media-grid">
+      <div class="grid-card">
+        <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500" alt="Post 1">
+      </div>
+      <div class="grid-card">
+        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500" alt="Post 2">
+      </div>
+      <div class="grid-card">
+        <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500" alt="Post 3">
+      </div>
+      <div class="grid-card">
+        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500" alt="Post 4">
+      </div>
+    </div>
+
+    <!-- Floating Navbar -->
+    <nav class="floating-nav">
+      <a href="feed.html" class="nav-item"><i class="fa-regular fa-house"></i></a>
+      <a href="#" class="nav-item"><i class="fa-regular fa-compass"></i></a>
+      <a href="notifications.html" class="nav-item"><i class="fa-regular fa-heart"></i></a>
+      <a href="profile.html" class="nav-item active"><i class="fa-solid fa-user"></i></a>
+    </nav>
+  </div>
+
+</body>
+</html>

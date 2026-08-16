@@ -1,466 +1,587 @@
-import { CURRENT_USER_AVATAR, CURRENT_USER_ID } from '../constants';
-import {
-  ChatMessageData,
-  ChatRoomData,
-  Comment,
-  Drifter,
-  FriendStatus,
-  OnlineUser,
-  Post,
-  PostOwner,
-  ProfileDetails,
-} from '../types';
+export interface UserProfile {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string;
+  coverImageUrl: string;
+  bio: string;
+  website?: string;
+  isVerified?: boolean;
+  postsCount: number;
+  friendsCount: number;
+  momentsCount: number;
+  isOnline?: boolean;
+  lastActiveAt?: string;
+}
 
-// Toàn bộ file này là data giả — sau này có be thì xoá file, thay bằng:
-// getOnlineUsers() -> mockOnlineUsers (posts/comments giờ đã dùng API thật /api/posts)
-export const mockOnlineUsers: OnlineUser[] = [
+export interface StoryFrame {
+  id: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  durationSeconds: number;
+  caption?: string;
+  createdAt: string;
+}
+
+export interface StoryItem {
+  id: string;
+  user: UserProfile;
+  isMyStory?: boolean;
+  isLive?: boolean;
+  isCloseFriend?: boolean;
+  isViewed: boolean;
+  frames: StoryFrame[];
+}
+
+export interface PostComment {
+  id: string;
+  user: {
+    id: string;
+    username: string;
+    fullName: string;
+    avatarUrl: string;
+  };
+  content: string;
+  createdAt: string;
+  likesCount: number;
+}
+
+export interface PostItem {
+  id: string;
+  author: UserProfile;
+  mediaUrls: string[];
+  textContent: string;
+  location?: string;
+  createdAt: string;
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  isLiked: boolean;
+  currentReaction?: 'LOVE' | 'FIRE' | null;
+  isSaved: boolean;
+  comments: PostComment[];
+  tags?: string[];
+}
+
+export interface LocketReaction {
+  id: string;
+  emoji: string;
+  user: UserProfile;
+  createdAt: string;
+}
+
+export interface LocketMomentItem {
+  id: string;
+  author: UserProfile;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  caption: string;
+  location?: string;
+  createdAt: string;
+  timeAgo: string;
+  recipientsCount: number;
+  recipientGroup: 'All Close Friends' | 'Besties Only' | 'Family';
+  reactions: LocketReaction[];
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  content: string;
+  mediaUrl?: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
+export interface ChatRoomItem {
+  id: string;
+  friend: UserProfile;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  isTyping?: boolean;
+  messages: ChatMessage[];
+}
+
+export interface NotificationItem {
+  id: string;
+  type: 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED' | 'REACTION' | 'COMMENT' | 'LOCKET_MOMENT' | 'MENTION';
+  actor: UserProfile;
+  content: string;
+  targetMediaUrl?: string;
+  createdAt: string;
+  timeAgo: string;
+  isRead: boolean;
+  friendRequestStatus?: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+}
+
+// ----------------------------------------------------
+// CURATED UNSPLASH MEDIA ASSETS
+// ----------------------------------------------------
+
+export const CURRENT_USER: UserProfile = {
+  id: 'u-me',
+  username: 'alexrivera',
+  fullName: 'Alex Rivera',
+  email: 'alex.rivera@vibenet.io',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+  coverImageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+  bio: 'Visual designer & shutterbug 📸 Living between Tokyo & San Francisco. Vibing in the future ✨',
+  website: 'https://vibenet.design/alex',
+  isVerified: true,
+  postsCount: 42,
+  friendsCount: 384,
+  momentsCount: 128,
+  isOnline: true,
+  lastActiveAt: 'Just now',
+};
+
+export const MOCK_USERS: UserProfile[] = [
+  CURRENT_USER,
   {
-    id: 'u1',
-    name: 'Minh Anh',
-    handle: 'minhanh',
-    avatar:
-      'https://tse1.mm.bing.net/th/id/OIP.2a-O0-W06eTvDLlgqW5_rwHaHa?r=0&pid=Api&h=220&P=0',
+    id: 'u-1',
+    username: 'elena_v',
+    fullName: 'Elena Vance',
+    email: 'elena@vibenet.io',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+    bio: 'Golden hour hunter 🌅 Architecture & high fashion.',
+    website: 'https://elena.design',
+    isVerified: true,
+    postsCount: 156,
+    friendsCount: 1240,
+    momentsCount: 310,
     isOnline: true,
+    lastActiveAt: '2m ago',
   },
   {
-    id: 'u2',
-    name: 'Duy Khang',
-    handle: 'duykhang',
-    avatar:
-      'https://tse2.mm.bing.net/th/id/OIP.GzggTND5SbALtKQgF-ZdwwHaHv?r=0&pid=Api&h=220&P=0',
+    id: 'u-2',
+    username: 'kai_zen',
+    fullName: 'Kai Tanaka',
+    email: 'kai@vibenet.io',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1509281373149-e957c6296406?auto=format&fit=crop&w=1200&q=80',
+    bio: 'Cyberpunk beats, specialty coffee, and street analog film 🎧☕',
+    isVerified: false,
+    postsCount: 88,
+    friendsCount: 520,
+    momentsCount: 95,
     isOnline: true,
+    lastActiveAt: '5m ago',
   },
   {
-    id: 'u3',
-    name: 'Linh Vu',
-    handle: 'linhvu',
-    avatar:
-      'https://tse3.mm.bing.net/th/id/OIP.cBjasYgWAcwsWwQmzoOjawHaHa?r=0&pid=Api&h=220&P=0',
-    isOnline: true,
-  },
-  {
-    id: 'u4',
-    name: 'Bao Tran',
-    handle: 'baotran',
-    avatar:
-      'https://tse1.mm.bing.net/th/id/OIP.7VaY8F8AVQ7HoemWEO3_CgHaHa?r=0&pid=Api&h=220&P=0',
+    id: 'u-3',
+    username: 'chloe.art',
+    fullName: 'Chloe Dupont',
+    email: 'chloe@vibenet.io',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    bio: 'Sculpting light and ceramic dreams in Paris 🥐🎨',
+    isVerified: true,
+    postsCount: 204,
+    friendsCount: 2300,
+    momentsCount: 450,
     isOnline: false,
+    lastActiveAt: '1h ago',
   },
   {
-    id: 'u5',
-    name: 'Gia Han',
-    handle: 'giahan',
-    avatar:
-      'https://tse1.mm.bing.net/th/id/OIP.2a-O0-W06eTvDLlgqW5_rwHaHa?r=0&pid=Api&h=220&P=0',
+    id: 'u-4',
+    username: 'marcus_k',
+    fullName: 'Marcus Kane',
+    email: 'marcus@vibenet.io',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+    bio: 'Alpine mountaineer & drone filmmaker 🏔️ Always off the grid.',
+    isVerified: false,
+    postsCount: 64,
+    friendsCount: 410,
+    momentsCount: 180,
     isOnline: true,
+    lastActiveAt: 'Active now',
+  },
+  {
+    id: 'u-5',
+    username: 'maya.s',
+    fullName: 'Maya Sharma',
+    email: 'maya@vibenet.io',
+    avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+    bio: 'Product engineer by day, techno DJ by night 🎛️⚡',
+    isVerified: true,
+    postsCount: 92,
+    friendsCount: 890,
+    momentsCount: 215,
+    isOnline: false,
+    lastActiveAt: '4h ago',
   },
 ];
 
-export const mockChatRooms: ChatRoomData[] = [
+export const MOCK_STORIES: StoryItem[] = [
   {
-    chatId: 'chat-u1',
-    friendId: 'u1',
-    friendName: 'Minh Anh',
-    friendAvatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-    friendIsOnline: mockOnlineUsers.find(u => u.id === 'u1')!.isOnline,
-    lastMessage: 'Hẹn 8h sáng mai nhé!',
-    lastMessageTime: new Date(Date.now() - 5 * 60000).toISOString(),
+    id: 'story-me',
+    user: CURRENT_USER,
+    isMyStory: true,
+    isViewed: false,
+    frames: [
+      {
+        id: 'frame-me-1',
+        mediaUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'Design sprint late nights ☕⚡',
+        createdAt: '2h ago',
+      },
+    ],
   },
   {
-    chatId: 'chat-u2',
-    friendId: 'u2',
-    friendName: 'Duy Khang',
-    friendAvatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-    friendIsOnline: mockOnlineUsers.find(u => u.id === 'u2')!.isOnline,
-    lastMessage: 'Ok để mình gửi ảnh sau',
-    lastMessageTime: new Date(Date.now() - 45 * 60000).toISOString(),
+    id: 'story-1',
+    user: MOCK_USERS[1], // Elena
+    isLive: true,
+    isCloseFriend: true,
+    isViewed: false,
+    frames: [
+      {
+        id: 'frame-1-1',
+        mediaUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'First light in the valley 🌄',
+        createdAt: '30m ago',
+      },
+      {
+        id: 'frame-1-2',
+        mediaUrl: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'Morning brew perfection',
+        createdAt: '25m ago',
+      },
+    ],
   },
   {
-    chatId: 'chat-u3',
-    friendId: 'u3',
-    friendName: 'Linh Vu',
-    friendAvatar: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-    friendIsOnline: mockOnlineUsers.find(u => u.id === 'u3')!.isOnline,
-    lastMessage: null,
-    lastMessageTime: null,
+    id: 'story-2',
+    user: MOCK_USERS[2], // Kai
+    isCloseFriend: true,
+    isViewed: false,
+    frames: [
+      {
+        id: 'frame-2-1',
+        mediaUrl: 'https://images.unsplash.com/photo-1509281373149-e957c6296406?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'Shibuya neon vibes tonight 🏮',
+        createdAt: '1h ago',
+      },
+    ],
   },
   {
-    chatId: 'chat-u4',
-    friendId: 'u4',
-    friendName: 'Bao Tran',
-    friendAvatar: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-    friendIsOnline: mockOnlineUsers.find(u => u.id === 'u4')!.isOnline,
-    lastMessage: 'Playlist đỉnh thật sự',
-    lastMessageTime: new Date(Date.now() - 3 * 3600000).toISOString(),
+    id: 'story-3',
+    user: MOCK_USERS[3], // Chloe
+    isViewed: false,
+    frames: [
+      {
+        id: 'frame-3-1',
+        mediaUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'New oil studies in studio 🎨',
+        createdAt: '3h ago',
+      },
+    ],
+  },
+  {
+    id: 'story-4',
+    user: MOCK_USERS[4], // Marcus
+    isViewed: true,
+    frames: [
+      {
+        id: 'frame-4-1',
+        mediaUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        durationSeconds: 5,
+        caption: 'Peak reached! 3,800m 🏔️',
+        createdAt: '5h ago',
+      },
+    ],
   },
 ];
 
-export const mockChatMessages: Record<string, ChatMessageData[]> = {
-  'chat-u1': [
-    {
-      id: 'm1',
-      chatId: 'chat-u1',
-      senderId: 'u1',
-      senderName: 'Minh Anh',
-      senderAvatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-      content: 'Sáng mai đi cà phê không?',
-      timestamp: new Date(Date.now() - 20 * 60000).toISOString(),
-    },
-    {
-      id: 'm2',
-      chatId: 'chat-u1',
-      senderId: CURRENT_USER_ID,
-      senderName: 'You',
-      content: 'Đi chứ, mấy giờ?',
-      timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-    },
-    {
-      id: 'm3',
-      chatId: 'chat-u1',
-      senderId: 'u1',
-      senderName: 'Minh Anh',
-      senderAvatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-      content: 'Hẹn 8h sáng mai nhé!',
-      timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-    },
-  ],
-  'chat-u2': [
-    {
-      id: 'm4',
-      chatId: 'chat-u2',
-      senderId: CURRENT_USER_ID,
-      senderName: 'You',
-      content: 'Ảnh hoàng hôn đẹp quá',
-      timestamp: new Date(Date.now() - 50 * 60000).toISOString(),
-    },
-    {
-      id: 'm5',
-      chatId: 'chat-u2',
-      senderId: 'u2',
-      senderName: 'Duy Khang',
-      senderAvatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-      content: 'Ok để mình gửi ảnh sau',
-      timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-    },
-  ],
-  'chat-u4': [
-    {
-      id: 'm6',
-      chatId: 'chat-u4',
-      senderId: 'u4',
-      senderName: 'Bao Tran',
-      senderAvatar: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-      content: 'Nghe playlist chưa?',
-      timestamp: new Date(Date.now() - 4 * 3600000).toISOString(),
-    },
-    {
-      id: 'm7',
-      chatId: 'chat-u4',
-      senderId: CURRENT_USER_ID,
-      senderName: 'You',
-      content: 'Playlist đỉnh thật sự',
-      timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
-    },
-  ],
-};
-
-export const mockDrifters: Drifter[] = [
-  { id: 'd1', name: 'Nova', avatar: 'https://i.pravatar.cc/150?u=Nova' },
-  { id: 'd2', name: 'Kai', avatar: 'https://i.pravatar.cc/150?u=Kai' },
-  { id: 'd3', name: 'Raine', avatar: 'https://i.pravatar.cc/150?u=Raine' },
-  { id: 'd4', name: 'Zephyr', avatar: 'https://i.pravatar.cc/150?u=Zephyr' },
-  { id: 'd5', name: 'Sol', avatar: 'https://i.pravatar.cc/150?u=Sol' },
-];
-
-export const DEFAULT_COVER =
-  'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?q=80&w=2070&auto=format&fit=crop';
-
-// Chi tiết profile, key = userId ('me' hoặc id trong mockOnlineUsers)
-export const mockProfiles: Record<string, ProfileDetails> = {
-  [CURRENT_USER_ID]: {
-    userId: CURRENT_USER_ID,
-    fullName: 'You',
-    handle: 'me',
-    bio: 'Sống chậm, nghĩ nhiều, whisper vừa đủ.',
-    avatar: CURRENT_USER_AVATAR,
-    coverImage: DEFAULT_COVER,
-    phoneNumber: '+84 912 345 678',
-    email: 'me@vibenet.app',
-    dateOfBirth: '2000-01-01',
-    gender: 'OTHER',
-  },
-  u1: {
-    userId: 'u1',
-    fullName: 'Minh Anh',
-    handle: 'minhanh',
-    bio: 'Cà phê mỗi sáng, deadline mỗi tối.',
-    avatar: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-    coverImage: DEFAULT_COVER,
-    email: 'minhanh@vibenet.app',
-    dateOfBirth: '1999-05-12',
-    gender: 'FEMALE',
-  },
-  u2: {
-    userId: 'u2',
-    fullName: 'Duy Khang',
-    handle: 'duykhang',
-    bio: 'Săn hoàng hôn, lưu giữ khoảnh khắc.',
-    avatar: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-    coverImage: DEFAULT_COVER,
-    email: 'duykhang@vibenet.app',
-    gender: 'MALE',
-  },
-  u3: {
-    userId: 'u3',
-    fullName: 'Linh Vu',
-    handle: 'linhvu',
-    bio: 'Sinh viên năm cuối, đang vật lộn với đồ án.',
-    avatar: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-    coverImage: DEFAULT_COVER,
-    dateOfBirth: '2002-09-30',
-    gender: 'FEMALE',
-  },
-  u4: {
-    userId: 'u4',
-    fullName: 'Bao Tran',
-    handle: 'baotran',
-    bio: 'Lofi, playlist và cuối tuần chill.',
-    avatar: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-    coverImage: DEFAULT_COVER,
-    gender: 'MALE',
-  },
-  u5: {
-    userId: 'u5',
-    fullName: 'Gia Han',
-    handle: 'giahan',
-    bio: 'Yêu nhiếp ảnh và những buổi chiều rảnh rỗi.',
-    avatar: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
-    coverImage: DEFAULT_COVER,
-    gender: 'FEMALE',
-  },
-};
-
-// Danh sách bạn bè, key = userId — mock đơn giản: bạn bè của ai đó là những người còn lại
-export const mockFriendsByUser: Record<string, OnlineUser[]> = {
-  [CURRENT_USER_ID]: mockOnlineUsers,
-  u1: mockOnlineUsers.filter(u => u.id !== 'u1'),
-  u2: mockOnlineUsers.filter(u => u.id !== 'u2'),
-  u3: mockOnlineUsers.filter(u => u.id !== 'u3'),
-  u4: mockOnlineUsers.filter(u => u.id !== 'u4'),
-  u5: mockOnlineUsers.filter(u => u.id !== 'u5'),
-};
-
-// Trạng thái kết bạn của "mình" với từng người — đủ 4 trạng thái để demo UI
-export const mockFriendStatusByUser: Record<string, FriendStatus> = {
-  u1: 'FRIENDS',
-  u2: 'FRIENDS',
-  u3: 'PENDING_SENT',
-  u4: 'NONE',
-  u5: 'PENDING_RECEIVED',
-};
-
-export const mockPosts: Post[] = [
+export const MOCK_POSTS: PostItem[] = [
   {
     id: 'post-1',
-    owner: {
-      id: 'u2',
-      username: 'duykhang',
-      fullName: 'Duy Khang',
-      avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-    },
-    textContent:
-      'Hoàng hôn chiều nay ở Phú Quốc đẹp ngỡ ngàng 🌅 Vừa săn được góc này siêu chill! #sunset #phuquoc #travel #vibenet',
-    mediaUrl: [
-      'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
+    author: MOCK_USERS[1], // Elena Vance
+    mediaUrls: [
+      'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1000&q=85',
+      'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1000&q=85',
     ],
-    commentCount: 4,
-    reactionCount: 42,
+    textContent: 'Sunday architectural strolls through modern minimalist spaces. Nothing calms the mind like pure geometric harmony and soft natural diffused light. ✨🏢',
+    location: 'Kyoto Museum of Modern Art',
+    createdAt: '25m ago',
+    likesCount: 1420,
+    commentsCount: 38,
+    sharesCount: 14,
+    isLiked: true,
     currentReaction: 'LOVE',
-    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    isSaved: true,
+    tags: ['minimalism', 'architecture', 'japan', 'design'],
+    comments: [
+      {
+        id: 'c-1',
+        user: MOCK_USERS[2],
+        content: 'That shadow play in the second slide is absolutely unreal!',
+        createdAt: '18m ago',
+        likesCount: 12,
+      },
+      {
+        id: 'c-2',
+        user: MOCK_USERS[3],
+        content: 'Adding this to my wishlist for next trip to Kansai ❤️',
+        createdAt: '10m ago',
+        likesCount: 4,
+      },
+    ],
   },
   {
     id: 'post-2',
-    owner: {
-      id: 'u1',
-      username: 'minhanh',
-      fullName: 'Minh Anh',
-      avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-    },
-    textContent:
-      'Góc làm việc nhỏ xinh đón nắng sáng ☕💻 Hôm nay quyết tâm làm xong UI cho Vibenet. Fighting! #workspace #coding #coffee',
-    mediaUrl: [
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
+    author: MOCK_USERS[2], // Kai Tanaka
+    mediaUrls: [
+      'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1000&q=85',
     ],
-    commentCount: 2,
-    reactionCount: 28,
-    currentReaction: 'FIRE',
-    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    textContent: 'Late night sessions in Nakameguro. The street reflections on analog 35mm film just hit different after the monsoon rain 🌧️📸',
+    location: 'Nakameguro, Tokyo',
+    createdAt: '2h ago',
+    likesCount: 890,
+    commentsCount: 19,
+    sharesCount: 9,
+    isLiked: false,
+    currentReaction: null,
+    isSaved: false,
+    tags: ['tokyo', 'filmphotography', 'nightwalk', '35mm'],
+    comments: [
+      {
+        id: 'c-3',
+        user: CURRENT_USER,
+        content: 'Color grading on this is chef kiss 🤌 Which lens?',
+        createdAt: '1h ago',
+        likesCount: 8,
+      },
+    ],
   },
   {
     id: 'post-3',
-    owner: {
-      id: CURRENT_USER_ID,
-      username: 'me',
-      fullName: 'You',
-      avatarUrl: CURRENT_USER_AVATAR,
-    },
-    textContent:
-      'Cuối tuần đi trốn ở Đà Lạt, không khí mát lành dễ chịu cực kỳ 🌿🍃 #dalat #chill #nature',
-    mediaUrl: [
-      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80',
+    author: MOCK_USERS[4], // Marcus Kane
+    mediaUrls: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1000&q=85',
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=85',
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1000&q=85',
     ],
-    commentCount: 1,
-    reactionCount: 65,
-    currentReaction: null,
-    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-  },
-  {
-    id: 'post-4',
-    owner: {
-      id: 'u4',
-      username: 'baotran',
-      fullName: 'Bao Tran',
-      avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-    },
-    textContent:
-      'Thêm một bản Lofi mix cho những đêm thức muộn. Ai nghe cùng không? 🎧✨ #lofi #music #vibes',
-    mediaUrl: [],
-    commentCount: 0,
-    reactionCount: 19,
-    currentReaction: null,
-    createdAt: new Date(Date.now() - 8 * 3600000).toISOString(),
-  },
-  {
-    id: 'post-5',
-    owner: {
-      id: 'u5',
-      username: 'giahan',
-      fullName: 'Gia Han',
-      avatarUrl: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
-    },
-    textContent:
-      'Sài Gòn ngày nắng đẹp. Bữa trưa nhẹ nhàng tại quán ruột 🥗🍹 #saigon #foody #lifestyle',
-    mediaUrl: [
-      'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80',
-    ],
-    commentCount: 0,
-    reactionCount: 34,
-    currentReaction: 'LOVE',
-    createdAt: new Date(Date.now() - 14 * 3600000).toISOString(),
-  },
-  {
-    id: 'post-6',
-    owner: {
-      id: 'u3',
-      username: 'linhvu',
-      fullName: 'Linh Vu',
-      avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-    },
-    textContent:
-      'Chuyến đi khám phá phố cổ Hà Nội vừa qua. Mùa thu Hà Nội thật sự rất đặc biệt 🍂🍁 #hanoi #autumn #photography',
-    mediaUrl: [
-      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80',
-    ],
-    commentCount: 0,
-    reactionCount: 51,
+    textContent: '4:30 AM alpine start was 100% worth it. Sunrise above the sea of clouds in the Swiss Alps. Breathe it in 🏔️☀️',
+    location: 'Zermatt, Switzerland',
+    createdAt: '6h ago',
+    likesCount: 2310,
+    commentsCount: 74,
+    sharesCount: 42,
+    isLiked: true,
     currentReaction: 'FIRE',
-    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+    isSaved: false,
+    tags: ['alps', 'mountains', 'sunrise', 'adventure'],
+    comments: [],
   },
 ];
 
-export const mockComments: Record<string, Comment[]> = {
-  'post-1': [
-    {
-      id: 'c1',
-      postId: 'post-1',
-      owner: {
-        id: 'u1',
-        username: 'minhanh',
-        fullName: 'Minh Anh',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-      },
-      content: 'Góc chụp đỉnh quá Khang ơi! 🌅',
-      createdAt: new Date(Date.now() - 30 * 60000).toISOString(),
-    },
-    {
-      id: 'c2',
-      postId: 'post-1',
-      owner: {
-        id: 'u5',
-        username: 'giahan',
-        fullName: 'Gia Han',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u5')!.avatar,
-      },
-      content: 'Đẹp tuyệt vời luôn ✨ Cho xin location cụ thể đi bạn!',
-      createdAt: new Date(Date.now() - 20 * 60000).toISOString(),
-    },
-    {
-      id: 'c3',
-      postId: 'post-1',
-      owner: {
-        id: 'u2',
-        username: 'duykhang',
-        fullName: 'Duy Khang',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u2')!.avatar,
-      },
-      content: '@giahan ở Sunset Sanato nha Han!',
-      createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
-    },
-    {
-      id: 'c4',
-      postId: 'post-1',
-      owner: {
-        id: CURRENT_USER_ID,
-        username: 'me',
-        fullName: 'You',
-        avatarUrl: CURRENT_USER_AVATAR,
-      },
-      content: 'Chất lượng ảnh nét căng luôn!',
-      createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
-    },
-  ],
-  'post-2': [
-    {
-      id: 'c5',
-      postId: 'post-2',
-      owner: {
-        id: 'u3',
-        username: 'linhvu',
-        fullName: 'Linh Vu',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u3')!.avatar,
-      },
-      content: 'Góc làm việc xịn xò ghê, cố lên nè! 🔥',
-      createdAt: new Date(Date.now() - 90 * 60000).toISOString(),
-    },
-    {
-      id: 'c6',
-      postId: 'post-2',
-      owner: {
-        id: 'u4',
-        username: 'baotran',
-        fullName: 'Bao Tran',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u4')!.avatar,
-      },
-      content: 'Nhìn chill ghê, xin list nhạc code với nha haha',
-      createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
-    },
-  ],
-  'post-3': [
-    {
-      id: 'c7',
-      postId: 'post-3',
-      owner: {
-        id: 'u1',
-        username: 'minhanh',
-        fullName: 'Minh Anh',
-        avatarUrl: mockOnlineUsers.find(u => u.id === 'u1')!.avatar,
-      },
-      content: 'Đà Lạt mùa này đẹp nhất rồi, ghen tị quá!',
-      createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
-    },
-  ],
-};
+export const MOCK_LOCKET_MOMENTS: LocketMomentItem[] = [
+  {
+    id: 'moment-1',
+    author: MOCK_USERS[1], // Elena
+    mediaUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=85',
+    mediaType: 'image',
+    caption: 'Sunset matcha run with the best crew 🍵✨',
+    location: 'Roppongi Hills',
+    createdAt: '12m ago',
+    timeAgo: '12m ago',
+    recipientsCount: 5,
+    recipientGroup: 'All Close Friends',
+    reactions: [
+      { id: 'lr-1', emoji: '❤️', user: CURRENT_USER, createdAt: '10m ago' },
+      { id: 'lr-2', emoji: '🔥', user: MOCK_USERS[2], createdAt: '8m ago' },
+      { id: 'lr-3', emoji: '🥳', user: MOCK_USERS[3], createdAt: '5m ago' },
+    ],
+  },
+  {
+    id: 'moment-2',
+    author: MOCK_USERS[2], // Kai
+    mediaUrl: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=1000&q=85',
+    mediaType: 'image',
+    caption: 'New synth setup arrived! Time to cook some tracks 🎹🔊',
+    createdAt: '45m ago',
+    timeAgo: '45m ago',
+    recipientsCount: 3,
+    recipientGroup: 'Besties Only',
+    reactions: [
+      { id: 'lr-4', emoji: '🔥', user: CURRENT_USER, createdAt: '30m ago' },
+    ],
+  },
+  {
+    id: 'moment-3',
+    author: MOCK_USERS[3], // Chloe
+    mediaUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=85',
+    mediaType: 'image',
+    caption: 'Parisian rain through my balcony studio window 🌧️🥐',
+    location: 'Montmartre, Paris',
+    createdAt: '2h ago',
+    timeAgo: '2h ago',
+    recipientsCount: 5,
+    recipientGroup: 'All Close Friends',
+    reactions: [
+      { id: 'lr-5', emoji: '❤️', user: MOCK_USERS[1], createdAt: '1h ago' },
+      { id: 'lr-6', emoji: '👏', user: CURRENT_USER, createdAt: '1h ago' },
+    ],
+  },
+];
 
+export const MOCK_CHATS: ChatRoomItem[] = [
+  {
+    id: 'chat-1',
+    friend: MOCK_USERS[1], // Elena
+    lastMessage: 'Let’s check out that art exhibition tomorrow at 3pm!',
+    lastMessageTime: '14:32',
+    unreadCount: 2,
+    isTyping: false,
+    messages: [
+      {
+        id: 'm-1',
+        chatId: 'chat-1',
+        senderId: 'u-1',
+        content: 'Hey Alex! Did you see the new gallery photos I posted?',
+        timestamp: '14:28',
+        isRead: true,
+      },
+      {
+        id: 'm-2',
+        chatId: 'chat-1',
+        senderId: 'u-me',
+        content: 'Yes! The lighting was incredible. Where was that?',
+        timestamp: '14:30',
+        isRead: true,
+      },
+      {
+        id: 'm-3',
+        chatId: 'chat-1',
+        senderId: 'u-1',
+        content: 'It’s right near Kyoto station! Let’s check out that art exhibition tomorrow at 3pm!',
+        timestamp: '14:32',
+        isRead: false,
+      },
+    ],
+  },
+  {
+    id: 'chat-2',
+    friend: MOCK_USERS[2], // Kai
+    lastMessage: 'Sent you the audio sample pack. Check your email! 🎧',
+    lastMessageTime: '11:15',
+    unreadCount: 0,
+    isTyping: false,
+    messages: [
+      {
+        id: 'm-4',
+        chatId: 'chat-2',
+        senderId: 'u-2',
+        content: 'Sent you the audio sample pack. Check your email! 🎧',
+        timestamp: '11:15',
+        isRead: true,
+      },
+    ],
+  },
+  {
+    id: 'chat-3',
+    friend: MOCK_USERS[3], // Chloe
+    lastMessage: 'Merci beaucoup! See you in Paris next spring ✨',
+    lastMessageTime: 'Yesterday',
+    unreadCount: 0,
+    isTyping: false,
+    messages: [
+      {
+        id: 'm-5',
+        chatId: 'chat-3',
+        senderId: 'u-3',
+        content: 'Merci beaucoup! See you in Paris next spring ✨',
+        timestamp: 'Yesterday',
+        isRead: true,
+      },
+    ],
+  },
+  {
+    id: 'chat-4',
+    friend: MOCK_USERS[4], // Marcus
+    lastMessage: 'Got back to basecamp safely. Photos coming soon!',
+    lastMessageTime: 'Friday',
+    unreadCount: 0,
+    isTyping: false,
+    messages: [
+      {
+        id: 'm-6',
+        chatId: 'chat-4',
+        senderId: 'u-4',
+        content: 'Got back to basecamp safely. Photos coming soon!',
+        timestamp: 'Friday',
+        isRead: true,
+      },
+    ],
+  },
+];
+
+export const MOCK_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'notif-1',
+    type: 'FRIEND_REQUEST',
+    actor: MOCK_USERS[5] || {
+      id: 'u-6',
+      username: 'sophie.noir',
+      fullName: 'Sophie Noir',
+      email: 'sophie@vibenet.io',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      coverImageUrl: '',
+      bio: '',
+      postsCount: 12,
+      friendsCount: 45,
+      momentsCount: 8,
+    },
+    content: 'sent you a friend connection request.',
+    createdAt: '10m ago',
+    timeAgo: '10m ago',
+    isRead: false,
+    friendRequestStatus: 'PENDING',
+  },
+  {
+    id: 'notif-2',
+    type: 'LOCKET_MOMENT',
+    actor: MOCK_USERS[1],
+    content: 'shared a new Locket moment with Close Friends.',
+    targetMediaUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=400&q=80',
+    createdAt: '25m ago',
+    timeAgo: '25m ago',
+    isRead: false,
+  },
+  {
+    id: 'notif-3',
+    type: 'REACTION',
+    actor: MOCK_USERS[2],
+    content: 'reacted ❤️ to your photo in Tokyo.',
+    targetMediaUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=400&q=80',
+    createdAt: '2h ago',
+    timeAgo: '2h ago',
+    isRead: true,
+  },
+  {
+    id: 'notif-4',
+    type: 'COMMENT',
+    actor: MOCK_USERS[3],
+    content: 'commented: "That shadow play is absolutely unreal!"',
+    targetMediaUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=400&q=80',
+    createdAt: '4h ago',
+    timeAgo: '4h ago',
+    isRead: true,
+  },
+];

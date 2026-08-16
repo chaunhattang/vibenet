@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babagang - Notifications</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f2f2f6;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      color: #000;
+    }
+
+    /* Mobile Frame Container */
+    .app-screen {
+      width: 100%;
+      max-width: 412px;
+      background: #ffffff;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 100px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      overflow-x: hidden;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .dynamic-island {
+      width: 90px;
+      height: 28px;
+      background: #000;
+      border-radius: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid #eaeaea;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      color: #000;
+      text-decoration: none;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #000000;
+      padding: 16px 20px 8px;
+      letter-spacing: -0.1px;
+    }
+
+    /* Notification Items List */
+    .notification-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .notification-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      gap: 12px;
+      transition: background 0.15s ease;
+    }
+
+    .notification-item:active {
+      background: #f8f8fa;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    .avatar-wrapper img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .icon-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #ffffff;
+      border: 2px solid #ffffff;
+    }
+
+    .icon-badge.like { background: #ff3b30; }
+    .icon-badge.follow { background: #007aff; }
+    .icon-badge.comment { background: #34c759; }
+
+    .notification-content {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #000000;
+    }
+
+    .username {
+      font-weight: 600;
+    }
+
+    .time-ago {
+      color: #8e8e93;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    /* Target Thumbnail or Action Button */
+    .target-thumbnail {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .btn-follow {
+      padding: 7px 16px;
+      border-radius: 18px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      background: #f2f2f7;
+      color: #000000;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .btn-follow.active {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    /* Floating Navigation Bar */
+    .floating-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 64px);
+      max-width: 348px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 40px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-item {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8e8e93;
+      text-decoration: none;
+      font-size: 18px;
+    }
+
+    .nav-item.active {
+      background: #ffffff;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-screen">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="dynamic-island"></div>
+      <div style="display: flex; gap: 6px; font-size: 12px;">
+        <i class="fa-solid fa-signal"></i>
+        <i class="fa-solid fa-wifi"></i>
+        <i class="fa-solid fa-battery-full"></i>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+      <a href="feed.html" class="icon-btn"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="header-title">Activity</div>
+      <button class="icon-btn"><i class="fa-solid fa-sliders"></i></button>
+    </header>
+
+    <div class="notification-list">
+      
+      <!-- TODAY SECTION -->
+      <div class="section-title">Today</div>
+
+      <div class="notification-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" alt="Irma">
+          <span class="icon-badge like"><i class="fa-solid fa-heart"></i></span>
+        </div>
+        <div class="notification-content">
+          <span class="username">Irma</span> and <span class="username">124 others</span> liked your post. <span class="time-ago">2h</span>
+        </div>
+        <img class="target-thumbnail" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200" alt="Post thumbnail">
+      </div>
+
+      <div class="notification-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" alt="Amanda">
+          <span class="icon-badge follow"><i class="fa-solid fa-user-plus"></i></span>
+        </div>
+        <div class="notification-content">
+          <span class="username">Amanda</span> started following you. <span class="time-ago">4h</span>
+        </div>
+        <button class="btn-follow active">Follow back</button>
+      </div>
+
+      <div class="notification-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Luiz">
+          <span class="icon-badge comment"><i class="fa-solid fa-comment"></i></span>
+        </div>
+        <div class="notification-content">
+          <span class="username">Luiz</span> commented: "Amazing framing on this photo! 🔥" <span class="time-ago">6h</span>
+        </div>
+        <img class="target-thumbnail" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200" alt="Post thumbnail">
+      </div>
+
+      <!-- THIS WEEK SECTION -->
+      <div class="section-title">This Week</div>
+
+      <div class="notification-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150" alt="Nina">
+          <span class="icon-badge follow"><i class="fa-solid fa-user-plus"></i></span>
+        </div>
+        <div class="notification-content">
+          <span class="username">Nina</span> started following you. <span class="time-ago">2d</span>
+        </div>
+        <button class="btn-follow">Following</button>
+      </div>
+
+      <div class="notification-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" alt="Izaa">
+          <span class="icon-badge like"><i class="fa-solid fa-heart"></i></span>
+        </div>
+        <div class="notification-content">
+          <span class="username">Izaa</span> and <span class="username">45 others</span> liked your comment. <span class="time-ago">4d</span>
+        </div>
+        <img class="target-thumbnail" src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200" alt="Post thumbnail">
+      </div>
+
+    </div>
+
+    <!-- Floating Navigation Bar -->
+    <nav class="floating-nav">
+      <a href="feed.html" class="nav-item"><i class="fa-regular fa-house"></i></a>
+      <a href="#" class="nav-item"><i class="fa-regular fa-compass"></i></a>
+      <a href="notifications.html" class="nav-item active"><i class="fa-solid fa-heart"></i></a>
+      <a href="profile.html" class="nav-item"><i class="fa-regular fa-user"></i></a>
+    </nav>
+  </div>
+
+</body>
+</html>

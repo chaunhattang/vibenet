@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babagang - Home Feed</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f2f2f6;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      color: #000;
+    }
+
+    /* Mobile Frame Container */
+    .app-screen {
+      width: 100%;
+      max-width: 412px;
+      background: #ffffff;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 90px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      overflow-x: hidden;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .dynamic-island {
+      width: 90px;
+      height: 28px;
+      background: #000;
+      border-radius: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid #eaeaea;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .notification-dot {
+      position: absolute;
+      top: 9px;
+      right: 11px;
+      width: 6px;
+      height: 6px;
+      background: #ff3b30;
+      border-radius: 50%;
+    }
+
+    /* Stories Bar */
+    .stories-container {
+      display: flex;
+      gap: 14px;
+      padding: 12px 20px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .stories-container::-webkit-scrollbar { display: none; }
+
+    .story-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 62px;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      padding: 2px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .avatar-wrapper.live {
+      border-color: #ff3b30;
+    }
+
+    .avatar-wrapper img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .live-badge {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .story-name {
+      font-size: 11px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    /* Feed Card */
+    .feed-card {
+      margin: 12px 16px;
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #f8f8f8;
+    }
+
+    .post-image {
+      width: 100%;
+      height: 420px;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Overlays on Card */
+    .card-top-overlay {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-pill {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 6px 12px 6px 6px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    .user-pill img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .user-info h4 {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .user-info p {
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    .more-btn {
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(16px);
+      border-radius: 50%;
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-bottom-overlay {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      color: #fff;
+    }
+
+    .post-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .caption {
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0.95;
+    }
+
+    .hashtags {
+      opacity: 0.75;
+    }
+
+    /* Floating Navigation Bar */
+    .floating-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 64px);
+      max-width: 348px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 40px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-item {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8e8e93;
+      text-decoration: none;
+      font-size: 18px;
+    }
+
+    .nav-item.active {
+      background: #ffffff;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-screen">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="dynamic-island"></div>
+      <div style="display: flex; gap: 6px; font-size: 12px;">
+        <i class="fa-solid fa-signal"></i>
+        <i class="fa-solid fa-wifi"></i>
+        <i class="fa-solid fa-battery-full"></i>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+      <button class="icon-btn"><i class="fa-solid fa-border-all"></i></button>
+      <div class="logo">Babagang</div>
+      <button class="icon-btn">
+        <i class="fa-regular fa-bell"></i>
+        <span class="notification-dot"></span>
+      </button>
+    </header>
+
+    <!-- Stories Bar -->
+    <div class="stories-container">
+      <div class="story-item">
+        <div class="avatar-wrapper live">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" alt="Irma">
+          <span class="live-badge">Live</span>
+        </div>
+        <span class="story-name">Irma</span>
+      </div>
+
+      <div class="story-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" alt="Amanda">
+        </div>
+        <span class="story-name">Amanda</span>
+      </div>
+
+      <div class="story-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Luiz">
+        </div>
+        <span class="story-name">Luiz</span>
+      </div>
+
+      <div class="story-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150" alt="Nina">
+        </div>
+        <span class="story-name">Nina</span>
+      </div>
+
+      <div class="story-item">
+        <div class="avatar-wrapper">
+          <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" alt="Izaa">
+        </div>
+        <span class="story-name">Izaa</span>
+      </div>
+    </div>
+
+    <!-- Feed Card 1 -->
+    <div class="feed-card">
+      <img class="post-image" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800" alt="Post">
+      
+      <div class="card-top-overlay">
+        <div class="user-pill">
+          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100" alt="User">
+          <div class="user-info">
+            <h4>Alana maesya <i class="fa-solid fa-circle-check" style="color: #1da1f2; font-size: 10px;"></i></h4>
+            <p>@Naisyaatxt</p>
+          </div>
+        </div>
+        <button class="more-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+      </div>
+
+      <div class="card-bottom-overlay">
+        <div class="post-stats">
+          <span class="stat-item"><i class="fa-regular fa-heart"></i> 1245</span>
+          <span class="stat-item"><i class="fa-regular fa-comment"></i> 173</span>
+          <span class="stat-item"><i class="fa-regular fa-paper-plane"></i> 229</span>
+        </div>
+        <p class="caption">Love your mine <span class="hashtags">#lovetoyou #foryourpage #beautifull #popular #peoplefrost</span></p>
+      </div>
+    </div>
+
+    <!-- Floating Navbar -->
+    <nav class="floating-nav">
+      <a href="feed.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
+      <a href="#" class="nav-item"><i class="fa-regular fa-compass"></i></a>
+      <a href="notifications.html" class="nav-item"><i class="fa-regular fa-heart"></i></a>
+      <a href="profile.html" class="nav-item"><i class="fa-regular fa-user"></i></a>
+    </nav>
+  </div>
+
+</body>
+</html>

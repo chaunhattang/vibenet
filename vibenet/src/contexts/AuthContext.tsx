@@ -1,100 +1,116 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { loginRequest, registerRequest } from '../api/auth';
-import { resolveMediaUrl, setTokens } from '../api/client';
-import { decodeJwtPayload } from '../api/jwt';
-import { getUserById } from '../api/users';
-import { CURRENT_USER_AVATAR, CURRENT_USER_ID } from '../constants';
-import { DEFAULT_COVER, mockProfiles } from '../data/mockData';
-import { ProfileDetails, UserResponse } from '../types';
+import React, { createContext, useContext, useState } from 'react';
+import { CURRENT_USER, MOCK_USERS, UserProfile } from '../data/mockData';
 
-// Lets the login screen work with no backend running — bypasses the real API entirely
-// and logs in as the pre-existing mock user ('me', keyed throughout mockData.ts) so the
-// rest of the still-mock screens (friends, chat, notifications, whispers) stay usable
-// for local UI testing. Not a security boundary — this is a demo/dev convenience only.
-const DEMO_USERNAME = CURRENT_USER_ID;
-const DEMO_PASSWORD = '123456';
-
-type LoginInput = { userName: string; password: string };
-type RegisterInput = { userName: string; email: string; password: string };
-
-type AuthContextValue = {
-  currentUserId: string | null;
-  currentUser: ProfileDetails | null;
-  login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+interface AuthContextType {
+  user: UserProfile | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (username: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { username: string; fullName: string; email: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
+  quickDemoLogin: (userIndex?: number) => void;
   logout: () => void;
-  updateCurrentUser: (updated: ProfileDetails) => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-// Backend users may not have set up a ProfileResponse yet (POST /api/profile is a
-// separate step) — fall back to sensible defaults rather than showing blanks.
-function toProfileDetails(user: UserResponse): ProfileDetails {
-  const profile = user.profileResponse;
-  return {
-    userId: user.id,
-    fullName: profile?.fullName || user.username,
-    handle: user.username,
-    bio: profile?.bio ?? '',
-    avatar: profile?.avatarUrl ? resolveMediaUrl(profile.avatarUrl) : CURRENT_USER_AVATAR,
-    coverImage: profile?.coverImageUrl ? resolveMediaUrl(profile.coverImageUrl) : DEFAULT_COVER,
-    phoneNumber: profile?.phoneNumber || undefined,
-    email: user.email,
-    dateOfBirth: profile?.dateOfBirth || undefined,
-    gender: profile?.gender,
-  };
+  updateCurrentUser: (updates: Partial<UserProfile>) => void;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<ProfileDetails | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  const login = useCallback(async ({ userName, password }: LoginInput) => {
-    if (userName.trim() === DEMO_USERNAME && password === DEMO_PASSWORD) {
-      setTokens(null);
-      setCurrentUserId(CURRENT_USER_ID);
-      setCurrentUser(mockProfiles[CURRENT_USER_ID]);
-      return;
-    }
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Default to logged in as CURRENT_USER for instant interactive UI development,
+  // but with full login / register capabilities.
+  const [user, setUser] = useState<UserProfile | null>(CURRENT_USER);
+  const [accessToken, setAccessToken] = useState<string | null>('mock-jwt-token-alexrivera');
+  const [refreshToken, setRefreshToken] = useState<string | null>('mock-refresh-token-alexrivera');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const tokenResponse = await loginRequest({ username: userName.trim(), password });
-    if (!tokenResponse) throw new Error('Invalid username or password.');
-    setTokens(tokenResponse);
+  const login = async (username: string, _password?: string) => {
+    setIsLoading(true);
+    await new Promise((res) => setTimeout(res, 600)); // Smooth UX delay
+    
+    // Find matching mock user or fallback
+    const targetUser = MOCK_USERS.find(
+      (u) => u.username.toLowerCase() === username.trim().toLowerCase() || u.email.toLowerCase() === username.trim().toLowerCase()
+    ) || {
+      ...CURRENT_USER,
+      username: username.trim(),
+      fullName: username.trim(),
+    };
 
-    const { sub: userId } = decodeJwtPayload(tokenResponse.accessToken) as { sub: string };
-    const user = await getUserById(userId);
-    if (!user) {
-      setTokens(null);
-      throw new Error('Could not load your account.');
-    }
+    setUser(targetUser);
+    setAccessToken(`mock-jwt-token-${targetUser.id}`);
+    setRefreshToken(`mock-refresh-token-${targetUser.id}`);
+    setIsLoading(false);
+    return { success: true };
+  };
 
-    setCurrentUserId(user.id);
-    setCurrentUser(toProfileDetails(user));
-  }, []);
+  const register = async (data: { username: string; fullName: string; email: string; password?: string }) => {
+    setIsLoading(true);
+    await new Promise((res) => setTimeout(res, 800));
 
-  const register = useCallback(async ({ userName, email, password }: RegisterInput) => {
-    await registerRequest({ username: userName.trim(), email: email.trim(), password });
-  }, []);
+    const newUser: UserProfile = {
+      id: `u-${Date.now()}`,
+      username: data.username.trim().toLowerCase(),
+      fullName: data.fullName.trim(),
+      email: data.email.trim().toLowerCase(),
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      coverImageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      bio: 'New explorer on VibeNet ✨',
+      postsCount: 0,
+      friendsCount: 0,
+      momentsCount: 0,
+      isOnline: true,
+      lastActiveAt: 'Just now',
+    };
 
-  const logout = useCallback(() => {
-    setTokens(null);
-    setCurrentUserId(null);
-    setCurrentUser(null);
-  }, []);
+    setUser(newUser);
+    setAccessToken(`mock-jwt-token-${newUser.id}`);
+    setRefreshToken(`mock-refresh-token-${newUser.id}`);
+    setIsLoading(false);
+    return { success: true };
+  };
 
-  const updateCurrentUser = useCallback((updated: ProfileDetails) => setCurrentUser(updated), []);
+  const quickDemoLogin = (userIndex: number = 0) => {
+    const selected = MOCK_USERS[userIndex % MOCK_USERS.length];
+    setUser(selected);
+    setAccessToken(`mock-jwt-token-${selected.id}`);
+    setRefreshToken(`mock-refresh-token-${selected.id}`);
+  };
 
-  const value = useMemo(
-    () => ({ currentUserId, currentUser, login, register, logout, updateCurrentUser }),
-    [currentUserId, currentUser, login, register, logout, updateCurrentUser],
+  const logout = () => {
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+  };
+
+  const updateCurrentUser = (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        accessToken,
+        refreshToken,
+        isAuthenticated: !!user && !!accessToken,
+        isLoading,
+        login,
+        register,
+        quickDemoLogin,
+        logout,
+        updateCurrentUser,
+      }}>
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
