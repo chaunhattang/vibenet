@@ -13,11 +13,13 @@ import vibe.net.backend.models.dtos.response.ApiResponse;
 import vibe.net.backend.models.dtos.response.PageResponse;
 import vibe.net.backend.models.dtos.response.UserResponse;
 import vibe.net.backend.models.dtos.response.VisitorResponse;
+import vibe.net.backend.services.interfaces.FollowService;
 import vibe.net.backend.services.interfaces.ProfileVisitService;
 import vibe.net.backend.services.interfaces.UserService;
 import vibe.net.backend.utils.SecurityUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class UserController {
     UserService userService;
     ProfileVisitService profileVisitService;
+    FollowService followService;
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping
@@ -94,5 +97,41 @@ public class UserController {
     public ApiResponse<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ApiResponse.<Void>builder().message("User deleted").build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PostMapping("/{userId}/follow")
+    public ApiResponse<Map<String, Object>> follow(@PathVariable UUID userId) {
+        return ApiResponse.<Map<String, Object>>builder().result(followService.follow(userId)).build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @DeleteMapping("/{userId}/follow")
+    public ApiResponse<Map<String, Object>> unfollow(@PathVariable UUID userId) {
+        return ApiResponse.<Map<String, Object>>builder().result(followService.unfollow(userId)).build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/{userId}/followers")
+    public ApiResponse<PageResponse<UserResponse>> getFollowers(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .result(followService.getFollowers(userId, page, size))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/{userId}/following")
+    public ApiResponse<PageResponse<UserResponse>> getFollowing(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .result(followService.getFollowing(userId, page, size))
+                .build();
     }
 }

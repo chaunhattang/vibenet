@@ -12,4 +12,6 @@ public interface CommentService {
     CommentResponse addComment(UUID postId, CommentRequest request);
 
     PageResponse<CommentResponse> getCommentsByPostId(UUID postId, int page, int size);
+
+    void deleteComment(UUID postId, UUID commentId);
 }

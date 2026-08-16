@@ -10,8 +10,11 @@ import java.util.List;
 @Mapper(componentModel = "spring", uses = PostMapper.class)
 public interface CommentMapper {
     @Mapping(source = "post.id", target = "postId")
+    @Mapping(source = "parentComment.id", target = "parentCommentId")
     @Mapping(source = "owner", target = "owner")
     @Mapping(source = "createdTime", target = "createdAt")
+    @Mapping(target = "likesCount", ignore = true)
+    @Mapping(target = "liked", ignore = true)
     CommentResponse toResponse(Comment comment);
 
     List<CommentResponse> toResponseList(List<Comment> comments);

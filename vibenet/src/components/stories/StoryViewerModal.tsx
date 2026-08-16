@@ -9,17 +9,20 @@ import {
   Dimensions,
   Animated,
   Platform,
-  SafeAreaView,
   TextInput,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { StoryItem } from '../../data/mockData';
+import { StoryUserGroupResponse } from '../../services/api/types';
+import * as storiesApi from '../../services/api/stories';
+import { resolveMediaUrl } from '../../services/config';
 import { Radii, Spacing, Typography } from '../../constants/theme';
 
 interface StoryViewerModalProps {
   visible: boolean;
-  stories: StoryItem[];
+  stories: StoryUserGroupResponse[];
   initialStoryIndex?: number;
   onClose: () => void;
 }
@@ -32,39 +35,57 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   initialStoryIndex = 0,
   onClose,
 }) => {
-  const [currentStoryIdx, setCurrentStoryIdx] = useState(initialStoryIndex);
+  const [currentGroupIdx, setCurrentGroupIdx] = useState(initialStoryIndex);
   const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const viewedRef = useRef<Set<string>>(new Set());
 
-  const activeStory = stories[currentStoryIdx] || stories[0];
-  const activeFrame = activeStory?.frames[currentFrameIdx] || activeStory?.frames[0];
-  const totalFrames = activeStory?.frames?.length || 1;
+  useEffect(() => {
+    if (visible) {
+      setCurrentGroupIdx(initialStoryIndex);
+      setCurrentFrameIdx(0);
+    }
+  }, [visible, initialStoryIndex]);
+
+  const activeGroup = stories[currentGroupIdx] || stories[0];
+  const activeFrame = activeGroup?.stories[currentFrameIdx] || activeGroup?.stories[0];
+  const totalFrames = activeGroup?.stories?.length || 1;
 
   const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Mark the frame currently on screen as viewed (once per story id).
+  useEffect(() => {
+    if (!visible || !activeFrame) return;
+    if (viewedRef.current.has(activeFrame.id)) return;
+    viewedRef.current.add(activeFrame.id);
+    storiesApi.markStoryViewed(activeFrame.id).catch(() => {
+      viewedRef.current.delete(activeFrame.id);
+    });
+  }, [visible, activeFrame]);
 
   const handleNext = useCallback(() => {
     if (currentFrameIdx < totalFrames - 1) {
       setCurrentFrameIdx((prev) => prev + 1);
-    } else if (currentStoryIdx < stories.length - 1) {
-      setCurrentStoryIdx((prev) => prev + 1);
+    } else if (currentGroupIdx < stories.length - 1) {
+      setCurrentGroupIdx((prev) => prev + 1);
       setCurrentFrameIdx(0);
     } else {
       onClose();
     }
-  }, [currentFrameIdx, totalFrames, currentStoryIdx, stories.length, onClose]);
+  }, [currentFrameIdx, totalFrames, currentGroupIdx, stories.length, onClose]);
 
   const handlePrev = useCallback(() => {
     if (currentFrameIdx > 0) {
       setCurrentFrameIdx((prev) => prev - 1);
-    } else if (currentStoryIdx > 0) {
-      setCurrentStoryIdx((prev) => prev - 1);
+    } else if (currentGroupIdx > 0) {
+      setCurrentGroupIdx((prev) => prev - 1);
       setCurrentFrameIdx(0);
     }
-  }, [currentFrameIdx, currentStoryIdx]);
+  }, [currentFrameIdx, currentGroupIdx]);
 
   useEffect(() => {
-    if (!visible || !activeStory) return;
+    if (!visible || !activeGroup) return;
 
     progressAnim.setValue(0);
     if (!isPaused) {
@@ -84,7 +105,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         progressAnim.stopAnimation();
       };
     }
-  }, [currentStoryIdx, currentFrameIdx, isPaused, visible, activeStory, activeFrame, handleNext, progressAnim]);
+  }, [currentGroupIdx, currentFrameIdx, isPaused, visible, activeGroup, activeFrame, handleNext, progressAnim]);
 
   const handlePressZone = (e: any) => {
     const x = e.nativeEvent.locationX;
@@ -95,7 +116,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
     }
   };
 
-  if (!visible || !activeStory || !activeFrame) return null;
+  if (!visible || !activeGroup || !activeFrame) return null;
 
   return (
     <Modal
@@ -104,9 +125,10 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
       transparent={false}
       onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
         {/* Story Background Image */}
         <Image
-          source={{ uri: activeFrame.mediaUrl }}
+          source={{ uri: resolveMediaUrl(activeFrame.mediaUrl) }}
           style={styles.storyImage}
           contentFit="cover"
         />
@@ -127,7 +149,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         <View style={styles.topOverlay}>
           {/* Segmented Progress Bars */}
           <View style={styles.progressRow}>
-            {activeStory.frames.map((_, idx) => (
+            {activeGroup.stories.map((_, idx) => (
               <View key={idx} style={styles.progressBarTrack}>
                 <Animated.View
                   style={[
@@ -153,15 +175,15 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
           <View style={styles.userInfoRow}>
             <View style={styles.userLeft}>
               <Image
-                source={{ uri: activeStory.user.avatarUrl }}
+                source={{ uri: resolveMediaUrl(activeGroup.avatarUrl) }}
                 style={styles.authorAvatar}
               />
               <View>
                 <Text style={styles.authorName}>
-                  {activeStory.user.fullName}
+                  {activeGroup.fullName || activeGroup.username}
                 </Text>
                 <Text style={styles.storyTime}>
-                  {activeFrame.createdAt || '1h ago'}
+                  {new Date(activeFrame.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
             </View>

@@ -238,4 +238,4 @@ export const Shadows = {
 };
 
 export const MaxContentWidth = 430;
-export const BottomTabInset = 84;
+export const BottomTabInset = 58;

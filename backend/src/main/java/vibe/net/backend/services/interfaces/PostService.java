@@ -24,4 +24,8 @@ public interface PostService {
     PageResponse<PostResponse> getPostsByUserIdPage(UUID userId, int page, int size);
 
     PageResponse<PostResponse> getFeedPostsPage(int page, int size);
+
+    PageResponse<PostResponse> getLikedPosts(int page, int size);
+
+    long incrementShareCount(UUID postId);
 }

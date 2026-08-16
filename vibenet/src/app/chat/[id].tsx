@@ -1,77 +1,126 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { MOCK_USERS, MOCK_CHATS, ChatMessage } from '../../data/mockData';
 import { Colors, Radii, Spacing, Typography, MaxContentWidth } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { getChatMessages, getOrCreateRoomWithFriend } from '../../services/api/chat';
+import { getUserById } from '../../services/api/users';
+import { onChatMessage, onRead, onTyping, sendChatMessage, sendRead, sendTyping } from '../../services/websocket';
+import type { ChatMessageResponse, UserResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
+
+let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user: currentUser } = useAuth();
 
-  const friend = MOCK_USERS.find((u) => u.id === id) || MOCK_USERS[1];
-  const initialChat = MOCK_CHATS.find((c) => c.friend.id === id);
-
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    initialChat?.messages || [
-      {
-        id: 'm-default-1',
-        chatId: `chat-${id}`,
-        senderId: friend.id,
-        content: `Hey! Glad to connect on VibeNet ✨`,
-        timestamp: '10:00 AM',
-        isRead: true,
-      },
-    ]
-  );
+  const [friend, setFriend] = useState<UserResponse | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [inputText, setInputText] = useState('');
+  const [friendIsTyping, setFriendIsTyping] = useState(false);
+  const [lastReadByFriend, setLastReadByFriend] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    if (!id || !currentUser) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [friendRes, roomChatId] = await Promise.all([getUserById(id), getOrCreateRoomWithFriend(id)]);
+        if (cancelled) return;
+        setFriend(friendRes);
+        setChatId(roomChatId);
+
+        const history = await getChatMessages(roomChatId, 0, 50);
+        if (cancelled) return;
+        setMessages(history.data.slice().reverse());
+      } catch (err) {
+        console.warn('Failed to load chat', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubscribe = onChatMessage((msg) => {
+      const isForThisChat =
+        (msg.senderId === id && msg.recipientId === currentUser.id) ||
+        (msg.senderId === currentUser.id && msg.recipientId === id);
+      if (isForThisChat) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [id, currentUser]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    const unsubTyping = onTyping(chatId, (e) => {
+      if (e.userId === id) setFriendIsTyping(e.isTyping);
+    });
+    const unsubRead = onRead(chatId, (e) => {
+      if (e.userId === id) setLastReadByFriend(e.lastMessageId);
+    });
+    return () => {
+      unsubTyping();
+      unsubRead();
+    };
+  }, [chatId, id]);
+
+  useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+
+    // Mark the latest incoming message as read.
+    if (chatId && currentUser && messages.length > 0) {
+      const last = messages[messages.length - 1];
+      if (last.senderId !== currentUser.id) {
+        sendRead(chatId, last.id);
+      }
+    }
+  }, [messages, chatId, currentUser]);
 
   const handleSendMessage = () => {
-    if (!inputText.trim() || !currentUser) return;
-
-    const newMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      chatId: `chat-${id}`,
-      senderId: currentUser.id,
-      content: inputText.trim(),
-      timestamp: 'Just now',
-      isRead: false,
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
+    if (!inputText.trim() || !currentUser || !id) return;
+    sendChatMessage(id, inputText.trim());
     setInputText('');
-
-    // Mock echo response after 1s for realistic feel
-    setTimeout(() => {
-      const replyMsg: ChatMessage = {
-        id: `m-reply-${Date.now()}`,
-        chatId: `chat-${id}`,
-        senderId: friend.id,
-        content: `Sounds awesome! 🔥 Let's sync up later today.`,
-        timestamp: 'Just now',
-        isRead: true,
-      };
-      setMessages((prev) => [...prev, replyMsg]);
-    }, 1200);
+    if (chatId) sendTyping(chatId, false);
   };
+
+  const handleChangeText = useCallback(
+    (text: string) => {
+      setInputText(text);
+      if (!chatId) return;
+      sendTyping(chatId, true);
+      if (typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => sendTyping(chatId, false), 2000);
+    },
+    [chatId]
+  );
+
+  const friendAvatarUrl = resolveMediaUrl(friend?.profileResponse?.avatarUrl);
+  const friendDisplayName = friend?.profileResponse?.fullName ?? friend?.username ?? '';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -88,24 +137,15 @@ export default function ChatDetailScreen() {
               <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/(tabs)/profile')}
-              style={styles.headerUser}>
+            <View style={styles.headerUser}>
               <View style={styles.avatarWrapper}>
-                <Image
-                  source={{ uri: friend.avatarUrl }}
-                  style={styles.headerAvatar}
-                />
-                {friend.isOnline && <View style={styles.onlineDot} />}
+                <Image source={{ uri: friendAvatarUrl }} style={styles.headerAvatar} />
               </View>
               <View>
-                <Text style={styles.userName}>{friend.fullName}</Text>
-                <Text style={styles.userStatus}>
-                  {friend.isOnline ? 'Active now' : friend.lastActiveAt || 'Offline'}
-                </Text>
+                <Text style={styles.userName}>{friendDisplayName}</Text>
+                <Text style={styles.userStatus}>{friendIsTyping ? 'Typing…' : 'Active'}</Text>
               </View>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.headerActions}>
               <TouchableOpacity activeOpacity={0.7} style={styles.actionIconBtn}>
@@ -122,51 +162,43 @@ export default function ChatDetailScreen() {
             ref={scrollViewRef}
             contentContainerStyle={styles.messagesScroll}
             showsVerticalScrollIndicator={false}>
-            {/* Timestamp Divider */}
-            <View style={styles.timeDivider}>
-              <Text style={styles.timeDividerText}>TODAY</Text>
-            </View>
-
-            {messages.map((msg) => {
-              const isMine = msg.senderId === currentUser?.id || msg.senderId === 'u-me';
+            {messages.map((msg, idx) => {
+              const isMine = msg.senderId === currentUser?.id;
+              const isLastMine = isMine && idx === messages.length - 1;
+              const wasSeen = isLastMine && lastReadByFriend === msg.id;
 
               return (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.messageRow,
-                    isMine ? styles.myMessageRow : styles.theirMessageRow,
-                  ]}>
-                  {!isMine && (
-                    <Image
-                      source={{ uri: friend.avatarUrl }}
-                      style={styles.messageBubbleAvatar}
-                    />
-                  )}
-
+                <View key={msg.id}>
                   <View
                     style={[
-                      styles.messageBubble,
-                      isMine ? styles.myBubble : styles.theirBubble,
+                      styles.messageRow,
+                      isMine ? styles.myMessageRow : styles.theirMessageRow,
                     ]}>
-                    <Text
-                      style={[
-                        styles.messageText,
-                        isMine ? styles.myMessageText : styles.theirMessageText,
-                      ]}>
-                      {msg.content}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.messageTimestamp,
-                        isMine ? styles.myTimestamp : styles.theirTimestamp,
-                      ]}>
-                      {msg.timestamp}
-                    </Text>
+                    {!isMine && (
+                      <Image source={{ uri: friendAvatarUrl }} style={styles.messageBubbleAvatar} />
+                    )}
+
+                    <View style={[styles.messageBubble, isMine ? styles.myBubble : styles.theirBubble]}>
+                      <Text style={[styles.messageText, isMine ? styles.myMessageText : styles.theirMessageText]}>
+                        {msg.content}
+                      </Text>
+                      <Text style={[styles.messageTimestamp, isMine ? styles.myTimestamp : styles.theirTimestamp]}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
                   </View>
+                  {wasSeen && <Text style={styles.seenLabel}>Seen</Text>}
                 </View>
               );
             })}
+            {friendIsTyping && (
+              <View style={[styles.messageRow, styles.theirMessageRow]}>
+                <Image source={{ uri: friendAvatarUrl }} style={styles.messageBubbleAvatar} />
+                <View style={[styles.messageBubble, styles.theirBubble]}>
+                  <Text style={styles.theirMessageText}>…</Text>
+                </View>
+              </View>
+            )}
           </ScrollView>
 
           {/* Bottom Message Input Bar */}
@@ -180,17 +212,14 @@ export default function ChatDetailScreen() {
                 placeholder="Message..."
                 placeholderTextColor={Colors.textPlaceholder}
                 value={inputText}
-                onChangeText={setInputText}
+                onChangeText={handleChangeText}
                 style={styles.textInput}
                 multiline
               />
             </View>
 
             {inputText.trim() ? (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleSendMessage}
-                style={styles.sendBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={handleSendMessage} style={styles.sendBtn}>
                 <Feather name="send" size={18} color="#FFFFFF" />
               </TouchableOpacity>
             ) : (
@@ -250,17 +279,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: Colors.surfaceMuted,
   },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.statusOnline,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
   userName: {
     ...Typography.bodyMedium,
     fontWeight: '700',
@@ -284,17 +302,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.four,
     gap: Spacing.three,
-  },
-  timeDivider: {
-    alignItems: 'center',
-    marginVertical: Spacing.two,
-  },
-  timeDividerText: {
-    ...Typography.caption,
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.textTertiary,
-    letterSpacing: 0.5,
   },
   messageRow: {
     flexDirection: 'row',
@@ -320,7 +327,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.lg,
   },
   myBubble: {
-    backgroundColor: Colors.textPrimary, // High-contrast black/charcoal
+    backgroundColor: Colors.textPrimary,
     borderBottomRightRadius: 4,
   },
   theirBubble: {
@@ -351,6 +358,13 @@ const styles = StyleSheet.create({
   },
   theirTimestamp: {
     color: Colors.textTertiary,
+  },
+  seenLabel: {
+    ...Typography.caption,
+    fontSize: 10,
+    color: Colors.textTertiary,
+    textAlign: 'right',
+    marginTop: 2,
   },
   composerContainer: {
     flexDirection: 'row',

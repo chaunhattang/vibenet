@@ -10,6 +10,7 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          animation: 'fade',
           tabBarStyle: { display: 'none' }, // Hide default tab bar in favor of floating glass bar
         }}>
         <Tabs.Screen name="index" options={{ title: 'Feed' }} />

@@ -1,121 +1,146 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
-  Dimensions,
   TextInput,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { MOCK_LOCKET_MOMENTS, LocketMomentItem } from '../../data/mockData';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { SendMomentModal } from '../../components/locket/SendMomentModal';
+import { getMomentsFeed, reactToMoment, viewMoment, type MomentFeedItemResponse } from '../../services/api/locket';
+import { resolveMediaUrl } from '../../services/config';
 
 export default function LocketScreen() {
   const { user } = useAuth();
-  const [moments, setMoments] = useState<LocketMomentItem[]>(MOCK_LOCKET_MOMENTS);
+  const [moments, setMoments] = useState<MomentFeedItemResponse[]>([]);
   const [activeMomentIdx, setActiveMomentIdx] = useState(0);
   const [replyText, setReplyText] = useState('');
   const [flyingEmojis, setFlyingEmojis] = useState<{ id: string; emoji: string }[]>([]);
+  const [isSendModalVisible, setIsSendModalVisible] = useState(false);
 
-  const activeMoment = moments[activeMomentIdx] || moments[0];
+  const activeMoment = moments[activeMomentIdx] ?? moments[0];
+
+  const load = useCallback(async () => {
+    try {
+      const feed = await getMomentsFeed(0, 20);
+      setMoments(feed.data);
+      setActiveMomentIdx(0);
+    } catch (err) {
+      console.warn('Failed to load moments feed', err);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  useEffect(() => {
+    if (activeMoment && activeMoment.viewedAt === null) {
+      viewMoment(activeMoment.momentId).catch(() => {});
+    }
+  }, [activeMoment]);
 
   const handleReactEmoji = (emoji: string) => {
     if (!user || !activeMoment) return;
 
-    // Add flying emoji animation effect
     const newFlying = { id: `fe-${Date.now()}-${Math.random()}`, emoji };
     setFlyingEmojis((prev) => [...prev, newFlying]);
 
-    // Update reactions on active moment
-    setMoments((prev) =>
-      prev.map((m, idx) =>
-        idx === activeMomentIdx
-          ? {
-              ...m,
-              reactions: [
-                ...m.reactions,
-                {
-                  id: `r-${Date.now()}`,
-                  emoji,
-                  user: user,
-                  createdAt: 'Just now',
-                },
-              ],
-            }
-          : m
-      )
-    );
+    reactToMoment(activeMoment.momentId, emoji).catch((err) => console.warn('React to moment failed', err));
 
     setTimeout(() => {
       setFlyingEmojis((prev) => prev.filter((item) => item.id !== newFlying.id));
     }, 1500);
   };
 
+  const handleSendMoment = () => {
+    load();
+  };
+
+  if (!activeMoment) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.container}>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No moments yet. Be the first to share one!</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIsSendModalVisible(true)}
+              style={styles.emptyStateBtn}>
+              <Text style={styles.emptyStateBtnText}>Send a moment</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <SendMomentModal
+          visible={isSendModalVisible}
+          onClose={() => setIsSendModalVisible(false)}
+          onSendMoment={handleSendMoment}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
       <View style={styles.container}>
         <View style={styles.contentWrapper}>
           {/* Top Header */}
           <View style={styles.header}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn}>
-              <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setIsSendModalVisible(true)}
+              style={styles.iconBtn}>
+              <Ionicons name="add" size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>Locket Moments</Text>
 
-            <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn}>
-              <Ionicons name="camera-reverse-outline" size={20} color="#FFFFFF" />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setIsSendModalVisible(true)}
+              style={styles.iconBtn}>
+              <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
-          {/* Audience / Recipient Selector Pill */}
           <View style={styles.audienceContainer}>
-            <TouchableOpacity activeOpacity={0.8} style={styles.audiencePill}>
+            <View style={styles.audiencePill}>
               <View style={styles.greenDot} />
-              <Text style={styles.audienceText}>
-                {activeMoment?.recipientGroup || 'All Close Friends'} (5)
-              </Text>
-              <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
-            </TouchableOpacity>
+              <Text style={styles.audienceText}>Close Friends</Text>
+            </View>
           </View>
 
-          {/* Scrollable Viewfinder Cards */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}>
-            {/* Viewfinder Moment Card */}
             <View style={styles.viewfinderCard}>
               <Image
-                source={{ uri: activeMoment.mediaUrl }}
+                source={{ uri: resolveMediaUrl(activeMoment.mediaUrl) }}
                 style={styles.momentImage}
                 contentFit="cover"
               />
 
-              {/* Author Badge Top-Left Overlay */}
               <View style={styles.authorBadge}>
-                <Image
-                  source={{ uri: activeMoment.author.avatarUrl }}
-                  style={styles.authorAvatar}
-                />
+                <Image source={{ uri: resolveMediaUrl(activeMoment.senderAvatarUrl) }} style={styles.authorAvatar} />
                 <View>
-                  <Text style={styles.authorName}>
-                    {activeMoment.author.fullName}
-                  </Text>
-                  <Text style={styles.momentTime}>
-                    {activeMoment.timeAgo} {activeMoment.location ? `• ${activeMoment.location}` : ''}
-                  </Text>
+                  <Text style={styles.authorName}>{activeMoment.senderName}</Text>
+                  <Text style={styles.momentTime}>{new Date(activeMoment.createdAt).toLocaleString()}</Text>
                 </View>
               </View>
 
-              {/* Flying Emojis Layer */}
               <View style={styles.flyingLayer} pointerEvents="none">
                 {flyingEmojis.map((item) => (
                   <Text key={item.id} style={styles.flyingEmojiText}>
@@ -124,7 +149,6 @@ export default function LocketScreen() {
                 ))}
               </View>
 
-              {/* Caption Overlay at Bottom of Card */}
               {activeMoment.caption ? (
                 <View style={styles.captionOverlay}>
                   <Text style={styles.captionText}>{activeMoment.caption}</Text>
@@ -132,7 +156,6 @@ export default function LocketScreen() {
               ) : null}
             </View>
 
-            {/* Reaction Pill Bar */}
             <View style={styles.reactionBarContainer}>
               <View style={styles.reactionPill}>
                 {['❤️', '🔥', '😮', '😂', '👏', '🥳'].map((emoji) => (
@@ -147,25 +170,6 @@ export default function LocketScreen() {
               </View>
             </View>
 
-            {/* Recent Reactions summary */}
-            {activeMoment.reactions.length > 0 && (
-              <View style={styles.reactionsSummaryRow}>
-                <Text style={styles.reactionsSummaryLabel}>Reactions:</Text>
-                <View style={styles.reactionsAvatars}>
-                  {activeMoment.reactions.slice(-4).map((r, i) => (
-                    <View key={i} style={styles.reactionAvatarPill}>
-                      <Text style={styles.reactionEmojiBadge}>{r.emoji}</Text>
-                      <Image
-                        source={{ uri: r.user.avatarUrl }}
-                        style={styles.reactionAvatarImg}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Moments Carousel Indicators */}
             <View style={styles.momentSwitcher}>
               {moments.map((_, idx) => (
                 <TouchableOpacity
@@ -179,16 +183,18 @@ export default function LocketScreen() {
               ))}
             </View>
 
-            {/* Quick Reply & Send Moment Input */}
             <View style={styles.replyBoxContainer}>
               <TextInput
-                placeholder={`Reply to ${activeMoment.author.fullName.split(' ')[0]}...`}
+                placeholder={`Reply to ${activeMoment.senderName.split(' ')[0]}...`}
                 placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={replyText}
                 onChangeText={setReplyText}
                 style={styles.replyInput}
               />
-              <TouchableOpacity activeOpacity={0.7} style={styles.cameraIconBtn}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsSendModalVisible(true)}
+                style={styles.cameraIconBtn}>
                 <Ionicons name="camera" size={20} color="#FFFFFF" />
               </TouchableOpacity>
               {replyText ? (
@@ -201,6 +207,12 @@ export default function LocketScreen() {
             </View>
           </ScrollView>
         </View>
+
+        <SendMomentModal
+          visible={isSendModalVisible}
+          onClose={() => setIsSendModalVisible(false)}
+          onSendMoment={handleSendMoment}
+        />
       </View>
     </SafeAreaView>
   );
@@ -220,6 +232,28 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.four,
+    paddingHorizontal: Spacing.six,
+  },
+  emptyStateText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyStateBtn: {
+    backgroundColor: Colors.statusCloseFriend,
+    paddingHorizontal: Spacing.six,
+    paddingVertical: Spacing.three,
+    borderRadius: Radii.pill,
+  },
+  emptyStateBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   header: {
     height: 56,
@@ -300,8 +334,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 6,
     borderRadius: Radii.pill,
-    // @ts-ignore
-    backdropFilter: 'blur(16px)',
   },
   authorAvatar: {
     width: 28,
@@ -328,8 +360,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two + 2,
     borderRadius: Radii.lg,
-    // @ts-ignore
-    backdropFilter: 'blur(16px)',
   },
   captionText: {
     color: '#FFFFFF',
@@ -368,35 +398,6 @@ const styles = StyleSheet.create({
   },
   emojiText: {
     fontSize: 24,
-  },
-  reactionsSummaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    marginBottom: Spacing.three,
-  },
-  reactionsSummaryLabel: {
-    ...Typography.caption,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  reactionsAvatars: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  reactionAvatarPill: {
-    position: 'relative',
-  },
-  reactionAvatarImg: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  reactionEmojiBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    fontSize: 10,
-    zIndex: 2,
   },
   momentSwitcher: {
     flexDirection: 'row',

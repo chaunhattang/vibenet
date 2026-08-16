@@ -8,23 +8,20 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { StoryItem } from '../../data/mockData';
+import { StoryUserGroupResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface StoryHighlightBarProps {
-  stories: StoryItem[];
-  onSelectStory: (story: StoryItem, index: number) => void;
-  onAddStory?: () => void;
+  stories: StoryUserGroupResponse[];
+  onSelectStory: (group: StoryUserGroupResponse, index: number) => void;
 }
 
 export const StoryHighlightBar: React.FC<StoryHighlightBarProps> = ({
   stories,
   onSelectStory,
-  onAddStory,
 }) => {
-  const { user } = useAuth();
+  if (stories.length === 0) return null;
 
   return (
     <View style={styles.container}>
@@ -32,83 +29,51 @@ export const StoryHighlightBar: React.FC<StoryHighlightBarProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        {/* My Story Item */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onAddStory}
-          style={styles.storyBubbleItem}>
-          <View style={styles.myAvatarContainer}>
-            <Image
-              source={{
-                uri:
-                  user?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-              }}
-              style={styles.avatarImage}
-            />
-            <View style={styles.plusIconBadge}>
-              <Ionicons name="add" size={14} color="#FFFFFF" />
-            </View>
-          </View>
-          <Text numberOfLines={1} style={styles.storyName}>
-            Your story
-          </Text>
-        </TouchableOpacity>
+        {stories.map((group, index) => {
+          const isViewed = !group.hasUnseenStories;
+          const ringGradient = isViewed
+            ? null
+            : (Colors.storyGradient as [string, string, ...string[]]);
 
-        {/* Other Users' Stories */}
-        {stories
-          .filter((s) => !s.isMyStory)
-          .map((story, index) => {
-            const isCloseFriend = story.isCloseFriend;
-            const isViewed = story.isViewed;
-            const isLive = story.isLive;
+          const displayName = group.fullName?.split(' ')[0] || group.username;
 
-            const ringGradient = isCloseFriend
-              ? (Colors.closeFriendGradient as [string, string, ...string[]])
-              : (Colors.storyGradient as [string, string, ...string[]]);
-
-            return (
+          return (
+            <View key={group.userId}>
               <TouchableOpacity
-                key={story.id}
                 activeOpacity={0.8}
-                onPress={() => onSelectStory(story, index + 1)}
+                onPress={() => onSelectStory(group, index)}
                 style={styles.storyBubbleItem}>
                 <View style={styles.avatarWrapper}>
                   {isViewed ? (
                     <View style={styles.viewedBorder}>
                       <Image
-                        source={{ uri: story.user.avatarUrl }}
+                        source={{ uri: resolveMediaUrl(group.avatarUrl) }}
                         style={styles.avatarImage}
                       />
                     </View>
                   ) : (
                     <LinearGradient
-                      colors={ringGradient}
+                      colors={ringGradient!}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.gradientRing}>
                       <View style={styles.avatarInner}>
                         <Image
-                          source={{ uri: story.user.avatarUrl }}
+                          source={{ uri: resolveMediaUrl(group.avatarUrl) }}
                           style={styles.avatarImage}
                         />
                       </View>
                     </LinearGradient>
                   )}
-
-                  {isLive && (
-                    <View style={styles.liveBadge}>
-                      <Text style={styles.liveBadgeText}>LIVE</Text>
-                    </View>
-                  )}
                 </View>
 
                 <Text numberOfLines={1} style={styles.storyName}>
-                  {story.user.username}
+                  {displayName}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -116,55 +81,45 @@ export const StoryHighlightBar: React.FC<StoryHighlightBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
     backgroundColor: Colors.bgMain,
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    gap: Spacing.four + 2,
     alignItems: 'center',
   },
   storyBubbleItem: {
     alignItems: 'center',
-    width: 68,
-  },
-  myAvatarContainer: {
-    position: 'relative',
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    padding: 2,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E8E8EC',
+    width: 76,
   },
   avatarWrapper: {
     position: 'relative',
-    width: 64,
-    height: 64,
+    width: 76,
+    height: 76,
     alignItems: 'center',
     justifyContent: 'center',
   },
   gradientRing: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    padding: 2.5,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 35,
     backgroundColor: '#FFFFFF',
-    padding: 2,
+    padding: 2.5,
   },
   viewedBorder: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    padding: 2,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    padding: 2.5,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
@@ -175,40 +130,12 @@ const styles = StyleSheet.create({
     borderRadius: Radii.pill,
     backgroundColor: Colors.surfaceMuted,
   },
-  plusIconBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.accentBlue,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveBadge: {
-    position: 'absolute',
-    bottom: -4,
-    backgroundColor: Colors.statusLive,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: Radii.pill,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  liveBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
   storyName: {
     ...Typography.caption,
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginTop: Spacing.one,
+    marginTop: 6,
     textAlign: 'center',
     width: '100%',
   },

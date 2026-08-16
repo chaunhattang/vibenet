@@ -11,5 +11,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PostCreationRequest {
     String textContent;
+    String location;
+    List<String> textGradient;
     List<MultipartFile> mediaFiles;
 }

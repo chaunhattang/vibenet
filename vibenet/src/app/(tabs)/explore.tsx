@@ -1,77 +1,93 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TextInput,
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
+import * as exploreApi from '../../services/api/explore';
+import type { ExploreItemResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (Math.min(SCREEN_WIDTH, MaxContentWidth) - 32 - 10) / 2;
 
-const EXPLORE_ITEMS = [
-  {
-    id: 'exp-1',
-    uri: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 1.3,
-    likes: '1.4k',
-    tag: 'Architecture',
-  },
-  {
-    id: 'exp-2',
-    uri: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 0.8,
-    likes: '890',
-    tag: 'Tokyo',
-  },
-  {
-    id: 'exp-3',
-    uri: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 0.9,
-    likes: '2.1k',
-    tag: 'Minimalism',
-  },
-  {
-    id: 'exp-4',
-    uri: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 1.2,
-    likes: '3.4k',
-    tag: 'Portraits',
-  },
-  {
-    id: 'exp-5',
-    uri: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 1.1,
-    likes: '1.8k',
-    tag: 'Film',
-  },
-  {
-    id: 'exp-6',
-    uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    aspectRatio: 1.0,
-    likes: '950',
-    tag: 'Architecture',
-  },
-];
+const CATEGORIES = ['All', 'Photography', 'Architecture', 'Nature', 'Art'];
 
-const CATEGORIES = ['All', 'Architecture', 'Tokyo', 'Minimalism', 'Portraits', 'Film'];
+function formatCount(count: number) {
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return count.toString();
+}
 
 export default function ExploreScreen() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<ExploreItemResponse[]>([]);
 
-  const filteredItems = EXPLORE_ITEMS.filter((item) => {
-    if (activeCategory !== 'All' && item.tag !== activeCategory) return false;
-    if (searchQuery && !item.tag.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
+  const load = useCallback(async (category: string) => {
+    setIsLoading(true);
+    try {
+      const page = await exploreApi.getExploreGrid(category === 'All' ? 'all' : category.toLowerCase(), 0, 30);
+      setItems(page.data);
+    } catch (err) {
+      console.warn('Failed to load explore grid', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(activeCategory);
+  }, [activeCategory, load]);
+
+  const filteredItems = items.filter((item) => {
+    if (!searchQuery) return true;
+    return item.author.username.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  const handlePressItem = (item: ExploreItemResponse) => {
+    router.push(`/profile/${item.author.id}` as any);
+  };
+
+  const renderCard = (item: ExploreItemResponse) => (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.9}
+      onPress={() => handlePressItem(item)}
+      style={[styles.gridCard, { height: GRID_ITEM_WIDTH * 1.1 }]}>
+      <Image
+        source={{ uri: resolveMediaUrl(item.thumbnailUrl || item.mediaUrl) }}
+        style={styles.gridImage}
+        contentFit="cover"
+      />
+      {item.type === 'REEL' && (
+        <View style={styles.reelBadge}>
+          <Ionicons name="play" size={10} color="#FFFFFF" />
+        </View>
+      )}
+      <View style={styles.gridOverlay}>
+        <View style={styles.likesBadge}>
+          <Ionicons name="heart" size={12} color="#FFFFFF" />
+          <Text style={styles.likesText}>{formatCount(item.likesCount)}</Text>
+        </View>
+        <View style={styles.tagBadge}>
+          <Text style={styles.tagText}>@{item.author.username}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -82,7 +98,7 @@ export default function ExploreScreen() {
             <View style={styles.searchBox}>
               <Ionicons name="search" size={18} color={Colors.textTertiary} />
               <TextInput
-                placeholder="Search styles, tags, creators..."
+                placeholder="Search creators..."
                 placeholderTextColor={Colors.textPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -123,72 +139,33 @@ export default function ExploreScreen() {
             </ScrollView>
           </View>
 
-          {/* Masonry Grid */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}>
-            <View style={styles.gridRow}>
-              {/* Column 1 */}
-              <View style={styles.gridColumn}>
-                {filteredItems
-                  .filter((_, i) => i % 2 === 0)
-                  .map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.9}
-                      style={[
-                        styles.gridCard,
-                        { height: GRID_ITEM_WIDTH * item.aspectRatio },
-                      ]}>
-                      <Image
-                        source={{ uri: item.uri }}
-                        style={styles.gridImage}
-                        contentFit="cover"
-                      />
-                      <View style={styles.gridOverlay}>
-                        <View style={styles.likesBadge}>
-                          <Ionicons name="heart" size={12} color="#FFFFFF" />
-                          <Text style={styles.likesText}>{item.likes}</Text>
-                        </View>
-                        <View style={styles.tagBadge}>
-                          <Text style={styles.tagText}>{item.tag}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+          {/* Masonry Grid or Skeleton */}
+          {isLoading ? (
+            <ExploreSkeleton />
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}>
+              <View style={styles.gridRow}>
+                {/* Column 1 */}
+                <View style={styles.gridColumn}>
+                  {filteredItems.filter((_, i) => i % 2 === 0).map(renderCard)}
+                </View>
+
+                {/* Column 2 */}
+                <View style={styles.gridColumn}>
+                  {filteredItems.filter((_, i) => i % 2 === 1).map(renderCard)}
+                </View>
               </View>
 
-              {/* Column 2 */}
-              <View style={styles.gridColumn}>
-                {filteredItems
-                  .filter((_, i) => i % 2 === 1)
-                  .map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.9}
-                      style={[
-                        styles.gridCard,
-                        { height: GRID_ITEM_WIDTH * item.aspectRatio },
-                      ]}>
-                      <Image
-                        source={{ uri: item.uri }}
-                        style={styles.gridImage}
-                        contentFit="cover"
-                      />
-                      <View style={styles.gridOverlay}>
-                        <View style={styles.likesBadge}>
-                          <Ionicons name="heart" size={12} color="#FFFFFF" />
-                          <Text style={styles.likesText}>{item.likes}</Text>
-                        </View>
-                        <View style={styles.tagBadge}>
-                          <Text style={styles.tagText}>{item.tag}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-              </View>
-            </View>
-          </ScrollView>
+              {filteredItems.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Ionicons name="compass-outline" size={36} color={Colors.textTertiary} />
+                  <Text style={styles.emptyStateText}>Nothing to explore yet</Text>
+                </View>
+              )}
+            </ScrollView>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -281,6 +258,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  reelBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   gridOverlay: {
     position: 'absolute',
     bottom: Spacing.two,
@@ -314,5 +302,17 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 9,
     fontWeight: '700',
+  },
+  emptyState: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.eight,
+    gap: Spacing.two,
+  },
+  emptyStateText: {
+    ...Typography.bodyMedium,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
 });

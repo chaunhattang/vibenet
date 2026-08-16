@@ -7,8 +7,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { GlassInput } from '../../components/ui/GlassInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { createProfile } from '../../services/api/users';
 import {
   Colors,
   Radii,
@@ -26,7 +27,7 @@ import {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, isLoading } = useAuth();
+  const { register, refreshCurrentUser, isLoading } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -53,18 +54,23 @@ export default function RegisterScreen() {
     }
 
     setError('');
-    const res = await register({
-      fullName,
-      username,
-      email,
-      password,
-    });
+    const res = await register({ username, email, password });
 
-    if (res.success) {
-      router.replace('/(tabs)');
-    } else {
+    if (!res.success) {
       setError(res.error || 'Registration failed. Please try again.');
+      return;
     }
+
+    try {
+      const form = new FormData();
+      form.append('fullName', fullName);
+      await createProfile(form);
+      await refreshCurrentUser();
+    } catch {
+      // Profile creation failing shouldn't block entry — the user can fill it in from Edit Profile.
+    }
+
+    router.replace('/(tabs)');
   };
 
   return (

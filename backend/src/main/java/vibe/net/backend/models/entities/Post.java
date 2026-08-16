@@ -23,6 +23,19 @@ public class Post {
 
     String textContent;
 
+    String location;
+
+    @ElementCollection
+    @CollectionTable(name = "post_text_gradient", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "color")
+    @OrderColumn(name = "position")
+    @Builder.Default
+    List<String> textGradient = new ArrayList<>();
+
+    @Column(name = "shares_count")
+    @Builder.Default
+    long sharesCount = 0L;
+
     @ElementCollection
     @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id"))
     @Column(name = "media_url")

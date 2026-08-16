@@ -21,6 +21,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
+    @Column(unique = true, nullable = false)
     String username;
 
     String hashedPassword;
@@ -28,6 +29,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     Role role;
 
+    @Column(unique = true, nullable = false)
     String email;
 
     String phoneNumber;

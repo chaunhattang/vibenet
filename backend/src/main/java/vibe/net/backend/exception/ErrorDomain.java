@@ -18,6 +18,10 @@ public enum ErrorDomain {
     USER(600, 699),
     LOCKET(700, 799),
     DEVICE(800, 899),
+    SAVED_POST(900, 929),
+    FOLLOW(930, 969),
+    REEL(970, 984),
+    STORY(985, 999),
     SYSTEM(1000, 2000)
     ;
 

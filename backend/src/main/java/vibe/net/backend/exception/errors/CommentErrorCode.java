@@ -14,7 +14,8 @@ import vibe.net.backend.exception.ErrorDomain;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum CommentErrorCode implements ErrorCodeInterface {
-    NOT_FOUND(1, "Comment not found", HttpStatus.NOT_FOUND)
+    NOT_FOUND(1, "Comment not found", HttpStatus.NOT_FOUND),
+    UNAUTHORIZED(2, "Not authorized to modify this comment", HttpStatus.FORBIDDEN)
     ;
 
     int relativeCode;

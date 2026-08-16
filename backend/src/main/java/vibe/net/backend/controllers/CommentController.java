@@ -38,4 +38,11 @@ public class CommentController {
                 .result(commentService.getCommentsByPostId(postId, page, size))
                 .build();
     }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @DeleteMapping("/{commentId}")
+    public ApiResponse<Void> deleteComment(@PathVariable UUID postId, @PathVariable UUID commentId) {
+        commentService.deleteComment(postId, commentId);
+        return ApiResponse.<Void>builder().message("Comment deleted").build();
+    }
 }

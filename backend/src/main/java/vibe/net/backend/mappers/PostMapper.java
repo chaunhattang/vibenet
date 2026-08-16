@@ -14,6 +14,7 @@ public interface PostMapper {
     @Mapping(target = "commentCount", ignore = true)
     @Mapping(target = "reactionCount", ignore = true)
     @Mapping(target = "currentReaction", ignore = true)
+    @Mapping(target = "saved", ignore = true)
     PostResponse toResponse(Post post);
 
     List<PostResponse> toResponseList(List<Post> posts);

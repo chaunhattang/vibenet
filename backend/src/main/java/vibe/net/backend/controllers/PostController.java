@@ -10,9 +10,11 @@ import vibe.net.backend.models.dtos.response.ApiResponse;
 import vibe.net.backend.models.dtos.response.PageResponse;
 import vibe.net.backend.models.dtos.response.PostResponse;
 import vibe.net.backend.services.interfaces.PostService;
+import vibe.net.backend.services.interfaces.SavedPostService;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -21,6 +23,7 @@ import java.util.UUID;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class PostController {
     PostService postService;
+    SavedPostService savedPostService;
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @PostMapping(consumes = "multipart/form-data")
@@ -73,6 +76,47 @@ public class PostController {
     ) {
         return ApiResponse.<PageResponse<PostResponse>>builder()
                 .result(postService.getFeedPostsPage(page, size))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PostMapping("/{postId}/save")
+    public ApiResponse<Map<String, Boolean>> toggleSave(@PathVariable UUID postId) {
+        boolean isSaved = savedPostService.toggleSave(postId);
+        return ApiResponse.<Map<String, Boolean>>builder()
+                .result(Map.of("isSaved", isSaved))
+                .message(isSaved ? "Post saved" : "Post unsaved")
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/saved")
+    public ApiResponse<PageResponse<PostResponse>> getSavedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.<PageResponse<PostResponse>>builder()
+                .result(savedPostService.getSavedPosts(page, size))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/liked")
+    public ApiResponse<PageResponse<PostResponse>> getLikedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.<PageResponse<PostResponse>>builder()
+                .result(postService.getLikedPosts(page, size))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PostMapping("/{postId}/share")
+    public ApiResponse<Map<String, Long>> incrementShareCount(@PathVariable UUID postId) {
+        long sharesCount = postService.incrementShareCount(postId);
+        return ApiResponse.<Map<String, Long>>builder()
+                .result(Map.of("sharesCount", sharesCount))
                 .build();
     }
 }

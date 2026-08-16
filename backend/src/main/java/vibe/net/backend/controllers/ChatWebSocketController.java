@@ -40,11 +40,57 @@ public class ChatWebSocketController {
         messagingTemplate.convertAndSend("/user/" + senderId + "/queue/messages", saved);
     }
 
+    @MessageMapping("/chat.typing")
+    public void typing(@Payload TypingRequest request, Principal principal) {
+        UUID userId = UUID.fromString(principal.getName());
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + request.getChatId() + "/typing",
+                new TypingEvent(userId, request.isTyping()));
+    }
+
+    @MessageMapping("/chat.read")
+    public void read(@Payload ReadRequest request, Principal principal) {
+        UUID userId = UUID.fromString(principal.getName());
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + request.getChatId() + "/read",
+                new ReadEvent(userId, request.getLastMessageId()));
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ChatWsRequest {
         private UUID recipientId;
         private String content;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TypingRequest {
+        private String chatId;
+        private boolean isTyping;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReadRequest {
+        private String chatId;
+        private UUID lastMessageId;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class TypingEvent {
+        private UUID userId;
+        private boolean isTyping;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class ReadEvent {
+        private UUID userId;
+        private UUID lastMessageId;
     }
 }

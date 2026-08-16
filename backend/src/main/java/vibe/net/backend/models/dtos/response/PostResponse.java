@@ -17,9 +17,13 @@ public class PostResponse {
     UUID id;
     PostOwnerResponse owner;
     String textContent;
+    String location;
+    List<String> textGradient;
     List<String> mediaUrl;
     int commentCount;
     int reactionCount;
+    long sharesCount;
     ReactionType currentReaction;
+    boolean saved;
     LocalDateTime createdAt;
 }

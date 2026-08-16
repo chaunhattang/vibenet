@@ -1,36 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Dimensions,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  FadeIn,
+} from 'react-native-reanimated';
 import { useAuth } from '../../contexts/AuthContext';
-import { MOCK_POSTS, MOCK_USERS } from '../../data/mockData';
+import * as postsApi from '../../services/api/posts';
+import * as friendsApi from '../../services/api/friends';
+import type { PostResponse, UserResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_ITEM_SIZE = (Math.min(SCREEN_WIDTH, MaxContentWidth) - 32 - 10) / 2;
+const CONTAINER_WIDTH = Math.min(SCREEN_WIDTH, MaxContentWidth);
+const TAB_WIDTH = CONTAINER_WIDTH / 4;
+const GRID_ITEM_SIZE = (CONTAINER_WIDTH - 32 - 10) / 2;
 
 type ProfileTab = 'posts' | 'liked' | 'saved' | 'friends';
+
+const TAB_INDEX_MAP: Record<ProfileTab, number> = {
+  posts: 0,
+  liked: 1,
+  saved: 2,
+  friends: 3,
+};
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+const DEFAULT_COVER = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const myPosts = MOCK_POSTS;
-  const savedPosts = MOCK_POSTS.filter((p) => p.isSaved);
-  const likedPosts = MOCK_POSTS.filter((p) => p.isLiked);
+  const [myPosts, setMyPosts] = useState<PostResponse[]>([]);
+  const [likedPosts, setLikedPosts] = useState<PostResponse[]>([]);
+  const [savedPosts, setSavedPosts] = useState<PostResponse[]>([]);
+  const [friends, setFriends] = useState<UserResponse[]>([]);
 
-  const renderGrid = (posts: typeof MOCK_POSTS) => (
-    <View style={styles.gridContainer}>
+  const loadTab = useCallback(
+    async (tab: ProfileTab) => {
+      if (!user) return;
+      try {
+        if (tab === 'posts' && myPosts.length === 0) {
+          const page = await postsApi.getPostsByUser(user.id);
+          setMyPosts(page.data);
+        } else if (tab === 'liked' && likedPosts.length === 0) {
+          const page = await postsApi.getLikedPosts();
+          setLikedPosts(page.data);
+        } else if (tab === 'saved' && savedPosts.length === 0) {
+          const page = await postsApi.getSavedPosts();
+          setSavedPosts(page.data);
+        } else if (tab === 'friends' && friends.length === 0) {
+          const list = await friendsApi.getUserFriends(user.id);
+          setFriends(list);
+        }
+      } catch (err) {
+        console.warn('Failed to load profile tab', tab, err);
+      }
+    },
+    [user, myPosts.length, likedPosts.length, savedPosts.length, friends.length]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    setIsLoading(true);
+    postsApi
+      .getPostsByUser(user.id)
+      .then((page) => setMyPosts(page.data))
+      .catch((err) => console.warn('Failed to load posts', err))
+      .finally(() => setIsLoading(false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadTab(activeTab);
+  }, [activeTab, loadTab]);
+
+  // Smooth linear tab indicator slide
+  const indicatorTranslateX = useSharedValue(0);
+
+  useEffect(() => {
+    const targetX = TAB_INDEX_MAP[activeTab] * TAB_WIDTH;
+    indicatorTranslateX.value = withTiming(targetX, { duration: 160 });
+  }, [activeTab]);
+
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorTranslateX.value }],
+  }));
+
+  const handleSwitchTab = (tab: ProfileTab) => {
+    if (tab !== activeTab) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+      setActiveTab(tab);
+    }
+  };
+
+  const renderGrid = (posts: PostResponse[]) => (
+    <Animated.View
+      key={`grid-${activeTab}`}
+      entering={FadeIn.duration(150)}
+      style={styles.gridContainer}>
       {posts.map((post) => (
         <TouchableOpacity
           key={post.id}
@@ -38,18 +128,18 @@ export default function ProfileScreen() {
           onPress={() => router.push('/(tabs)')}
           style={styles.gridItem}>
           <Image
-            source={{ uri: post.mediaUrls[0] }}
+            source={{ uri: resolveMediaUrl(post.mediaUrl[0]) }}
             style={styles.gridItemImg}
             contentFit="cover"
           />
           <View style={styles.gridItemOverlay}>
             <View style={styles.gridStat}>
               <Ionicons name="heart" size={12} color="#FFFFFF" />
-              <Text style={styles.gridStatText}>{post.likesCount}</Text>
+              <Text style={styles.gridStatText}>{post.reactionCount}</Text>
             </View>
             <View style={styles.gridStat}>
               <Ionicons name="chatbubble" size={12} color="#FFFFFF" />
-              <Text style={styles.gridStatText}>{post.commentsCount}</Text>
+              <Text style={styles.gridStatText}>{post.commentCount}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -61,20 +151,23 @@ export default function ProfileScreen() {
           <Text style={styles.emptyTabTitle}>No posts here yet</Text>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   const renderFriendsList = () => (
-    <View style={styles.friendsListContainer}>
-      {MOCK_USERS.map((friend) => (
+    <Animated.View
+      key="friends-list"
+      entering={FadeIn.duration(150)}
+      style={styles.friendsListContainer}>
+      {friends.map((friend) => (
         <TouchableOpacity
           key={friend.id}
           activeOpacity={0.7}
           onPress={() => router.push(`/chat/${friend.id}` as any)}
           style={styles.friendCard}>
-          <Image source={{ uri: friend.avatarUrl }} style={styles.friendAvatar} />
+          <Image source={{ uri: resolveMediaUrl(friend.profileResponse?.avatarUrl) || DEFAULT_AVATAR }} style={styles.friendAvatar} />
           <View style={styles.friendDetails}>
-            <Text style={styles.friendName}>{friend.fullName}</Text>
+            <Text style={styles.friendName}>{friend.profileResponse?.fullName || friend.username}</Text>
             <Text style={styles.friendHandle}>@{friend.username}</Text>
           </View>
           <TouchableOpacity
@@ -84,8 +177,17 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       ))}
-    </View>
+
+      {friends.length === 0 && (
+        <View style={styles.emptyTabState}>
+          <Feather name="users" size={36} color={Colors.textTertiary} />
+          <Text style={styles.emptyTabTitle}>No friends yet</Text>
+        </View>
+      )}
+    </Animated.View>
   );
+
+  const profile = user?.profileResponse;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -93,7 +195,7 @@ export default function ProfileScreen() {
         <View style={styles.contentWrapper}>
           {/* Top Bar Actions */}
           <View style={styles.topBar}>
-            <Text style={styles.topUsername}>@{user?.username || 'alexrivera'}</Text>
+            <Text style={styles.topUsername}>@{user?.username || ''}</Text>
             <View style={styles.topRightBtns}>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -110,17 +212,16 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}>
+          {isLoading ? (
+            <ProfileSkeleton />
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}>
             {/* Cover Banner */}
             <View style={styles.coverContainer}>
               <Image
-                source={{
-                  uri:
-                    user?.coverImageUrl ||
-                    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-                }}
+                source={{ uri: resolveMediaUrl(profile?.coverImageUrl) || DEFAULT_COVER }}
                 style={styles.coverImage}
                 contentFit="cover"
               />
@@ -129,11 +230,7 @@ export default function ProfileScreen() {
             {/* Avatar Floating Center */}
             <View style={styles.avatarContainer}>
               <Image
-                source={{
-                  uri:
-                    user?.avatarUrl ||
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                }}
+                source={{ uri: resolveMediaUrl(profile?.avatarUrl) || DEFAULT_AVATAR }}
                 style={styles.avatarImg}
               />
             </View>
@@ -141,48 +238,31 @@ export default function ProfileScreen() {
             {/* User Details */}
             <View style={styles.profileInfoSection}>
               <View style={styles.nameRow}>
-                <Text style={styles.fullName}>{user?.fullName || 'Alex Rivera'}</Text>
-                {user?.isVerified && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={Colors.accentBlue}
-                  />
-                )}
+                <Text style={styles.fullName}>{profile?.fullName || user?.username || ''}</Text>
               </View>
-              <Text style={styles.handleText}>@{user?.username || 'alexrivera'}</Text>
 
-              {user?.bio ? <Text style={styles.bioText}>{user.bio}</Text> : null}
-
-              {user?.website ? (
-                <View style={styles.websiteRow}>
-                  <Feather name="link" size={12} color={Colors.accentBlue} />
-                  <Text style={styles.websiteText}>{user.website}</Text>
-                </View>
-              ) : null}
+              <Text style={styles.bioText}>{profile?.bio || 'No bio yet.'}</Text>
             </View>
 
-            {/* Stats Row */}
-            <View style={styles.statsCard}>
+            {/* Metrics Row */}
+            <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{user?.postsCount || 42}</Text>
+                <Text style={styles.statNumber}>{myPosts.length}</Text>
                 <Text style={styles.statLabel}>Posts</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{user?.friendsCount || 384}</Text>
+                <Text style={styles.statNumber}>{friends.length}</Text>
                 <Text style={styles.statLabel}>Friends</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{user?.momentsCount || 128}</Text>
-                <Text style={styles.statLabel}>Moments</Text>
               </View>
             </View>
 
             {/* Action Buttons: Edit Profile & Share */}
             <View style={styles.actionButtonsRow}>
-              <TouchableOpacity activeOpacity={0.8} style={styles.primaryActionBtn}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setIsEditModalVisible(true)}
+                style={styles.primaryActionBtn}>
                 <Text style={styles.primaryActionText}>Edit Profile</Text>
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.8} style={styles.secondaryActionBtn}>
@@ -190,60 +270,78 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Profile Tabs Switcher */}
-            <View style={styles.tabsRow}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActiveTab('posts')}
-                style={[styles.tabBtn, activeTab === 'posts' && styles.activeTabBtn]}>
-                <Feather
-                  name="grid"
-                  size={20}
-                  color={activeTab === 'posts' ? Colors.textPrimary : Colors.textTertiary}
-                />
-              </TouchableOpacity>
+            {/* Profile Tabs Switcher with Spring Gliding Indicator */}
+            <View style={styles.tabsRowWrapper}>
+              <View style={styles.tabsRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleSwitchTab('posts')}
+                  style={styles.tabBtn}>
+                  <Feather
+                    name="grid"
+                    size={20}
+                    color={activeTab === 'posts' ? Colors.textPrimary : Colors.textTertiary}
+                  />
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActiveTab('liked')}
-                style={[styles.tabBtn, activeTab === 'liked' && styles.activeTabBtn]}>
-                <Ionicons
-                  name={activeTab === 'liked' ? 'heart' : 'heart-outline'}
-                  size={22}
-                  color={activeTab === 'liked' ? Colors.statusLive : Colors.textTertiary}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleSwitchTab('liked')}
+                  style={styles.tabBtn}>
+                  <Ionicons
+                    name={activeTab === 'liked' ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={activeTab === 'liked' ? Colors.statusLive : Colors.textTertiary}
+                  />
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActiveTab('saved')}
-                style={[styles.tabBtn, activeTab === 'saved' && styles.activeTabBtn]}>
-                <Ionicons
-                  name={activeTab === 'saved' ? 'bookmark' : 'bookmark-outline'}
-                  size={20}
-                  color={activeTab === 'saved' ? Colors.accentBlue : Colors.textTertiary}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleSwitchTab('saved')}
+                  style={styles.tabBtn}>
+                  <Ionicons
+                    name={activeTab === 'saved' ? 'bookmark' : 'bookmark-outline'}
+                    size={20}
+                    color={activeTab === 'saved' ? Colors.accentBlue : Colors.textTertiary}
+                  />
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActiveTab('friends')}
-                style={[styles.tabBtn, activeTab === 'friends' && styles.activeTabBtn]}>
-                <Feather
-                  name="users"
-                  size={20}
-                  color={activeTab === 'friends' ? Colors.textPrimary : Colors.textTertiary}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleSwitchTab('friends')}
+                  style={styles.tabBtn}>
+                  <Feather
+                    name="users"
+                    size={20}
+                    color={activeTab === 'friends' ? Colors.textPrimary : Colors.textTertiary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Sliding Spring Indicator Line */}
+              <Animated.View
+                style={[
+                  styles.activeIndicatorLine,
+                  { width: TAB_WIDTH },
+                  animatedIndicatorStyle,
+                ]}
+              />
             </View>
 
-            {/* Tab Contents */}
+            {/* Animated Tab Contents */}
             {activeTab === 'posts' && renderGrid(myPosts)}
             {activeTab === 'liked' && renderGrid(likedPosts)}
             {activeTab === 'saved' && renderGrid(savedPosts)}
             {activeTab === 'friends' && renderFriendsList()}
           </ScrollView>
+        )}
         </View>
+
+        {/* Edit Profile Modal */}
+        <EditProfileModal
+          visible={isEditModalVisible}
+          onClose={() => setIsEditModalVisible(false)}
+        />
       </View>
     </SafeAreaView>
   );
@@ -265,14 +363,11 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   topBar: {
-    height: 50,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   topUsername: {
     ...Typography.bodyMedium,
@@ -285,12 +380,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   topIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surfaceMuted,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.surfaceWhite,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
   },
   scrollContent: {
     paddingBottom: BottomTabInset + Spacing.six,
@@ -298,160 +395,155 @@ const styles = StyleSheet.create({
   coverContainer: {
     width: '100%',
     height: 140,
-    backgroundColor: '#0D0E11',
+    backgroundColor: '#1E1E22',
   },
   coverImage: {
     width: '100%',
     height: '100%',
-    opacity: 0.9,
   },
   avatarContainer: {
     alignItems: 'center',
-    marginTop: -50,
+    marginTop: -45,
   },
   avatarImg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3.5,
     borderColor: '#FFFFFF',
     backgroundColor: Colors.surfaceMuted,
   },
   profileInfoSection: {
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    marginTop: Spacing.two,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginBottom: 4,
   },
   fullName: {
     ...Typography.titleMedium,
     fontSize: 20,
+    fontWeight: '700',
     color: Colors.textPrimary,
-  },
-  handleText: {
-    ...Typography.caption,
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 1,
   },
   bioText: {
     ...Typography.bodySmall,
-    color: Colors.textPrimary,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    marginTop: Spacing.two,
     lineHeight: 18,
+    maxWidth: 300,
+    marginBottom: 6,
   },
   websiteRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: Spacing.one,
   },
   websiteText: {
     ...Typography.caption,
     color: Colors.accentBlue,
     fontWeight: '600',
   },
-  statsCard: {
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing.four,
-    marginTop: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: '#ECECEC',
+    marginVertical: Spacing.four,
+    paddingHorizontal: Spacing.four,
   },
   statItem: {
     alignItems: 'center',
-    flex: 1,
   },
   statNumber: {
-    ...Typography.bodyLarge,
+    ...Typography.titleSmall,
     fontWeight: '800',
     color: Colors.textPrimary,
   },
   statLabel: {
     ...Typography.caption,
     color: Colors.textSecondary,
-    fontSize: 11,
+    marginTop: 2,
   },
   statDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: '#EAEAEA',
+    height: 20,
+    backgroundColor: '#E5E7EB',
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    alignItems: 'center',
+    gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-    marginTop: Spacing.three,
+    marginBottom: Spacing.four,
   },
   primaryActionBtn: {
     flex: 1,
-    height: 38,
+    height: 42,
     borderRadius: Radii.pill,
-    backgroundColor: Colors.textPrimary,
+    backgroundColor: '#0D0E11',
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryActionText: {
-    ...Typography.caption,
     color: '#FFFFFF',
     fontWeight: '700',
+    fontSize: 14,
   },
   secondaryActionBtn: {
     flex: 1,
-    height: 38,
+    height: 42,
     borderRadius: Radii.pill,
-    backgroundColor: Colors.surfaceMuted,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryActionText: {
-    ...Typography.caption,
     color: Colors.textPrimary,
     fontWeight: '700',
+    fontSize: 14,
+  },
+  tabsRowWrapper: {
+    position: 'relative',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F0F0F0',
   },
   tabsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EBEBEB',
-    marginTop: Spacing.four,
-    backgroundColor: '#FFFFFF',
   },
   tabBtn: {
-    paddingVertical: Spacing.three,
     flex: 1,
+    height: 46,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    justifyContent: 'center',
   },
-  activeTabBtn: {
-    borderBottomColor: Colors.textPrimary,
+  activeIndicatorLine: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: 2,
+    backgroundColor: Colors.textPrimary,
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    padding: Spacing.four,
     gap: 10,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
   },
   gridItem: {
     width: GRID_ITEM_SIZE,
-    height: GRID_ITEM_SIZE,
+    height: GRID_ITEM_SIZE * 1.25,
     borderRadius: Radii.md,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: Colors.surfaceMuted,
+    backgroundColor: '#1E1E22',
   },
   gridItemImg: {
     width: '100%',
@@ -459,62 +551,63 @@ const styles = StyleSheet.create({
   },
   gridItemOverlay: {
     position: 'absolute',
-    bottom: 6,
-    left: 6,
-    right: 6,
+    bottom: 8,
+    left: 8,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radii.pill,
+    alignItems: 'center',
+    gap: 8,
   },
   gridStat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.pill,
   },
   gridStatText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
   },
   emptyTabState: {
     width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.eight,
     gap: Spacing.two,
   },
   emptyTabTitle: {
-    ...Typography.bodySmall,
+    ...Typography.bodyMedium,
     color: Colors.textSecondary,
+    fontWeight: '600',
   },
   friendsListContainer: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    gap: Spacing.two,
+    padding: Spacing.four,
+    gap: Spacing.three,
   },
   friendCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: Spacing.three,
-    borderRadius: Radii.md,
-    gap: Spacing.three,
+    borderRadius: Radii.lg,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#ECECEC',
+    borderColor: '#F0F0F0',
+    gap: Spacing.three,
   },
   friendAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: Colors.surfaceMuted,
   },
   friendDetails: {
     flex: 1,
   },
   friendName: {
-    ...Typography.bodySmall,
+    ...Typography.bodyMedium,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
@@ -523,14 +616,14 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   messageFriendBtn: {
-    backgroundColor: Colors.surfaceMuted,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: Radii.pill,
+    backgroundColor: '#0D0E11',
   },
   messageFriendText: {
-    ...Typography.caption,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-    color: Colors.textPrimary,
   },
 });

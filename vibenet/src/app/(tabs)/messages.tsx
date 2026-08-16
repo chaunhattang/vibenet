@@ -1,28 +1,47 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   TextInput,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { MOCK_CHATS, MOCK_USERS, ChatRoomItem } from '../../data/mockData';
+import { getChatRooms } from '../../services/api/chat';
+import { getOnlineUsers } from '../../services/api/users';
+import type { ChatRoomResponse, UserResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [chats, setChats] = useState<ChatRoomItem[]>(MOCK_CHATS);
+  const [chats, setChats] = useState<ChatRoomResponse[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<UserResponse[]>([]);
+
+  const load = useCallback(async () => {
+    try {
+      const [rooms, online] = await Promise.all([getChatRooms(), getOnlineUsers()]);
+      setChats(rooms);
+      setOnlineUsers(online);
+    } catch (err) {
+      console.warn('Failed to load messages', err);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const filteredChats = chats.filter(
     (c) =>
-      c.friend.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.friend.username.toLowerCase().includes(searchQuery.toLowerCase())
+      c.friendName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -60,32 +79,34 @@ export default function MessagesScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}>
             {/* Active Online Friends Row */}
-            <View style={styles.onlineSection}>
-              <Text style={styles.sectionTitle}>ONLINE NOW</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.onlineScroll}>
-                {MOCK_USERS.map((user) => (
-                  <TouchableOpacity
-                    key={user.id}
-                    activeOpacity={0.8}
-                    onPress={() => router.push(`/chat/${user.id}` as any)}
-                    style={styles.onlineUserItem}>
-                    <View style={styles.onlineAvatarWrapper}>
-                      <Image
-                        source={{ uri: user.avatarUrl }}
-                        style={styles.onlineAvatarImg}
-                      />
-                      {user.isOnline && <View style={styles.onlineDot} />}
-                    </View>
-                    <Text numberOfLines={1} style={styles.onlineUserName}>
-                      {user.fullName.split(' ')[0]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+            {onlineUsers.length > 0 && (
+              <View style={styles.onlineSection}>
+                <Text style={styles.sectionTitle}>ONLINE NOW</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.onlineScroll}>
+                  {onlineUsers.map((user) => (
+                    <TouchableOpacity
+                      key={user.id}
+                      activeOpacity={0.8}
+                      onPress={() => router.push(`/chat/${user.id}` as any)}
+                      style={styles.onlineUserItem}>
+                      <View style={styles.onlineAvatarWrapper}>
+                        <Image
+                          source={{ uri: resolveMediaUrl(user.profileResponse?.avatarUrl) }}
+                          style={styles.onlineAvatarImg}
+                        />
+                        <View style={styles.onlineDot} />
+                      </View>
+                      <Text numberOfLines={1} style={styles.onlineUserName}>
+                        {(user.profileResponse?.fullName ?? user.username).split(' ')[0]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Conversation List */}
             <View style={styles.chatsList}>
@@ -93,45 +114,29 @@ export default function MessagesScreen() {
 
               {filteredChats.map((chat) => (
                 <TouchableOpacity
-                  key={chat.id}
+                  key={chat.chatId}
                   activeOpacity={0.7}
-                  onPress={() => router.push(`/chat/${chat.friend.id}` as any)}
+                  onPress={() => router.push(`/chat/${chat.friendId}` as any)}
                   style={styles.chatRowItem}>
                   <View style={styles.avatarContainer}>
                     <Image
-                      source={{ uri: chat.friend.avatarUrl }}
+                      source={{ uri: resolveMediaUrl(chat.friendAvatar) }}
                       style={styles.chatAvatar}
                     />
-                    {chat.friend.isOnline && <View style={styles.onlineStatusDot} />}
                   </View>
 
                   <View style={styles.chatInfo}>
                     <View style={styles.chatHeaderRow}>
-                      <Text style={styles.friendName}>
-                        {chat.friend.fullName}
-                      </Text>
+                      <Text style={styles.friendName}>{chat.friendName}</Text>
                       <Text style={styles.messageTime}>
-                        {chat.lastMessageTime}
+                        {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </Text>
                     </View>
 
                     <View style={styles.messagePreviewRow}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.messageSnippet,
-                          chat.unreadCount > 0 && styles.unreadMessageSnippet,
-                        ]}>
-                        {chat.lastMessage}
+                      <Text numberOfLines={1} style={styles.messageSnippet}>
+                        {chat.lastMessage || 'Say hi 👋'}
                       </Text>
-
-                      {chat.unreadCount > 0 && (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>
-                            {chat.unreadCount}
-                          </Text>
-                        </View>
-                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -277,17 +282,6 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: Colors.surfaceMuted,
   },
-  onlineStatusDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.statusOnline,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
   chatInfo: {
     flex: 1,
     borderBottomWidth: 1,
@@ -320,24 +314,6 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: Colors.textSecondary,
     flex: 1,
-  },
-  unreadMessageSnippet: {
-    color: Colors.textPrimary,
-    fontWeight: '700',
-  },
-  unreadBadge: {
-    backgroundColor: Colors.accentBlue,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  unreadBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
   },
   emptyContainer: {
     alignItems: 'center',

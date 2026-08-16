@@ -1,90 +1,129 @@
-import React, { createContext, useContext, useState } from 'react';
-import { CURRENT_USER, MOCK_USERS, UserProfile } from '../data/mockData';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import * as authApi from '../services/api/auth';
+import * as usersApi from '../services/api/users';
+import { clearTokens, getAccessToken, loadTokensFromStorage, persistTokens, setOnAuthExpired } from '../services/api/client';
+import { connectWebSocket, disconnectWebSocket } from '../services/websocket';
+import type { UserResponse } from '../services/api/types';
 
 interface AuthContextType {
-  user: UserProfile | null;
-  accessToken: string | null;
-  refreshToken: string | null;
+  user: UserResponse | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { username: string; fullName: string; email: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
-  quickDemoLogin: (userIndex?: number) => void;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { username: string; email: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  updateCurrentUser: (updates: Partial<UserProfile>) => void;
+  refreshCurrentUser: () => Promise<void>;
+  updateCurrentUser: (updates: Partial<UserResponse>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+// react-native's JS engine (Hermes) has no built-in atob/Buffer, so decode base64 by hand.
+function base64Decode(input: string): string {
+  const clean = input.replace(/-/g, '+').replace(/_/g, '/').replace(/[^A-Za-z0-9+/]/g, '');
+  let output = '';
+  for (let i = 0; i < clean.length; i += 4) {
+    const enc1 = BASE64_CHARS.indexOf(clean[i]);
+    const enc2 = BASE64_CHARS.indexOf(clean[i + 1]);
+    const enc3 = BASE64_CHARS.indexOf(clean[i + 2]);
+    const enc4 = BASE64_CHARS.indexOf(clean[i + 3]);
+
+    const chr1 = (enc1 << 2) | (enc2 >> 4);
+    const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+    const chr3 = ((enc3 & 3) << 6) | enc4;
+
+    output += String.fromCharCode(chr1);
+    if (enc3 !== -1 && clean[i + 2] !== undefined) output += String.fromCharCode(chr2);
+    if (enc4 !== -1 && clean[i + 3] !== undefined) output += String.fromCharCode(chr3);
+  }
+  return output;
+}
+
+function decodeUserId(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    const json = JSON.parse(base64Decode(payload));
+    return json.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Default to logged in as CURRENT_USER for instant interactive UI development,
-  // but with full login / register capabilities.
-  const [user, setUser] = useState<UserProfile | null>(CURRENT_USER);
-  const [accessToken, setAccessToken] = useState<string | null>('mock-jwt-token-alexrivera');
-  const [refreshToken, setRefreshToken] = useState<string | null>('mock-refresh-token-alexrivera');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<UserResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const login = async (username: string, _password?: string) => {
+  const loadUserFromToken = useCallback(async (accessToken: string) => {
+    const userId = decodeUserId(accessToken);
+    if (!userId) return null;
+    const fetched = await usersApi.getUserById(userId);
+    setUser(fetched);
+    return fetched;
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { accessToken } = await loadTokensFromStorage();
+      if (accessToken) {
+        try {
+          await loadUserFromToken(accessToken);
+          connectWebSocket();
+        } catch {
+          await clearTokens();
+          setUser(null);
+        }
+      }
+      setIsLoading(false);
+    })();
+
+    setOnAuthExpired(() => {
+      setUser(null);
+      disconnectWebSocket();
+    });
+  }, [loadUserFromToken]);
+
+  const login = async (username: string, password: string) => {
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 600)); // Smooth UX delay
-    
-    // Find matching mock user or fallback
-    const targetUser = MOCK_USERS.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() || u.email.toLowerCase() === username.trim().toLowerCase()
-    ) || {
-      ...CURRENT_USER,
-      username: username.trim(),
-      fullName: username.trim(),
-    };
-
-    setUser(targetUser);
-    setAccessToken(`mock-jwt-token-${targetUser.id}`);
-    setRefreshToken(`mock-refresh-token-${targetUser.id}`);
-    setIsLoading(false);
-    return { success: true };
+    try {
+      const tokens = await authApi.login(username, password);
+      await persistTokens(tokens);
+      await loadUserFromToken(tokens.accessToken);
+      connectWebSocket();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Login failed' };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const register = async (data: { username: string; fullName: string; email: string; password?: string }) => {
+  const register = async (data: { username: string; email: string; password: string }) => {
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 800));
-
-    const newUser: UserProfile = {
-      id: `u-${Date.now()}`,
-      username: data.username.trim().toLowerCase(),
-      fullName: data.fullName.trim(),
-      email: data.email.trim().toLowerCase(),
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-      coverImageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-      bio: 'New explorer on VibeNet ✨',
-      postsCount: 0,
-      friendsCount: 0,
-      momentsCount: 0,
-      isOnline: true,
-      lastActiveAt: 'Just now',
-    };
-
-    setUser(newUser);
-    setAccessToken(`mock-jwt-token-${newUser.id}`);
-    setRefreshToken(`mock-refresh-token-${newUser.id}`);
-    setIsLoading(false);
-    return { success: true };
-  };
-
-  const quickDemoLogin = (userIndex: number = 0) => {
-    const selected = MOCK_USERS[userIndex % MOCK_USERS.length];
-    setUser(selected);
-    setAccessToken(`mock-jwt-token-${selected.id}`);
-    setRefreshToken(`mock-refresh-token-${selected.id}`);
+    try {
+      await authApi.register(data.username, data.email, data.password);
+      return await login(data.username, data.password);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Registration failed' };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
+    clearTokens();
+    disconnectWebSocket();
     setUser(null);
-    setAccessToken(null);
-    setRefreshToken(null);
   };
 
-  const updateCurrentUser = (updates: Partial<UserProfile>) => {
-    if (!user) return;
+  const refreshCurrentUser = async () => {
+    const token = getAccessToken();
+    if (!token) return;
+    await loadUserFromToken(token);
+  };
+
+  const updateCurrentUser = (updates: Partial<UserResponse>) => {
     setUser((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
@@ -92,14 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        accessToken,
-        refreshToken,
-        isAuthenticated: !!user && !!accessToken,
+        isAuthenticated: !!user,
         isLoading,
         login,
         register,
-        quickDemoLogin,
         logout,
+        refreshCurrentUser,
         updateCurrentUser,
       }}>
       {children}

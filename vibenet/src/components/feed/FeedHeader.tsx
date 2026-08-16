@@ -6,79 +6,124 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 
 interface FeedHeaderProps {
-  unreadNotifCount?: number;
+  activeTab?: 'feed' | 'reels';
+  onChangeTab?: (tab: 'feed' | 'reels') => void;
   unreadChatCount?: number;
+  onPressAdd?: () => void;
 }
 
 export const FeedHeader: React.FC<FeedHeaderProps> = ({
-  unreadNotifCount = 1,
+  activeTab = 'feed',
+  onChangeTab,
   unreadChatCount = 2,
+  onPressAdd,
 }) => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const isReels = activeTab === 'reels';
 
   return (
-    <View style={styles.headerContainer}>
-      {/* Left Menu / Grid Button */}
+    <View
+      style={[
+        styles.headerContainer,
+        isReels
+          ? [styles.reelsHeaderBg, { paddingTop: Math.max(insets.top, 12) + 4 }]
+          : null,
+      ]}>
+      {/* Left '+' Create Button */}
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => router.push('/(tabs)/explore')}
-        style={styles.iconButton}>
-        <Feather name="grid" size={20} color={Colors.textPrimary} />
+        onPress={onPressAdd || (() => router.push('/(tabs)/locket'))}
+        style={[styles.iconButton, isReels && styles.reelsIconButton]}>
+        <Feather
+          name="plus"
+          size={22}
+          color={isReels ? '#FFFFFF' : Colors.textPrimary}
+        />
       </TouchableOpacity>
 
-      {/* Center Branding */}
-      <View style={styles.brandContainer}>
-        <Text style={styles.brandTitle}>VibeNet</Text>
-      </View>
-
-      {/* Right Actions: Notifications & Direct Messages */}
-      <View style={styles.rightActions}>
+      {/* Center Dual Feed / Reels Segmented Switcher */}
+      <View style={[styles.switcherContainer, isReels && styles.reelsSwitcherBg]}>
         <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => router.push('/(tabs)/notifications')}
-          style={styles.iconButton}>
-          <Ionicons
-            name="heart-outline"
-            size={22}
-            color={Colors.textPrimary}
-          />
-          {unreadNotifCount > 0 && <View style={styles.badgeDot} />}
+          activeOpacity={0.8}
+          onPress={() => onChangeTab?.('feed')}
+          style={[styles.switcherTab, !isReels && styles.activeSwitcherTab]}>
+          <Text
+            style={[
+              styles.switcherText,
+              !isReels ? styles.activeSwitcherText : styles.inactiveReelsText,
+            ]}>
+            Feed
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => router.push('/(tabs)/messages')}
-          style={styles.iconButton}>
-          <Ionicons
-            name="paper-plane-outline"
-            size={20}
-            color={Colors.textPrimary}
-          />
-          {unreadChatCount > 0 && (
-            <View style={styles.chatBadge}>
-              <Text style={styles.chatBadgeText}>{unreadChatCount}</Text>
-            </View>
-          )}
+          activeOpacity={0.8}
+          onPress={() => onChangeTab?.('reels')}
+          style={[styles.switcherTab, isReels && styles.activeReelsTab]}>
+          <View style={styles.reelsTabContent}>
+            <Text
+              style={[
+                styles.switcherText,
+                isReels ? styles.activeReelsText : styles.inactiveFeedText,
+              ]}>
+              Reels
+            </Text>
+            <Ionicons
+              name="sparkles"
+              size={11}
+              color={isReels ? '#FF2D55' : Colors.textTertiary}
+            />
+          </View>
         </TouchableOpacity>
       </View>
+
+      {/* Right DM Paper Plane Button */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push('/(tabs)/messages')}
+        style={[styles.iconButton, isReels && styles.reelsIconButton]}>
+        <Ionicons
+          name="paper-plane-outline"
+          size={20}
+          color={isReels ? '#FFFFFF' : Colors.textPrimary}
+          style={styles.paperPlaneIcon}
+        />
+        {unreadChatCount > 0 && (
+          <View style={styles.notificationDot}>
+            <View style={styles.innerDot} />
+          </View>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   headerContainer: {
-    height: 56,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     backgroundColor: Colors.bgMain,
-    zIndex: 10,
+    zIndex: 50,
+  },
+  reelsHeaderBg: {
+    height: 'auto',
+    backgroundColor: 'transparent',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    paddingBottom: 8,
   },
   iconButton: {
     width: 40,
@@ -86,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.pill,
     backgroundColor: Colors.surfaceWhite,
     borderWidth: 1,
-    borderColor: '#EAEAEA',
+    borderColor: '#ECECEC',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -94,57 +139,90 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
       },
-      android: { elevation: 1 },
-      web: { boxShadow: '0 2px 6px rgba(0,0,0,0.03)' },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' },
     }),
   },
-  brandContainer: {
+  reelsIconButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  paperPlaneIcon: {
+    transform: [{ rotate: '-10deg' }],
+  },
+  switcherContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F0F0F3',
+    borderRadius: Radii.pill,
+    padding: 3,
   },
-  brandTitle: {
-    ...Typography.titleMedium,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.6,
+  reelsSwitcherBg: {
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  switcherTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: Radii.pill,
+  },
+  activeSwitcherTab: {
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)' },
+    }),
+  },
+  activeReelsTab: {
+    backgroundColor: '#FFFFFF',
+  },
+  reelsTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  switcherText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  activeSwitcherText: {
     color: Colors.textPrimary,
   },
-  rightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
+  inactiveFeedText: {
+    color: 'rgba(0, 0, 0, 0.5)',
   },
-  badgeDot: {
+  activeReelsText: {
+    color: '#0D0E11',
+  },
+  inactiveReelsText: {
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  notificationDot: {
     position: 'absolute',
-    top: 9,
-    right: 9,
+    top: 8,
+    right: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: Colors.statusLive,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  chatBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 4,
-    backgroundColor: Colors.statusLive,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
   },
-  chatBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
+  innerDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
   },
 });

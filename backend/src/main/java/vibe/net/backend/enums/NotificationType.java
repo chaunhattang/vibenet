@@ -7,5 +7,6 @@ public enum NotificationType {
     COMMENT,
     MOMENT_REPLY,
     LOCKET_MOMENT_RECEIVED,
-    LOCKET_REACTION
+    LOCKET_REACTION,
+    FOLLOW
 }

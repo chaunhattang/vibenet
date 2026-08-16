@@ -39,6 +39,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public RegisterRequest register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername()) || userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException(UserErrorCode.EXISTED);
+        }
+
         User user = userMapper.toUser(request);
         user.setRole(Role.USER);
         user.setStatus(Status.ACTIVE);

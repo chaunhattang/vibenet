@@ -1,44 +1,151 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { MOCK_NOTIFICATIONS, NotificationItem } from '../../data/mockData';
-import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { NotificationSkeleton } from '../../components/skeletons/NotificationSkeleton';
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../../services/api/notifications';
+import { acceptFriendRequest, declineFriendRequest, getIncomingFriendRequests } from '../../services/api/friends';
+import type { FriendRequestResponse, NotificationResponse } from '../../services/api/types';
+import { resolveMediaUrl } from '../../services/config';
+
+function describeNotification(n: NotificationResponse): string {
+  switch (n.type) {
+    case 'FRIEND_REQUEST':
+      return 'sent you a friend request.';
+    case 'FRIEND_ACCEPTED':
+      return 'accepted your friend request.';
+    case 'REACTION':
+      return 'reacted to your post.';
+    case 'COMMENT':
+      return 'commented on your post.';
+    case 'MOMENT_REPLY':
+      return 'replied to your moment.';
+    case 'LOCKET_MOMENT_RECEIVED':
+      return 'sent you a Locket moment.';
+    case 'LOCKET_REACTION':
+      return 'reacted to your moment.';
+    case 'FOLLOW':
+      return 'started following you.';
+    default:
+      return 'sent you a notification.';
+  }
+}
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return `${Math.floor(days / 7)}w`;
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequestResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [respondedRequestIds, setRespondedRequestIds] = useState<Set<string>>(new Set());
 
-  const handleAcceptRequest = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, friendRequestStatus: 'ACCEPTED' as const } : n
-      )
+  const load = useCallback(async () => {
+    try {
+      const [feed, requests] = await Promise.all([getNotifications(0, 50), getIncomingFriendRequests()]);
+      setNotifications(feed.data);
+      setIncomingRequests(requests);
+      markAllNotificationsRead().catch(() => {});
+    } catch (err) {
+      console.warn('Failed to load notifications', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const handleAccept = async (requestId: string) => {
+    try {
+      await acceptFriendRequest(requestId);
+      setRespondedRequestIds((prev) => new Set(prev).add(requestId));
+    } catch (err) {
+      console.warn('Failed to accept friend request', err);
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    try {
+      await declineFriendRequest(requestId);
+      setRespondedRequestIds((prev) => new Set(prev).add(requestId));
+    } catch (err) {
+      console.warn('Failed to decline friend request', err);
+    }
+  };
+
+  const renderNotificationRow = (item: NotificationResponse) => {
+    const matchingRequest = item.type === 'FRIEND_REQUEST'
+      ? incomingRequests.find((r) => r.requestId === item.relatedEntityId)
+      : undefined;
+    const alreadyResponded = matchingRequest ? respondedRequestIds.has(matchingRequest.requestId) : false;
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        activeOpacity={0.7}
+        onPress={() => {
+          if (!item.isRead) markNotificationRead(item.id).catch(() => {});
+          router.push('/(tabs)');
+        }}
+        style={styles.notificationRow}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.singleAvatarWrap}>
+            <Image source={{ uri: resolveMediaUrl(item.actorAvatar) }} style={styles.avatarImg} />
+          </View>
+        </View>
+
+        <View style={styles.textContent}>
+          <Text style={styles.mainNotificationText}>
+            <Text style={styles.actorHighlight}>{item.actorName ?? 'Someone'}</Text>
+            {' ' + describeNotification(item) + ' '}
+            <Text style={styles.timeAgoText}>{timeAgo(item.createdAt)}</Text>
+          </Text>
+
+          {item.type === 'FRIEND_REQUEST' && matchingRequest && !alreadyResponded && (
+            <View style={styles.friendActionRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleAccept(matchingRequest.requestId)}
+                style={styles.acceptBtn}>
+                <Text style={styles.acceptBtnText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleDecline(matchingRequest.requestId)}
+                style={styles.declineBtn}>
+                <Text style={styles.declineBtnText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {!item.isRead && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
     );
   };
-
-  const handleDeclineRequest = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, friendRequestStatus: 'DECLINED' as const } : n
-      )
-    );
-  };
-
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const friendRequests = notifications.filter((n) => n.type === 'FRIEND_REQUEST');
-  const activityItems = notifications.filter((n) => n.type !== 'FRIEND_REQUEST');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -46,135 +153,48 @@ export default function NotificationsScreen() {
         <View style={styles.contentWrapper}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Notifications</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleMarkAllRead}
-              style={styles.markReadBtn}>
-              <Text style={styles.markReadText}>Mark all as read</Text>
+              onPress={() => router.back()}
+              style={styles.backBtn}>
+              <Feather name="arrow-left" size={24} color="#000000" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Notifications</Text>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}>
-            {/* Friend Requests Section */}
-            {friendRequests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>FRIEND REQUESTS</Text>
-                {friendRequests.map((req) => (
-                  <View key={req.id} style={styles.requestCard}>
-                    <Image
-                      source={{ uri: req.actor.avatarUrl }}
-                      style={styles.requestAvatar}
-                    />
-                    <View style={styles.requestInfo}>
-                      <Text style={styles.requestName}>
-                        {req.actor.fullName}
-                      </Text>
-                      <Text style={styles.requestSubtext}>
-                        {req.actor.friendsCount} mutual connections • {req.timeAgo}
-                      </Text>
-
-                      {req.friendRequestStatus === 'ACCEPTED' ? (
-                        <View style={styles.acceptedBadge}>
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={16}
-                            color={Colors.statusCloseFriend}
-                          />
-                          <Text style={styles.acceptedText}>Connected</Text>
-                        </View>
-                      ) : req.friendRequestStatus === 'DECLINED' ? (
-                        <Text style={styles.declinedText}>Request declined</Text>
-                      ) : (
-                        <View style={styles.requestActions}>
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => handleAcceptRequest(req.id)}
-                            style={styles.acceptBtn}>
-                            <Text style={styles.acceptBtnText}>Confirm</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => handleDeclineRequest(req.id)}
-                            style={styles.declineBtn}>
-                            <Text style={styles.declineBtnText}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
+          {isLoading ? (
+            <NotificationSkeleton />
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}>
+              {incomingRequests.length > 0 && (
+                <View style={styles.followRequestsRow}>
+                  <View style={styles.followRequestIcon}>
+                    <Feather name="user" size={24} color="#8E8E93" />
                   </View>
-                ))}
-              </View>
-            )}
-
-            {/* Activity Notifications */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-
-              {activityItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.7}
-                  onPress={() => router.push('/(tabs)')}
-                  style={[
-                    styles.activityItem,
-                    !item.isRead && styles.unreadActivityItem,
-                  ]}>
-                  <View style={styles.avatarWrapper}>
-                    <Image
-                      source={{ uri: item.actor.avatarUrl }}
-                      style={styles.activityAvatar}
-                    />
-                    {/* Badge Icon for type */}
-                    <View
-                      style={[
-                        styles.typeBadge,
-                        item.type === 'REACTION'
-                          ? styles.reactionBadge
-                          : item.type === 'LOCKET_MOMENT'
-                          ? styles.locketBadge
-                          : styles.commentBadge,
-                      ]}>
-                      <Ionicons
-                        name={
-                          item.type === 'REACTION'
-                            ? 'heart'
-                            : item.type === 'LOCKET_MOMENT'
-                            ? 'camera'
-                            : 'chatbubble'
-                        }
-                        size={10}
-                        color="#FFFFFF"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityText}>
-                      <Text style={styles.activityActor}>
-                        {item.actor.fullName}{' '}
-                      </Text>
-                      {item.content}
+                  <View style={styles.followRequestInfo}>
+                    <Text style={styles.followRequestTitle}>Friend requests</Text>
+                    <Text style={styles.followRequestSub}>
+                      {incomingRequests.length} pending
                     </Text>
-                    <Text style={styles.activityTime}>{item.timeAgo}</Text>
                   </View>
+                  <View style={styles.followRequestRight}>
+                    <View style={styles.blueUnreadDot} />
+                  </View>
+                </View>
+              )}
 
-                  {/* Target Media Preview Thumbnail */}
-                  {item.targetMediaUrl && (
-                    <Image
-                      source={{ uri: item.targetMediaUrl }}
-                      style={styles.mediaThumbnail}
-                    />
-                  )}
-
-                  {!item.isRead && <View style={styles.unreadDot} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+              <View style={styles.sectionBlock}>
+                <Text style={styles.sectionHeader}>All notifications</Text>
+                {notifications.length === 0 ? (
+                  <Text style={styles.emptyText}>You&apos;re all caught up.</Text>
+                ) : (
+                  notifications.map(renderNotificationRow)
+                )}
+              </View>
+            </ScrollView>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -184,12 +204,12 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.bgMain,
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: Colors.bgMain,
+    backgroundColor: '#FFFFFF',
   },
   contentWrapper: {
     flex: 1,
@@ -197,182 +217,154 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   header: {
-    height: 56,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  backBtn: {
+    paddingVertical: 4,
+    paddingRight: 4,
   },
   headerTitle: {
-    ...Typography.titleLarge,
-    fontSize: 24,
-    color: Colors.textPrimary,
-  },
-  markReadBtn: {
-    padding: Spacing.one,
-  },
-  markReadText: {
-    ...Typography.caption,
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.accentBlue,
+    fontSize: 21,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.4,
   },
   scrollContent: {
-    paddingBottom: BottomTabInset + Spacing.six,
+    paddingBottom: BottomTabInset + 40,
   },
-  section: {
-    marginBottom: Spacing.four,
-  },
-  sectionTitle: {
-    ...Typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textTertiary,
-    paddingHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-  },
-  requestCard: {
+  followRequestsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Radii.lg,
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderColor: '#ECECEC',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EFEFEF',
   },
-  requestAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.surfaceMuted,
+  followRequestIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#E5E5EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  requestInfo: {
+  followRequestInfo: {
     flex: 1,
   },
-  requestName: {
-    ...Typography.bodyMedium,
+  followRequestTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: '#000000',
+    letterSpacing: -0.2,
   },
-  requestSubtext: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    marginBottom: Spacing.two,
+  followRequestSub: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 1,
   },
-  requestActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  acceptBtn: {
-    backgroundColor: Colors.textPrimary,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: 7,
-    borderRadius: Radii.pill,
-  },
-  acceptBtnText: {
-    ...Typography.caption,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  declineBtn: {
-    backgroundColor: Colors.surfaceMuted,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: 7,
-    borderRadius: Radii.pill,
-  },
-  declineBtnText: {
-    ...Typography.caption,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-  },
-  acceptedBadge: {
+  followRequestRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    gap: 8,
   },
-  acceptedText: {
-    ...Typography.caption,
-    color: Colors.statusCloseFriend,
+  blueUnreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3897F0',
+  },
+  sectionBlock: {
+    marginTop: 18,
+  },
+  sectionHeader: {
+    fontSize: 15,
     fontWeight: '700',
+    color: '#000000',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    letterSpacing: -0.2,
   },
-  declinedText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: 4,
+  emptyText: {
+    paddingHorizontal: 16,
+    fontSize: 13,
+    color: '#8E8E93',
   },
-  activityItem: {
+  notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    gap: Spacing.three,
-    position: 'relative',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 14,
   },
-  unreadActivityItem: {
-    backgroundColor: 'rgba(0, 132, 255, 0.04)',
+  avatarContainer: {
+    width: 44,
+    height: 44,
   },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  activityAvatar: {
+  singleAvatarWrap: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.surfaceMuted,
+    position: 'relative',
   },
-  typeBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+    backgroundColor: '#F2F2F7',
   },
-  reactionBadge: {
-    backgroundColor: Colors.statusLive,
-  },
-  locketBadge: {
-    backgroundColor: Colors.statusCloseFriend,
-  },
-  commentBadge: {
-    backgroundColor: Colors.accentBlue,
-  },
-  activityContent: {
+  textContent: {
     flex: 1,
+    justifyContent: 'center',
   },
-  activityText: {
-    ...Typography.bodySmall,
-    color: Colors.textPrimary,
+  mainNotificationText: {
+    fontSize: 13.5,
+    color: '#000000',
     lineHeight: 18,
+    letterSpacing: -0.1,
   },
-  activityActor: {
+  actorHighlight: {
     fontWeight: '700',
   },
-  activityTime: {
-    ...Typography.caption,
-    fontSize: 10,
-    color: Colors.textTertiary,
-    marginTop: 2,
+  timeAgoText: {
+    color: '#8E8E93',
+    fontSize: 13,
   },
-  mediaThumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.surfaceMuted,
+  friendActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  acceptBtn: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  acceptBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  declineBtn: {
+    backgroundColor: '#EFEFEF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  declineBtnText: {
+    color: '#000000',
+    fontSize: 12.5,
+    fontWeight: '600',
   },
   unreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: Colors.accentBlue,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3897F0',
   },
 });

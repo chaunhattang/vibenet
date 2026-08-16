@@ -14,4 +14,6 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     Page<Post> findByOwnerId(UUID ownerId, Pageable pageable);
 
     Page<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<Post> findByTextContentContainingIgnoreCaseOrderByCreatedAtDesc(String keyword, Pageable pageable);
 }

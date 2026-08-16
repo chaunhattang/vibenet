@@ -14,7 +14,10 @@ import java.util.UUID;
 public class CommentResponse {
     UUID id;
     UUID postId;
+    UUID parentCommentId;
     PostOwnerResponse owner;
     String content;
+    int likesCount;
+    boolean liked;
     LocalDateTime createdAt;
 }

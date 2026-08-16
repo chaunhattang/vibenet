@@ -18,10 +18,12 @@ import vibe.net.backend.models.dtos.request.PostCreationRequest;
 import vibe.net.backend.models.dtos.response.PageResponse;
 import vibe.net.backend.models.dtos.response.PostResponse;
 import vibe.net.backend.models.entities.Post;
+import vibe.net.backend.models.entities.Reaction;
 import vibe.net.backend.models.entities.User;
 import vibe.net.backend.repositories.CommentRepository;
 import vibe.net.backend.repositories.PostRepository;
 import vibe.net.backend.repositories.ReactionRepository;
+import vibe.net.backend.repositories.SavedPostRepository;
 import vibe.net.backend.repositories.UserRepository;
 import vibe.net.backend.services.interfaces.FileService;
 import vibe.net.backend.services.interfaces.PostService;
@@ -43,6 +45,7 @@ public class PostServiceImpl implements PostService {
     PostMapper postMapper;
     ReactionRepository reactionRepository;
     CommentRepository commentRepository;
+    SavedPostRepository savedPostRepository;
 
     @Override
     public PostResponse createPost(PostCreationRequest request) throws IOException {
@@ -53,6 +56,8 @@ public class PostServiceImpl implements PostService {
         Post post = Post.builder()
                 .owner(owner)
                 .textContent(request.getTextContent())
+                .location(request.getLocation())
+                .textGradient(request.getTextGradient() != null ? new ArrayList<>(request.getTextGradient()) : new ArrayList<>())
                 .mediaUrl(uploadMedia(request.getMediaFiles()))
                 .build();
 
@@ -127,6 +132,27 @@ public class PostServiceImpl implements PostService {
         return toPageResponse(postPage, page, size);
     }
 
+    @Override
+    public PageResponse<PostResponse> getLikedPosts(int page, int size) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Reaction> reactionPage = reactionRepository.findByUserIdOrderByCreatedAtDesc(currentUserId, pageable);
+
+        List<PostResponse> responses = reactionPage.getContent().stream()
+                .map(Reaction::getPost)
+                .map(postMapper::toResponse)
+                .map(response -> enrich(response, currentUserId))
+                .collect(Collectors.toList());
+
+        return PageResponse.<PostResponse>builder()
+                .currentPage(page)
+                .totalPages(reactionPage.getTotalPages())
+                .pageSize(size)
+                .totalElements(reactionPage.getTotalElements())
+                .data(responses)
+                .build();
+    }
+
     private PageResponse<PostResponse> toPageResponse(Page<Post> postPage, int page, int size) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         List<PostResponse> responses = postPage.getContent().stream()
@@ -143,11 +169,21 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
+    @Override
+    public long incrementShareCount(UUID postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(PostErrorCode.NOT_FOUND));
+        post.setSharesCount(post.getSharesCount() + 1);
+        postRepository.save(post);
+        return post.getSharesCount();
+    }
+
     private PostResponse enrich(PostResponse response, UUID currentUserId) {
         response.setCommentCount((int) commentRepository.countByPostId(response.getId()));
         response.setReactionCount((int) reactionRepository.countByPostId(response.getId()));
         reactionRepository.findByPostIdAndUserId(response.getId(), currentUserId)
                 .ifPresent(reaction -> response.setCurrentReaction(reaction.getType()));
+        response.setSaved(savedPostRepository.existsByUserIdAndPostId(currentUserId, response.getId()));
         return response;
     }
 

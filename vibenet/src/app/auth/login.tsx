@@ -7,12 +7,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
 import { useAuth } from '../../contexts/AuthContext';
 import { GlassInput } from '../../components/ui/GlassInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -24,14 +23,13 @@ import {
   Typography,
   MaxContentWidth,
 } from '../../constants/theme';
-import { MOCK_USERS } from '../../data/mockData';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, quickDemoLogin, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
 
-  const [username, setUsername] = useState('alexrivera');
-  const [password, setPassword] = useState('••••••••');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
@@ -46,11 +44,6 @@ export default function LoginScreen() {
     } else {
       setError(res.error || 'Failed to sign in. Please try again.');
     }
-  };
-
-  const handleQuickDemo = (index: number) => {
-    quickDemoLogin(index);
-    router.replace('/(tabs)');
   };
 
   return (
@@ -128,39 +121,6 @@ export default function LoginScreen() {
                 loading={isLoading}
                 style={styles.signInButton}
               />
-
-              {/* Quick Demo Switcher Section */}
-              <View style={styles.demoSection}>
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>QUICK DEMO ACCESS</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <Text style={styles.demoHint}>
-                  Tap any profile to log in instantly:
-                </Text>
-
-                <View style={styles.demoAvatarsRow}>
-                  {MOCK_USERS.slice(0, 4).map((mockUser, idx) => (
-                    <TouchableOpacity
-                      key={mockUser.id}
-                      activeOpacity={0.8}
-                      onPress={() => handleQuickDemo(idx)}
-                      style={styles.demoAvatarItem}>
-                      <Image
-                        source={{ uri: mockUser.avatarUrl }}
-                        style={styles.demoAvatarImg}
-                      />
-                      <Text
-                        numberOfLines={1}
-                        style={styles.demoAvatarName}>
-                        {mockUser.fullName.split(' ')[0]}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
             </GlassCard>
 
             {/* Footer switch */}
@@ -263,57 +223,6 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     width: '100%',
-  },
-  demoSection: {
-    marginTop: Spacing.six,
-    width: '100%',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    ...Typography.caption,
-    fontSize: 10,
-    color: Colors.textTertiary,
-    marginHorizontal: Spacing.three,
-  },
-  demoHint: {
-    ...Typography.caption,
-    textAlign: 'center',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.three,
-  },
-  demoAvatarsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  demoAvatarItem: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  demoAvatarImg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    backgroundColor: Colors.surfaceMuted,
-  },
-  demoAvatarName: {
-    ...Typography.caption,
-    fontSize: 11,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-    maxWidth: 55,
-    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',

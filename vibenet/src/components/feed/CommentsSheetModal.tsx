@@ -10,16 +10,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { PostComment, PostItem } from '../../data/mockData';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { CommentResponse, PostResponse } from '../../services/api/types';
+import * as commentsApi from '../../services/api/comments';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { resolveMediaUrl } from '../../services/config';
 
 interface CommentsSheetModalProps {
   visible: boolean;
-  post: PostItem | null;
+  post: PostResponse | null;
   onClose: () => void;
 }
 
@@ -32,33 +36,65 @@ export const CommentsSheetModal: React.FC<CommentsSheetModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<PostComment[]>(post?.comments || []);
+  const [comments, setComments] = useState<CommentResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<CommentResponse | null>(null);
 
-  // Sync comments whenever post changes
+  // Fetch this post's comments whenever the sheet opens for a (possibly new) post.
   React.useEffect(() => {
-    if (post) {
-      setComments(post.comments || []);
+    if (!visible || !post) {
+      setComments([]);
+      setReplyingTo(null);
+      return;
     }
-  }, [post]);
+    setIsLoading(true);
+    commentsApi
+      .getComments(post.id, 0, 50)
+      .then((page) => setComments(page.data))
+      .catch(() => setComments([]))
+      .finally(() => setIsLoading(false));
+  }, [visible, post]);
 
-  const handleAddComment = () => {
-    if (!commentText.trim() || !user) return;
-
-    const newComment: PostComment = {
-      id: `c-${Date.now()}`,
-      user: {
-        id: user.id,
-        username: user.username,
-        fullName: user.fullName,
-        avatarUrl: user.avatarUrl,
-      },
-      content: commentText.trim(),
-      createdAt: 'Just now',
-      likesCount: 0,
-    };
-
-    setComments((prev) => [newComment, ...prev]);
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !user || !post) return;
+    const content = commentText.trim();
+    const parentCommentId = replyingTo?.id;
     setCommentText('');
+    setReplyingTo(null);
+    try {
+      const created = await commentsApi.addComment(post.id, content, parentCommentId);
+      setComments((prev) => [created, ...prev]);
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!post) return;
+    const prev = comments;
+    setComments((c) => c.filter((item) => item.id !== commentId));
+    try {
+      await commentsApi.deleteComment(post.id, commentId);
+    } catch (err) {
+      setComments(prev);
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete comment');
+    }
+  };
+
+  const handleToggleLikeComment = async (commentId: string) => {
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId ? { ...c, liked: !c.liked, likesCount: c.likesCount + (c.liked ? -1 : 1) } : c
+      )
+    );
+    try {
+      const result = await commentsApi.toggleCommentReaction(commentId, 'LOVE');
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, liked: result.isLiked, likesCount: result.likesCount } : c))
+      );
+    } catch {
+      // best-effort; leave optimistic state as-is
+    }
   };
 
   if (!visible || !post) return null;
@@ -99,59 +135,82 @@ export const CommentsSheetModal: React.FC<CommentsSheetModalProps> = ({
             {/* Post Author Caption as first comment item */}
             <View style={styles.commentItem}>
               <Image
-                source={{ uri: post.author.avatarUrl }}
+                source={{ uri: resolveMediaUrl(post.owner.avatarUrl) }}
                 style={styles.commentAvatar}
               />
               <View style={styles.commentBody}>
                 <View style={styles.commentUserRow}>
                   <Text style={styles.commentUsername}>
-                    {post.author.username}
+                    {post.owner.username}
                   </Text>
                   <Text style={styles.authorBadge}>Author</Text>
-                  <Text style={styles.commentTime}>{post.createdAt}</Text>
+                  <Text style={styles.commentTime}>{new Date(post.createdAt).toLocaleDateString()}</Text>
                 </View>
-                <Text style={styles.commentText}>{post.textContent}</Text>
+                {post.textContent ? <Text style={styles.commentText}>{post.textContent}</Text> : null}
               </View>
             </View>
 
             <View style={styles.divider} />
 
             {/* Other Comments */}
-            {comments.map((item) => (
-              <View key={item.id} style={styles.commentItem}>
-                <Image
-                  source={{ uri: item.user.avatarUrl }}
-                  style={styles.commentAvatar}
-                />
-                <View style={styles.commentBody}>
-                  <View style={styles.commentUserRow}>
-                    <Text style={styles.commentUsername}>
-                      {item.user.username}
-                    </Text>
-                    <Text style={styles.commentTime}>{item.createdAt}</Text>
-                  </View>
-                  <Text style={styles.commentText}>{item.content}</Text>
-                  <TouchableOpacity style={styles.replyAction}>
-                    <Text style={styles.replyText}>Reply</Text>
-                  </TouchableOpacity>
-                </View>
+            {comments.map((item, idx) => {
+              const isMyComment = item.owner.id === user?.id;
 
-                <TouchableOpacity style={styles.likeCommentBtn}>
-                  <Ionicons
-                    name="heart-outline"
-                    size={16}
-                    color={Colors.textTertiary}
+              return (
+                <Animated.View
+                  key={item.id}
+                  entering={FadeInUp.springify().damping(16).delay(Math.min(idx * 30, 200))}
+                  style={styles.commentItem}>
+                  <Image
+                    source={{ uri: resolveMediaUrl(item.owner.avatarUrl) }}
+                    style={styles.commentAvatar}
                   />
-                  {item.likesCount > 0 ? (
-                    <Text style={styles.commentLikesCount}>
-                      {item.likesCount}
-                    </Text>
-                  ) : null}
-                </TouchableOpacity>
-              </View>
-            ))}
+                  <View style={styles.commentBody}>
+                    <View style={styles.commentUserRow}>
+                      <Text style={styles.commentUsername}>
+                        {item.owner.username}
+                      </Text>
+                      <Text style={styles.commentTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                    </View>
+                    {item.parentCommentId ? (
+                      <Text style={styles.replyIndicator}>replying to a comment</Text>
+                    ) : null}
+                    <Text style={styles.commentText}>{item.content}</Text>
+                    <View style={styles.commentActionRow}>
+                      <TouchableOpacity
+                        style={styles.replyAction}
+                        onPress={() => setReplyingTo(item)}>
+                        <Text style={styles.replyText}>Reply</Text>
+                      </TouchableOpacity>
+                      {isMyComment && (
+                        <TouchableOpacity
+                          onPress={() => handleDeleteComment(item.id)}
+                          style={styles.deleteAction}>
+                          <Text style={styles.deleteText}>Delete</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
 
-            {comments.length === 0 && (
+                  <TouchableOpacity
+                    onPress={() => handleToggleLikeComment(item.id)}
+                    style={styles.likeCommentBtn}>
+                    <Ionicons
+                      name={item.liked ? 'heart' : 'heart-outline'}
+                      size={16}
+                      color={item.liked ? Colors.statusLive : Colors.textTertiary}
+                    />
+                    {item.likesCount > 0 ? (
+                      <Text style={styles.commentLikesCount}>
+                        {item.likesCount}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+
+            {!isLoading && comments.length === 0 && (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No comments yet.</Text>
                 <Text style={styles.emptySubtext}>
@@ -164,16 +223,25 @@ export const CommentsSheetModal: React.FC<CommentsSheetModalProps> = ({
           {/* Bottom Comment Input Bar */}
           <View style={styles.inputContainer}>
             <Image
-              source={{ uri: user?.avatarUrl }}
+              source={{ uri: resolveMediaUrl(user?.profileResponse?.avatarUrl) }}
               style={styles.myInputAvatar}
             />
             <TextInput
-              placeholder={`Add a comment for @${post.author.username}...`}
+              placeholder={
+                replyingTo
+                  ? `Replying to @${replyingTo.owner.username}...`
+                  : `Add a comment for @${post.owner.username}...`
+              }
               placeholderTextColor={Colors.textPlaceholder}
               value={commentText}
               onChangeText={setCommentText}
               style={styles.textInput}
             />
+            {replyingTo ? (
+              <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.cancelReplyBtn}>
+                <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
+              </TouchableOpacity>
+            ) : null}
             {commentText.trim().length > 0 ? (
               <TouchableOpacity
                 onPress={handleAddComment}
@@ -292,20 +360,41 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.textTertiary,
   },
+  replyIndicator: {
+    ...Typography.caption,
+    fontSize: 10,
+    color: Colors.accentBlue,
+    marginBottom: 2,
+  },
   commentText: {
     ...Typography.bodySmall,
     fontSize: 13,
     color: Colors.textPrimary,
     lineHeight: 18,
   },
-  replyAction: {
+  commentActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
     marginTop: 4,
+  },
+  replyAction: {
+    paddingVertical: 2,
   },
   replyText: {
     ...Typography.caption,
     fontSize: 11,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  deleteAction: {
+    paddingVertical: 2,
+  },
+  deleteText: {
+    ...Typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.statusLive,
   },
   likeCommentBtn: {
     alignItems: 'center',
@@ -355,6 +444,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     fontSize: 13,
     color: Colors.textPrimary,
+  },
+  cancelReplyBtn: {
+    padding: 2,
   },
   sendButton: {
     paddingHorizontal: Spacing.two,

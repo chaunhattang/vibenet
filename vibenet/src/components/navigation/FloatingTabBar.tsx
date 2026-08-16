@@ -4,67 +4,62 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  ViewStyle,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
-import { Colors, Radii, Shadows, Spacing } from '../../constants/theme';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../contexts/AuthContext';
+import { resolveMediaUrl } from '../../services/config';
 
 export interface TabItem {
   name: string;
   route: string;
-  iconType: 'ionicons' | 'feather';
-  iconName: string;
-  activeIconName: string;
-  badgeCount?: number;
-  isAvatar?: boolean;
+  activeIcon: string;
+  inactiveIcon: string;
+  isProfile?: boolean;
 }
 
 export function FloatingTabBar() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
+
+  const isDarkScreen = pathname.includes('/locket');
 
   const tabs: TabItem[] = [
     {
       name: 'Feed',
       route: '/',
-      iconType: 'ionicons',
-      iconName: 'home-outline',
-      activeIconName: 'home',
+      activeIcon: 'home',
+      inactiveIcon: 'home-outline',
     },
     {
       name: 'Explore',
       route: '/explore',
-      iconType: 'feather',
-      iconName: 'compass',
-      activeIconName: 'compass',
+      activeIcon: 'search',
+      inactiveIcon: 'search-outline',
     },
     {
       name: 'Locket',
       route: '/locket',
-      iconType: 'ionicons',
-      iconName: 'camera-outline',
-      activeIconName: 'camera',
+      activeIcon: 'camera',
+      inactiveIcon: 'camera-outline',
     },
     {
-      name: 'Messages',
-      route: '/messages',
-      iconType: 'ionicons',
-      iconName: 'chatbubble-ellipses-outline',
-      activeIconName: 'chatbubble-ellipses',
-      badgeCount: 2,
+      name: 'Notifications',
+      route: '/notifications',
+      activeIcon: 'heart',
+      inactiveIcon: 'heart-outline',
     },
     {
       name: 'Profile',
       route: '/profile',
-      iconType: 'ionicons',
-      iconName: 'person-outline',
-      activeIconName: 'person',
-      isAvatar: true,
+      activeIcon: 'person',
+      inactiveIcon: 'person-outline',
+      isProfile: true,
     },
   ];
 
@@ -76,6 +71,10 @@ export function FloatingTabBar() {
   };
 
   const handleTabPress = (tabRoute: string) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+
     if (tabRoute === '/') {
       router.push('/(tabs)');
     } else {
@@ -83,145 +82,114 @@ export function FloatingTabBar() {
     }
   };
 
-  const renderContent = () => (
-    <View style={styles.tabBarInner}>
-      {tabs.map((tab) => {
-        const active = isTabActive(tab.route);
-
-        return (
-          <TouchableOpacity
-            key={tab.name}
-            activeOpacity={0.8}
-            onPress={() => handleTabPress(tab.route)}
-            style={[styles.tabButton, active && styles.activeTabButton]}>
-            {tab.isAvatar && user?.avatarUrl ? (
-              <View style={[styles.avatarWrapper, active && styles.activeAvatarWrapper]}>
-                <Image
-                  source={{ uri: user.avatarUrl }}
-                  style={styles.avatarImg}
-                />
-              </View>
-            ) : (
-              <View style={styles.iconContainer}>
-                {tab.iconType === 'ionicons' ? (
-                  <Ionicons
-                    name={(active ? tab.activeIconName : tab.iconName) as any}
-                    size={22}
-                    color={active ? Colors.navPillActiveIcon : Colors.navPillInactiveIcon}
-                  />
-                ) : (
-                  <Feather
-                    name={tab.iconName as any}
-                    size={22}
-                    color={active ? Colors.navPillActiveIcon : Colors.navPillInactiveIcon}
-                  />
-                )}
-
-                {tab.badgeCount && tab.badgeCount > 0 && !active ? (
-                  <View style={styles.badgeDot} />
-                ) : null}
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.containerWrapper}>
-        <View style={[styles.webBarContainer, Shadows.floatingNav as ViewStyle]}>
-          {renderContent()}
-        </View>
-      </View>
-    );
-  }
+  const activeIconColor = isDarkScreen ? '#FFFFFF' : '#000000';
+  const inactiveIconColor = isDarkScreen ? '#9CA3AF' : '#262626';
 
   return (
-    <View style={styles.containerWrapper}>
-      <BlurView
-        intensity={80}
-        tint="dark"
-        style={[styles.barContainer, Shadows.floatingNav as ViewStyle]}>
-        {renderContent()}
-      </BlurView>
+    <View
+      style={[
+        styles.tabBarContainer,
+        isDarkScreen ? styles.darkTabBar : styles.lightTabBar,
+        { paddingBottom: Math.max(insets.bottom, 8) },
+      ]}>
+      <View style={styles.tabBarRow}>
+        {tabs.map((tab) => {
+          const active = isTabActive(tab.route);
+
+          if (tab.isProfile) {
+            return (
+              <TouchableOpacity
+                key={tab.name}
+                activeOpacity={0.7}
+                onPress={() => handleTabPress(tab.route)}
+                style={styles.tabButton}>
+                <View
+                  style={[
+                    styles.profileAvatarBorder,
+                    active && (isDarkScreen ? styles.activeProfileBorderDark : styles.activeProfileBorderLight),
+                  ]}>
+                  <Image
+                    source={{
+                      uri:
+                        resolveMediaUrl(user?.profileResponse?.avatarUrl) ||
+                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+                    }}
+                    style={styles.profileAvatarImg}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              activeOpacity={0.7}
+              onPress={() => handleTabPress(tab.route)}
+              style={styles.tabButton}>
+              <Ionicons
+                name={(active ? tab.activeIcon : tab.inactiveIcon) as any}
+                size={27}
+                color={active ? activeIconColor : inactiveIconColor}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  containerWrapper: {
+  tabBarContainer: {
     position: 'absolute',
-    bottom: Spacing.four + (Platform.OS === 'ios' ? 10 : 6),
+    bottom: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
     zIndex: 999,
-    pointerEvents: 'box-none',
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  barContainer: {
-    borderRadius: Radii.pill,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    backgroundColor: Colors.navPillBg,
+  lightTabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#EFEFEF',
   },
-  webBarContainer: {
-    borderRadius: Radii.pill,
-    backgroundColor: 'rgba(20, 20, 22, 0.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    // @ts-ignore
-    backdropFilter: 'blur(24px)',
+  darkTabBar: {
+    backgroundColor: '#000000',
+    borderTopColor: 'rgba(255, 255, 255, 0.14)',
   },
-  tabBarInner: {
+  tabBarRow: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one + 2,
-    gap: Spacing.two,
+    justifyContent: 'space-around',
   },
   tabButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    flex: 1,
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeTabButton: {
-    backgroundColor: Colors.navPillActiveBg,
-  },
-  iconContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeDot: {
-    position: 'absolute',
-    top: -2,
-    right: -3,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.statusLive,
-    borderWidth: 1.5,
-    borderColor: Colors.navPillBg,
-  },
-  avatarWrapper: {
+  profileAvatarBorder: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    overflow: 'hidden',
+    padding: 1.5,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeAvatarWrapper: {
-    borderWidth: 2,
-    borderColor: Colors.textPrimary,
+  activeProfileBorderLight: {
+    borderColor: '#000000',
   },
-  avatarImg: {
+  activeProfileBorderDark: {
+    borderColor: '#FFFFFF',
+  },
+  profileAvatarImg: {
     width: '100%',
     height: '100%',
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
   },
 });
