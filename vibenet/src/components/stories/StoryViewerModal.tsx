@@ -56,13 +56,14 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
   // Mark the frame currently on screen as viewed (once per story id).
   useEffect(() => {
-    if (!visible || !activeFrame) return;
-    if (viewedRef.current.has(activeFrame.id)) return;
-    viewedRef.current.add(activeFrame.id);
-    storiesApi.markStoryViewed(activeFrame.id).catch(() => {
-      viewedRef.current.delete(activeFrame.id);
+    if (!visible || !activeFrame?.id) return;
+    const storyId = activeFrame.id;
+    if (viewedRef.current.has(storyId)) return;
+    viewedRef.current.add(storyId);
+    storiesApi.markStoryViewed(storyId).catch(() => {
+      viewedRef.current.delete(storyId);
     });
-  }, [visible, activeFrame]);
+  }, [visible, activeFrame?.id]);
 
   const handleNext = useCallback(() => {
     if (currentFrameIdx < totalFrames - 1) {

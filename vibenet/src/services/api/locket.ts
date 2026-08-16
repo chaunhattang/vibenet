@@ -38,7 +38,7 @@ export interface MomentCreationResponse {
 
 export function createMoment(form: FormData) {
   return unwrap<MomentCreationResponse>(
-    apiClient.post('/api/locket/moments', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    apiClient.post('/api/locket/moments', form)
   );
 }
 

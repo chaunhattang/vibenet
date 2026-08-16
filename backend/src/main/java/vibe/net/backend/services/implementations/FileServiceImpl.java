@@ -57,7 +57,9 @@ public class FileServiceImpl implements FileService {
         }
     }
     private String getFileExtension(String filename) {
-        if (filename == null) return "";
-        return filename.substring(filename.lastIndexOf("."));
+        if (filename == null || !filename.contains(".")) return ".jpg";
+        int dotIndex = filename.lastIndexOf(".");
+        if (dotIndex < 0) return ".jpg";
+        return filename.substring(dotIndex);
     }
 }

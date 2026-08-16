@@ -10,7 +10,7 @@ export function getUserStories(userId: string) {
 }
 
 export function uploadStory(form: FormData) {
-  return unwrap<StoryItemResponse>(apiClient.post('/api/stories', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  return unwrap<StoryItemResponse>(apiClient.post('/api/stories', form));
 }
 
 export function markStoryViewed(storyId: string) {

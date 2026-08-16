@@ -59,8 +59,17 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
     setIsSending(true);
     try {
       const form = new FormData();
-      // React Native's FormData accepts { uri, name, type } for file parts.
-      form.append('media', pickedImage as unknown as Blob);
+      if (Platform.OS === 'web') {
+        try {
+          const res = await fetch(pickedImage.uri);
+          const blob = await res.blob();
+          form.append('media', blob, pickedImage.name);
+        } catch {
+          form.append('media', pickedImage as unknown as Blob);
+        }
+      } else {
+        form.append('media', pickedImage as unknown as Blob);
+      }
       if (caption.trim()) form.append('caption', caption.trim());
 
       await createMoment(form);

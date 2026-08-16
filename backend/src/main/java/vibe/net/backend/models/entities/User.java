@@ -42,6 +42,6 @@ public class User {
 
     LocalDateTime lastActiveAt;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "owner")
     Profile profile;
 }

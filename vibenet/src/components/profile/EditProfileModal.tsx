@@ -33,6 +33,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
 
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | null>(null);
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [avatarPicked, setAvatarPicked] = useState(false);
@@ -43,6 +45,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
     if (user && visible) {
       setFullName(profile?.fullName || '');
       setBio(profile?.bio || '');
+      setGender(profile?.gender || null);
+      setDateOfBirth(profile?.dateOfBirth || '');
       setAvatarUri(profile?.avatarUrl || null);
       setCoverUri(profile?.coverImageUrl || null);
       setAvatarPicked(false);
@@ -86,16 +90,34 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
     }
   };
 
-  const appendImage = (form: FormData, field: string, uri: string) => {
-    const filename = uri.split('/').pop() || `${field}.jpg`;
+  const appendImage = async (form: FormData, field: string, uri: string) => {
+    let filename = uri.split('/').pop() || `${field}.jpg`;
     const match = /\.(\w+)$/.exec(filename);
     const ext = match ? match[1] : 'jpg';
+    if (!filename.includes('.')) {
+      filename = `${filename}.${ext}`;
+    }
+    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    if (Platform.OS === 'web') {
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        form.append(field, blob, filename);
+        return;
+      } catch (e) {
+        console.warn('Web blob conversion failed:', e);
+      }
+    }
+
     form.append(field, {
       uri,
       name: filename,
-      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+      type: mimeType,
     } as any);
   };
+
+  const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim());
 
   const handleSave = async () => {
     if (!user) return;
@@ -104,14 +126,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
       const form = new FormData();
       form.append('fullName', fullName.trim());
       form.append('bio', bio.trim());
-      if (avatarPicked && avatarUri) appendImage(form, 'avatar', avatarUri);
-      if (coverPicked && coverUri) appendImage(form, 'coverImage', coverUri);
+      if (gender) form.append('gender', gender);
+      if (isValidDate) form.append('dateOfBirth', dateOfBirth.trim());
+      if (avatarPicked && avatarUri) await appendImage(form, 'avatar', avatarUri);
+      if (coverPicked && coverUri) await appendImage(form, 'coverImage', coverUri);
 
-      if (profile) {
-        await usersApi.updateProfile(form);
-      } else {
-        await usersApi.createProfile(form);
-      }
+      await usersApi.saveOrUpdateProfile(form);
       await refreshCurrentUser();
       onClose();
     } catch (err) {
@@ -215,6 +235,42 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
                   placeholder="Tell your story..."
                   placeholderTextColor={Colors.textPlaceholder}
                   style={[styles.fieldInput, styles.bioInput]}
+                />
+              </View>
+
+              {/* Gender */}
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Gender</Text>
+                <View style={styles.genderOptions}>
+                  {(['MALE', 'FEMALE', 'OTHER'] as const).map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      activeOpacity={0.7}
+                      onPress={() => setGender(option)}
+                      style={[styles.genderPill, gender === option && styles.genderPillActive]}>
+                      <Text
+                        style={[
+                          styles.genderPillText,
+                          gender === option && styles.genderPillTextActive,
+                        ]}>
+                        {option.charAt(0) + option.slice(1).toLowerCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Date of Birth */}
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Birthday</Text>
+                <TextInput
+                  value={dateOfBirth}
+                  onChangeText={setDateOfBirth}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.textPlaceholder}
+                  keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
+                  maxLength={10}
+                  style={styles.fieldInput}
                 />
               </View>
             </View>
@@ -353,5 +409,29 @@ const styles = StyleSheet.create({
   bioInput: {
     minHeight: 60,
     textAlignVertical: 'top',
+  },
+  genderOptions: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genderPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: Radii.pill,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  genderPillActive: {
+    backgroundColor: '#0D0E11',
+    borderColor: '#0D0E11',
+  },
+  genderPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  genderPillTextActive: {
+    color: '#FFFFFF',
   },
 });

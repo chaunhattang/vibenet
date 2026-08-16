@@ -61,16 +61,16 @@ export default function ProfileScreen() {
     async (tab: ProfileTab) => {
       if (!user) return;
       try {
-        if (tab === 'posts' && myPosts.length === 0) {
+        if (tab === 'posts') {
           const page = await postsApi.getPostsByUser(user.id);
           setMyPosts(page.data);
-        } else if (tab === 'liked' && likedPosts.length === 0) {
+        } else if (tab === 'liked') {
           const page = await postsApi.getLikedPosts();
           setLikedPosts(page.data);
-        } else if (tab === 'saved' && savedPosts.length === 0) {
+        } else if (tab === 'saved') {
           const page = await postsApi.getSavedPosts();
           setSavedPosts(page.data);
-        } else if (tab === 'friends' && friends.length === 0) {
+        } else if (tab === 'friends') {
           const list = await friendsApi.getUserFriends(user.id);
           setFriends(list);
         }
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
         console.warn('Failed to load profile tab', tab, err);
       }
     },
-    [user, myPosts.length, likedPosts.length, savedPosts.length, friends.length]
+    [user?.id]
   );
 
   useEffect(() => {

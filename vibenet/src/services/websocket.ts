@@ -32,6 +32,13 @@ function ensureClient(): Client {
     },
   });
 
+  client.onStompError = (frame) => {
+    console.warn('STOMP error:', frame.headers['message'], frame.body);
+  };
+  client.onWebSocketError = (event) => {
+    console.warn('WebSocket error:', event);
+  };
+
   client.onConnect = () => {
     client!.subscribe('/user/queue/messages', (frame: IMessage) => {
       const body = JSON.parse(frame.body) as ChatMessageResponse;
@@ -75,6 +82,7 @@ export function onChatMessage(callback: (msg: ChatMessageResponse) => void) {
 
 export function sendChatMessage(recipientId: string, content: string) {
   const c = ensureClient();
+  if (!c.connected) return;
   c.publish({ destination: '/app/chat.send', body: JSON.stringify({ recipientId, content }) });
 }
 
@@ -104,9 +112,13 @@ export function onRead(chatId: string, callback: (e: ReadEvent) => void) {
 }
 
 export function sendTyping(chatId: string, isTyping: boolean) {
-  ensureClient().publish({ destination: '/app/chat.typing', body: JSON.stringify({ chatId, isTyping }) });
+  const c = ensureClient();
+  if (!c.connected) return;
+  c.publish({ destination: '/app/chat.typing', body: JSON.stringify({ chatId, isTyping }) });
 }
 
 export function sendRead(chatId: string, lastMessageId: string) {
-  ensureClient().publish({ destination: '/app/chat.read', body: JSON.stringify({ chatId, lastMessageId }) });
+  const c = ensureClient();
+  if (!c.connected) return;
+  c.publish({ destination: '/app/chat.read', body: JSON.stringify({ chatId, lastMessageId }) });
 }

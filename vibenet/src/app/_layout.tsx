@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Stack, Redirect, usePathname } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -10,25 +10,25 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-  const pathname = usePathname();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading) {
-      SplashScreen.hideAsync().catch(() => {});
+    if (isLoading) return;
+
+    SplashScreen.hideAsync().catch(() => {});
+
+    const inAuthGroup = segments[0] === 'auth';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/auth/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(tabs)');
     }
-  }, [isLoading]);
+  }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
     return null;
-  }
-
-  const isAuthRoute = pathname.startsWith('/auth');
-
-  if (!isAuthenticated && !isAuthRoute) {
-    return <Redirect href="/auth/login" />;
-  }
-  if (isAuthenticated && isAuthRoute) {
-    return <Redirect href="/(tabs)" />;
   }
 
   return <>{children}</>;

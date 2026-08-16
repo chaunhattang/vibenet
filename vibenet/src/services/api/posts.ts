@@ -14,7 +14,7 @@ export function getPostsByUser(userId: string, page = 0, size = 20) {
 }
 
 export function createPost(form: FormData) {
-  return unwrap<PostResponse>(apiClient.post('/api/posts', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  return unwrap<PostResponse>(apiClient.post('/api/posts', form));
 }
 
 export function updatePost(postId: string, textContent: string) {

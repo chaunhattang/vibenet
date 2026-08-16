@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../contexts/AuthContext';
 import { VibeNetLogo } from '../../components/ui/VibeNetLogo';
-import { createProfile } from '../../services/api/users';
+import { saveOrUpdateProfile } from '../../services/api/users';
 import { Typography, Spacing } from '../../constants/theme';
 
 export default function RegisterScreen() {
@@ -68,7 +68,7 @@ export default function RegisterScreen() {
     try {
       const form = new FormData();
       form.append('fullName', fullName);
-      await createProfile(form);
+      await saveOrUpdateProfile(form);
       await refreshCurrentUser();
     } catch {
       // Profile creation failure shouldn't block entry

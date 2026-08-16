@@ -35,12 +35,36 @@ export function getFollowing(userId: string, page = 0, size = 20) {
 
 export function updateProfile(form: FormData) {
   return unwrap<UserResponse['profileResponse']>(
-    apiClient.put('/api/profile', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    apiClient.put('/api/profile', form)
   );
 }
 
 export function createProfile(form: FormData) {
   return unwrap<UserResponse['profileResponse']>(
-    apiClient.post('/api/profile', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    apiClient.post('/api/profile', form)
   );
 }
+
+export async function saveOrUpdateProfile(form: FormData) {
+  try {
+    // Try updating first (PUT /api/profile)
+    return await updateProfile(form);
+  } catch (err: any) {
+    // If profile doesn't exist yet, create it (POST /api/profile)
+    if (
+      err?.message?.toLowerCase().includes('not found') ||
+      err?.response?.status === 404
+    ) {
+      return await createProfile(form);
+    }
+    // If create was attempted and failed because it already existed (409), retry with update
+    if (
+      err?.message?.toLowerCase().includes('already exists') ||
+      err?.response?.status === 409
+    ) {
+      return await updateProfile(form);
+    }
+    throw err;
+  }
+}
+

@@ -57,8 +57,17 @@ function guessMime(uri: string, isVideo: boolean): string {
   return 'image/jpeg';
 }
 
-// RN's fetch/XHR-based FormData accepts { uri, name, type } file descriptors natively.
-function toFormFile(media: PickedMedia) {
+// RN's fetch/XHR-based FormData accepts { uri, name, type } file descriptors natively; Web uses Blob.
+async function toFormFile(media: PickedMedia): Promise<any> {
+  if (Platform.OS === 'web') {
+    try {
+      const res = await fetch(media.uri);
+      const blob = await res.blob();
+      return blob;
+    } catch {
+      // fallback
+    }
+  }
   return { uri: media.uri, name: media.fileName, type: media.mimeType } as unknown as Blob;
 }
 
@@ -161,9 +170,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         form.append('textContent', caption.trim());
         if (location.trim()) form.append('location', location.trim());
         if (contentType !== 'text') {
-          mediaList.forEach((media) => {
-            form.append('mediaFiles', toFormFile(media));
-          });
+          for (const media of mediaList) {
+            form.append('mediaFiles', await toFormFile(media));
+          }
         } else {
           selectedGradient.forEach((color) => form.append('textGradient', color));
         }
@@ -173,7 +182,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         const form = new FormData();
         form.append('mediaType', contentType === 'video' ? 'VIDEO' : 'PHOTO');
         if (caption.trim()) form.append('caption', caption.trim());
-        form.append('mediaFile', toFormFile(mediaList[0]));
+        form.append('mediaFile', await toFormFile(mediaList[0]));
         const created = await storiesApi.uploadStory(form);
         onCreateStory(created);
       }

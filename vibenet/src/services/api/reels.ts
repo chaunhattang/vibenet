@@ -14,7 +14,7 @@ export function getUserReels(userId: string, page = 0, size = 12) {
 }
 
 export function uploadReel(form: FormData) {
-  return unwrap<ReelResponse>(apiClient.post('/api/reels', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  return unwrap<ReelResponse>(apiClient.post('/api/reels', form));
 }
 
 export function deleteReel(reelId: string) {
