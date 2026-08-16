@@ -12,60 +12,70 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 
-interface GlassInputProps extends TextInputProps {
+export interface InsetInputProps extends TextInputProps {
   label?: string;
   iconName?: keyof typeof Ionicons.glyphMap;
   error?: string;
   containerStyle?: ViewStyle;
   isPassword?: boolean;
-  dark?: boolean;
 }
 
-export const GlassInput: React.FC<GlassInputProps> = ({
+export interface InsetInputGroupProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
+
+/**
+ * InsetInputGroup renders a small #F3F3F3 container housing #FDFDFD nested input fields.
+ */
+export const InsetInputGroup: React.FC<InsetInputGroupProps> = ({
+  children,
+  style,
+}) => {
+  return <View style={[styles.groupContainer, style]}>{children}</View>;
+};
+
+/**
+ * InsetInput renders a nested #FDFDFD input item designed for the InsetInputGroup.
+ */
+export const InsetInput: React.FC<InsetInputProps> = ({
   label,
   iconName,
   error,
   containerStyle,
   isPassword = false,
-  dark = false,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
-    <View style={[styles.wrapper, containerStyle]}>
-      {label && (
-        <Text style={[styles.label, dark && styles.labelDark]}>
-          {label}
-        </Text>
-      )}
-
+    <View style={[styles.itemWrapper, containerStyle]}>
+      {label && <Text style={styles.label}>{label}</Text>}
       <View
         style={[
           styles.inputContainer,
-          dark ? styles.inputContainerDark : styles.inputContainerLight,
-          isFocused && (dark ? styles.focusedDark : styles.focusedLight),
+          isFocused && styles.focused,
           !!error && styles.errorContainer,
         ]}>
         {iconName && (
           <Ionicons
             name={iconName}
-            size={19}
+            size={18}
             color={
               error
                 ? Colors.statusLive
                 : isFocused
-                ? Colors.textPrimary
-                : Colors.textTertiary
+                ? '#0D0E11'
+                : '#8E95A5'
             }
             style={styles.icon}
           />
         )}
 
         <TextInput
-          placeholderTextColor={dark ? Colors.textTertiary : Colors.textPlaceholder}
-          style={[styles.input, dark && styles.inputDark]}
+          placeholderTextColor="#9CA3AF"
+          style={styles.input}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={isPassword && !isPasswordVisible}
@@ -80,8 +90,8 @@ export const GlassInput: React.FC<GlassInputProps> = ({
             style={styles.eyeButton}>
             <Ionicons
               name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-              color={dark ? Colors.textTertiary : Colors.textSecondary}
+              size={19}
+              color={isFocused ? '#0D0E11' : '#8E95A5'}
             />
           </TouchableOpacity>
         )}
@@ -93,86 +103,90 @@ export const GlassInput: React.FC<GlassInputProps> = ({
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
+  groupContainer: {
     width: '100%',
+    backgroundColor: '#F3F3F3',
+    borderRadius: 18,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: '#E8E8EC',
+    gap: 6,
     marginBottom: Spacing.four,
+  },
+  itemWrapper: {
+    width: '100%',
   },
   label: {
     ...Typography.bodySmall,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#242730',
-    marginBottom: Spacing.one + 2,
-    marginLeft: Spacing.half,
+    color: '#4B5563',
+    marginBottom: 4,
+    marginLeft: Spacing.one,
     letterSpacing: -0.1,
-  },
-  labelDark: {
-    color: Colors.textOnDark,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    borderRadius: Radii.md - 2, // ~14px
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1.5,
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three + 2,
+    backgroundColor: '#FDFDFD',
+    borderWidth: 1,
+    borderColor: '#ECECEF',
     ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
       web: {
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
         transition: 'all 0.15s ease-in-out',
       },
     }),
   },
-  inputContainerLight: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-  },
-  inputContainerDark: {
-    backgroundColor: 'rgba(35, 35, 40, 0.8)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  focusedLight: {
-    borderColor: Colors.textPrimary,
+  focused: {
     backgroundColor: '#FFFFFF',
+    borderColor: '#0D0E11',
+    borderWidth: 1.5,
     ...Platform.select({
       web: {
         boxShadow: '0 0 0 3px rgba(13, 14, 17, 0.06)',
       },
     }),
   },
-  focusedDark: {
-    borderColor: Colors.surfaceWhite,
-    backgroundColor: 'rgba(45, 45, 52, 0.95)',
-  },
   errorContainer: {
     borderColor: Colors.statusLive,
     backgroundColor: '#FFF8F8',
   },
   icon: {
-    marginRight: Spacing.three,
+    marginRight: Spacing.two + 2,
   },
   input: {
     flex: 1,
     height: '100%',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '500',
-    color: Colors.textPrimary,
+    color: '#0D0E11',
     ...Platform.select({
       web: {
         outlineStyle: 'none' as any,
       },
     }),
   },
-  inputDark: {
-    color: Colors.textOnDark,
-  },
   eyeButton: {
     padding: Spacing.one,
-    marginLeft: Spacing.two,
+    marginLeft: Spacing.one,
   },
   errorText: {
     ...Typography.caption,
     color: Colors.statusLive,
-    marginTop: Spacing.one,
+    marginTop: 3,
     marginLeft: Spacing.one,
   },
 });

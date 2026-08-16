@@ -1,0 +1,30 @@
+<svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vibeWmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF416C" />
+      <stop offset="35%" stop-color="#8A2387" />
+      <stop offset="70%" stop-color="#6A11CB" />
+      <stop offset="100%" stop-color="#2575FC" />
+    </linearGradient>
+
+    <linearGradient id="wmTextGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#374151" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left V-Emblem -->
+  <g transform="translate(10, 14)">
+    <rect x="0" y="0" width="72" height="72" rx="22" fill="url(#vibeWmGrad)" />
+    <path d="M19 19 C22 19 25 21 27 26 L36 45 L45 26 C47 21 50 19 53 19 C58 19 61 24 57 30 L41 58 C38.5 62 33.5 62 31 58 L15 30 C11 24 14 19 19 19 Z" fill="#FFFFFF" />
+    <path d="M36 15 C36.4 21 40 25 46 25.4 C40 25.8 36.4 30 36 36 C35.6 30 32 25.8 26 25.4 C32 25 35.6 21 36 15 Z" fill="#FFFFFF" />
+  </g>
+
+  <!-- "VibeNet" Typography -->
+  <text x="102" y="62" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="800" letter-spacing="-1.5" fill="url(#wmTextGrad)">
+    Vibe<tspan font-weight="500" fill="#8A2387">Net</tspan>
+  </text>
+
+  <!-- Connection Dot -->
+  <circle cx="282" cy="38" r="5" fill="#FF416C" />
+</svg>

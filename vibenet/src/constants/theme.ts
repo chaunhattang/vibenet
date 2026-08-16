@@ -53,6 +53,12 @@ export const Colors = {
   surfaceSubtle: '#E8E8EC',
   surfaceDark: '#141416',
   
+  // Layered Card Surfaces
+  surfaceLayerOuter: '#F3F3F3',
+  surfaceLayerInner: '#FDFDFD',
+  surfaceLayerBorder: '#E6E6EC',
+  surfaceInnerBorder: '#ECECEE',
+
   // Glassmorphic overlays
   surfaceDarkGlass: 'rgba(20, 20, 22, 0.75)',
   surfaceLightGlass: 'rgba(255, 255, 255, 0.85)',
@@ -191,6 +197,34 @@ export const Shadows = {
     },
     web: {
       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.05)',
+    },
+  }),
+  layeredCard: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.05,
+      shadowRadius: 20,
+    },
+    android: {
+      elevation: 2,
+    },
+    web: {
+      boxShadow: '0 8px 28px rgba(0, 0, 0, 0.04)',
+    },
+  }),
+  innerCard: Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.03,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 1,
+    },
+    web: {
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
     },
   }),
   cardHover: Platform.select({
