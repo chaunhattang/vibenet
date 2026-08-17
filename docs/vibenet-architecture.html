@@ -1,0 +1,611 @@
+<title>VibeNet Architecture Dossier</title>
+<style>
+  :root {
+    --paper: #f6f8fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f8;
+    --ink: #0e151f;
+    --ink-2: #3a4658;
+    --muted: #6b7789;
+    --line: #dbe2ec;
+    --line-strong: #c3ccda;
+    --accent: #1f7fe0;
+    --accent-soft: #e6f0fc;
+    --teal: #0e9c8c;
+    --violet: #6b5cf0;
+    --amber: #d9821f;
+    --rose: #d64b73;
+    --node-bg: #eef3fa;
+    --node-line: #9fb4d0;
+    --node-ink: #12253d;
+    --code-bg: #eef2f8;
+    --shadow: 0 1px 2px rgba(14,21,31,.06), 0 8px 28px rgba(14,21,31,.06);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0b1119;
+      --surface: #121a24;
+      --surface-2: #182430;
+      --ink: #eef3fa;
+      --ink-2: #b8c4d4;
+      --muted: #82909f;
+      --line: #223142;
+      --line-strong: #2e4155;
+      --accent: #4f9ff0;
+      --accent-soft: #16283d;
+      --teal: #2bc3b1;
+      --violet: #9587f7;
+      --amber: #eaa24a;
+      --rose: #ef6f92;
+      --node-bg: #1b2836;
+      --node-line: #3a5372;
+      --node-ink: #dbe7f5;
+      --code-bg: #0e1620;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0b1119;
+    --surface: #121a24;
+    --surface-2: #182430;
+    --ink: #eef3fa;
+    --ink-2: #b8c4d4;
+    --muted: #82909f;
+    --line: #223142;
+    --line-strong: #2e4155;
+    --accent: #4f9ff0;
+    --accent-soft: #16283d;
+    --teal: #2bc3b1;
+    --violet: #9587f7;
+    --amber: #eaa24a;
+    --rose: #ef6f92;
+    --node-bg: #1b2836;
+    --node-line: #3a5372;
+    --node-ink: #dbe7f5;
+    --code-bg: #0e1620;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02","cv03","cv04";
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- header ---- */
+  header.hero {
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 140% at 88% -20%, var(--accent-soft) 0%, transparent 55%),
+      var(--surface);
+  }
+  .hero-inner { max-width: 1080px; margin: 0 auto; padding: 40px 24px 34px; }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .kicker::before { content:""; width: 26px; height: 2px; background: var(--accent); display:inline-block; }
+  h1 {
+    font-family: var(--display); font-weight: 800; letter-spacing: -.03em;
+    font-size: clamp(32px, 6vw, 54px); line-height: 1.02; margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  h1 .dot { color: var(--accent); }
+  .lede { font-size: 18px; color: var(--ink-2); max-width: 62ch; margin: 0 0 26px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pill {
+    font-family: var(--mono); font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--surface);
+    display: inline-flex; gap: 7px; align-items: center;
+  }
+  .pill b { color: var(--ink); font-weight: 600; }
+
+  /* ---- section ---- */
+  section { margin-top: 56px; scroll-margin-top: 24px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+  .sec-num { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+  h2 { font-family: var(--display); font-weight: 750; font-size: clamp(22px, 3.4vw, 30px); letter-spacing: -.02em; margin: 0; }
+  h3 { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: -.01em; margin: 28px 0 12px; color: var(--ink); }
+  p { margin: 0 0 14px; }
+  .sub { color: var(--muted); font-size: 15px; }
+
+  /* ---- stack diagram ---- */
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .layer {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .layer-top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .layer-top .badge {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 6px; font-weight: 600;
+  }
+  .b-client { background: color-mix(in srgb, var(--violet) 16%, transparent); color: var(--violet); }
+  .b-edge { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .b-app { background: color-mix(in srgb, var(--teal) 18%, transparent); color: var(--teal); }
+  .b-data { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber); }
+  .layer-title { font-weight: 650; font-size: 15px; }
+  .layer-note { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px; }
+  .chip {
+    font-size: 12.5px; padding: 7px 11px; border-radius: 8px; background: var(--surface-2);
+    border: 1px solid var(--line); color: var(--ink-2); font-family: var(--mono);
+  }
+  .chip.k { color: var(--ink); font-weight: 600; }
+  .flow-arrow { text-align: center; color: var(--node-line); font-size: 18px; line-height: 1; margin: -6px 0; }
+
+  /* ---- generic cards grid ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .card h4 { margin: 0 0 4px; font-family: var(--display); font-size: 15.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .tag-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ---- table ---- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { background: var(--surface-2); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  td code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  td .ep { color: var(--accent); font-family: var(--mono); font-size: 12px; }
+  .ver { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .n { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+
+  /* ---- charts ---- */
+  .chart { display: flex; flex-direction: column; gap: 11px; margin-top: 6px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 42px; align-items: center; gap: 12px; }
+  .bar-label { font-size: 13px; color: var(--ink-2); text-align: right; }
+  .bar-track { background: var(--surface-2); border-radius: 6px; height: 22px; overflow: hidden; border: 1px solid var(--line); }
+  .bar-fill { height: 100%; border-radius: 5px 0 0 5px; display: block; }
+  .bar-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  /* ---- mermaid ---- */
+  .diagram-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); padding: 18px; }
+  pre.mermaid { margin: 0; text-align: center; min-width: 640px; }
+
+  /* ---- callout ---- */
+  .note {
+    border-left: 3px solid var(--amber); background: color-mix(in srgb, var(--amber) 8%, var(--surface));
+    padding: 12px 16px; border-radius: 0 10px 10px 0; font-size: 13.5px; color: var(--ink-2);
+  }
+  .note b { color: var(--ink); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) {
+    .two-col { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 96px 1fr 38px; }
+    .bar-label { font-size: 12px; }
+  }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+  a { color: var(--accent); }
+</style>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="kicker">Technical Architecture Dossier</p>
+    <h1>VibeNet<span class="dot">.</span> system &amp; data model</h1>
+    <p class="lede">A social media platform — feed, stories, reels, direct messaging, and a Locket-style close-friends moment feed — built on a Spring Boot API and an Expo / React Native universal client.</p>
+    <div class="meta-row">
+      <span class="pill"><b>Backend</b> Java 21 · Spring Boot 4.1</span>
+      <span class="pill"><b>Client</b> Expo 56 · React Native 0.85</span>
+      <span class="pill"><b>Data</b> PostgreSQL + Redis</span>
+      <span class="pill"><b>Realtime</b> STOMP / WebSocket</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- 1. ARCHITECTURE -->
+  <section id="architecture">
+    <div class="sec-head"><span class="sec-num">01</span><h2>System architecture</h2></div>
+    <p class="sub">Four tiers, top to bottom: the universal client talks HTTP + WebSocket to a stateless Spring Boot server, which persists to PostgreSQL and uses Redis for cache, presence, and notification fan-out.</p>
+
+    <div class="stack">
+      <div class="layer">
+        <div class="layer-top"><span class="badge b-client">Client</span><span class="layer-title">Expo / React Native — iOS · Android · Web</span><span class="layer-note">expo-router · TypeScript</span></div>
+        <div class="chips">
+          <span class="chip k">Expo Router (file-based)</span>
+          <span class="chip">React 19 + React Compiler</span>
+          <span class="chip">axios (JWT interceptor)</span>
+          <span class="chip">@stomp/stompjs</span>
+          <span class="chip">expo-secure-store</span>
+          <span class="chip">Reanimated · Gesture Handler</span>
+          <span class="chip">expo-image / expo-video</span>
+          <span class="chip">Glassmorphic UI kit</span>
+        </div>
+      </div>
+      <div class="flow-arrow">↓&nbsp;&nbsp;HTTPS · REST&nbsp;&nbsp;/&nbsp;&nbsp;WS · STOMP&nbsp;&nbsp;↓</div>
+      <div class="layer">
+        <div class="layer-top"><span class="badge b-edge">Edge</span><span class="layer-title">Security &amp; transport</span><span class="layer-note">stateless · JWT</span></div>
+        <div class="chips">
+          <span class="chip k">Spring Security (stateless)</span>
+          <span class="chip">JwtAuthenticationFilter</span>
+          <span class="chip">OAuth2 client</span>
+          <span class="chip">CORS + CSRF-off</span>
+          <span class="chip">STOMP auth interceptor</span>
+          <span class="chip">SockJS /ws endpoint</span>
+        </div>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="layer">
+        <div class="layer-top"><span class="badge b-app">Application</span><span class="layer-title">Spring MVC — controllers → services → repositories</span><span class="layer-note">19 controllers · ~28 services</span></div>
+        <div class="chips">
+          <span class="chip k">REST Controllers</span>
+          <span class="chip">Service (iface + impl)</span>
+          <span class="chip">Spring Data JPA repos</span>
+          <span class="chip">MapStruct mappers</span>
+          <span class="chip">Bean Validation</span>
+          <span class="chip">Event / Publisher / Listener</span>
+          <span class="chip">Local file storage (500 MB)</span>
+          <span class="chip">SpringDoc / Swagger</span>
+        </div>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="layer">
+        <div class="layer-top"><span class="badge b-data">Data</span><span class="layer-title">Persistence &amp; messaging</span><span class="layer-note">JPA/Hibernate · Lettuce</span></div>
+        <div class="chips">
+          <span class="chip k">PostgreSQL</span>
+          <span class="chip">Hibernate (ddl-auto: update)</span>
+          <span class="chip">Redis — cache</span>
+          <span class="chip">Redis Pub/Sub — notifications</span>
+          <span class="chip">Redis — presence / heartbeat</span>
+          <span class="chip">Filesystem — /uploads</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. TECH STACK -->
+  <section id="stack">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Technology stack</h2></div>
+    <div class="two-col">
+      <div>
+        <h3>Backend — Java / Spring</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Library</th><th>Version</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>Spring Boot</td><td class="ver">4.1.0</td><td>Application framework</td></tr>
+              <tr><td>Spring Web MVC</td><td class="ver">—</td><td>REST controllers</td></tr>
+              <tr><td>Spring Data JPA</td><td class="ver">—</td><td>ORM / Hibernate</td></tr>
+              <tr><td>Spring Data Redis</td><td class="ver">Lettuce</td><td>Cache + Pub/Sub</td></tr>
+              <tr><td>Spring Security</td><td class="ver">—</td><td>AuthN / AuthZ</td></tr>
+              <tr><td>OAuth2 Client</td><td class="ver">—</td><td>Social login</td></tr>
+              <tr><td>Spring WebSocket</td><td class="ver">STOMP</td><td>Realtime chat</td></tr>
+              <tr><td>PostgreSQL</td><td class="ver">runtime</td><td>Primary database</td></tr>
+              <tr><td>jjwt</td><td class="ver">0.12.7</td><td>JWT tokens</td></tr>
+              <tr><td>MapStruct</td><td class="ver">1.6.3</td><td>DTO ↔ entity mapping</td></tr>
+              <tr><td>Lombok</td><td class="ver">—</td><td>Boilerplate reduction</td></tr>
+              <tr><td>SpringDoc OpenAPI</td><td class="ver">2.8.9</td><td>Swagger UI</td></tr>
+              <tr><td>JCodec</td><td class="ver">0.2.5</td><td>Video duration probe</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>Frontend — Expo / React Native</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Library</th><th>Version</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>Expo SDK</td><td class="ver">56</td><td>App platform</td></tr>
+              <tr><td>React Native</td><td class="ver">0.85.3</td><td>Native runtime</td></tr>
+              <tr><td>React</td><td class="ver">19.2.3</td><td>UI library</td></tr>
+              <tr><td>Expo Router</td><td class="ver">56.2</td><td>File-based routing</td></tr>
+              <tr><td>TypeScript</td><td class="ver">6.0</td><td>Language</td></tr>
+              <tr><td>axios</td><td class="ver">1.19</td><td>HTTP client</td></tr>
+              <tr><td>@stomp/stompjs</td><td class="ver">7.3</td><td>WebSocket / STOMP</td></tr>
+              <tr><td>expo-secure-store</td><td class="ver">57.0</td><td>Token storage</td></tr>
+              <tr><td>Reanimated</td><td class="ver">4.3</td><td>Animation</td></tr>
+              <tr><td>Gesture Handler</td><td class="ver">2.31</td><td>Gestures</td></tr>
+              <tr><td>expo-image / video</td><td class="ver">56</td><td>Media playback</td></tr>
+              <tr><td>@gorhom/bottom-sheet</td><td class="ver">5.2</td><td>Sheet modals</td></tr>
+              <tr><td>lottie / svg / blur</td><td class="ver">—</td><td>UI effects</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. ER DIAGRAM -->
+  <section id="entities">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Entity relationship diagram</h2></div>
+    <p class="sub">Core domain model — 24 JPA entities keyed by <code class="mono">UUID</code>. <code class="mono">User</code> is the hub; content (posts, reels, stories, moments) and the social graph radiate from it. Join / activity tables (views, saves, reactions, recipients) are shown condensed.</p>
+    <div class="diagram-wrap">
+<pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#eef3fa','primaryBorderColor':'#9fb4d0','primaryTextColor':'#12253d',
+  'lineColor':'#7d93b3','fontfamily':'ui-monospace','fontSize':'13px'}}}%%
+erDiagram
+  USER ||--o| PROFILE : has
+  USER ||--o{ POST : owns
+  USER ||--o{ REEL : creates
+  USER ||--o{ STORY : posts
+  USER ||--o{ FRIENDSHIP : "sends / receives"
+  USER ||--o{ FOLLOW : "follows"
+  USER ||--o{ CLOSE_FRIEND : "curates"
+  USER ||--o{ LOCKET_MOMENT : sends
+  USER ||--o{ CHAT_MESSAGE : "sends / receives"
+  USER ||--o{ NOTIFICATION : "recipient / actor"
+  USER ||--o{ DEVICE_TOKEN : registers
+
+  POST ||--o{ COMMENT : has
+  POST ||--o{ REACTION : has
+  POST ||--o{ SAVED_POST : "saved in"
+  COMMENT ||--o{ COMMENT : "replies to"
+  COMMENT ||--o{ COMMENT_REACTION : has
+
+  REEL ||--o{ REEL_COMMENT : has
+  REEL ||--o{ REEL_REACTION : has
+  REEL ||--o{ SAVED_REEL : "saved in"
+
+  STORY ||--o{ STORY_VIEW : "viewed via"
+
+  LOCKET_MOMENT ||--o{ LOCKET_MOMENT_RECIPIENT : "delivered to"
+  LOCKET_MOMENT ||--o{ LOCKET_REACTION : receives
+
+  USER {
+    UUID id PK
+    string username UK
+    string email UK
+    string hashedPassword
+    Role role
+    Status status
+    datetime lastActiveAt
+  }
+  PROFILE {
+    UUID id PK_FK
+    string fullName
+    string avatarUrl
+    string bio
+    Gender gender
+    date dateOfBirth
+  }
+  POST {
+    UUID id PK
+    string textContent
+    list mediaUrl
+    long sharesCount
+    datetime createdAt
+  }
+  REEL {
+    UUID id PK
+    string videoUrl
+    int durationSeconds
+    long viewsCount
+  }
+  STORY {
+    UUID id PK
+    string mediaUrl
+    MediaType mediaType
+    datetime expiresAt
+  }
+  LOCKET_MOMENT {
+    UUID id PK
+    string mediaUrl
+    MediaType mediaType
+    string caption
+  }
+  FRIENDSHIP {
+    UUID id PK
+    FriendStatus status
+    datetime createdAt
+  }
+  NOTIFICATION {
+    UUID id PK
+    NotificationType type
+    boolean isRead
+    UUID relatedEntityId
+  }
+  CHAT_MESSAGE {
+    UUID id PK
+    string chatId
+    string content
+  }
+</pre>
+    </div>
+    <p class="note" style="margin-top:14px"><b>Note:</b> <code class="mono">Profile</code> shares <code class="mono">User</code>'s primary key (<code class="mono">@MapsId</code> one-to-one). <code class="mono">Follow</code>, <code class="mono">Friendship</code>, <code class="mono">CloseFriend</code>, and <code class="mono">ChatMessage</code> are self-referential across users. Uniqueness is enforced on join tables (e.g. one view/save/follow per user pair).</p>
+  </section>
+
+  <!-- 4. ENTITY CATALOG -->
+  <section id="catalog">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Entity catalog by domain</h2></div>
+    <p class="sub">24 entities across six functional domains.</p>
+
+    <h3><span style="color:var(--accent)">◆</span> Identity &amp; Social Graph</h3>
+    <div class="grid">
+      <div class="card"><h4><i class="tag-dot" style="background:var(--accent)"></i>User</h4><p>Credentials, role, status, presence (lastActiveAt), refresh token.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--accent)"></i>Profile</h4><p>Display name, avatar, cover, bio, gender, DOB. Shares User PK.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--accent)"></i>Follow</h4><p>Directed follower → following edge, unique per pair.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--accent)"></i>Friendship</h4><p>Bidirectional request with FriendStatus lifecycle.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--accent)"></i>ProfileVisit</h4><p>Who viewed whose profile, timestamped.</p></div>
+    </div>
+
+    <h3><span style="color:var(--teal)">◆</span> Feed &amp; Posts</h3>
+    <div class="grid">
+      <div class="card"><h4><i class="tag-dot" style="background:var(--teal)"></i>Post</h4><p>Text + media list, gradient background, share count, owner.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--teal)"></i>Comment</h4><p>Threaded (self parent), belongs to post + author.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--teal)"></i>Reaction</h4><p>Typed reaction on a post (ReactionType enum).</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--teal)"></i>CommentReaction</h4><p>Typed reaction on a comment.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--teal)"></i>SavedPost</h4><p>Bookmark join, unique per user + post.</p></div>
+    </div>
+
+    <h3><span style="color:var(--violet)">◆</span> Reels &amp; Stories</h3>
+    <div class="grid">
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>Reel</h4><p>Video, thumbnail, duration, audio title, tags, view count.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>ReelComment</h4><p>Comment on a reel.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>ReelReaction</h4><p>Typed reaction on a reel.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>SavedReel</h4><p>Bookmark join, unique per user + reel.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>Story</h4><p>Ephemeral media with expiresAt, media type.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--violet)"></i>StoryView</h4><p>View record, unique per story + viewer.</p></div>
+    </div>
+
+    <h3><span style="color:var(--amber)">◆</span> Locket — Close-Friend Moments</h3>
+    <div class="grid">
+      <div class="card"><h4><i class="tag-dot" style="background:var(--amber)"></i>CloseFriend</h4><p>Owner → friend allow-list for moments.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--amber)"></i>LocketMoment</h4><p>Photo/video moment, caption, optional reply-to.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--amber)"></i>LocketMomentRecipient</h4><p>Per-recipient delivery + viewed state.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--amber)"></i>LocketReaction</h4><p>Emoji reaction by a recipient.</p></div>
+    </div>
+
+    <h3><span style="color:var(--rose)">◆</span> Messaging &amp; Notifications</h3>
+    <div class="grid">
+      <div class="card"><h4><i class="tag-dot" style="background:var(--rose)"></i>ChatRoom</h4><p>Deterministic chatId between two users.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--rose)"></i>ChatMessage</h4><p>Sender, recipient, text, room reference.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--rose)"></i>Notification</h4><p>Recipient + actor + type + related entity, read flag.</p></div>
+      <div class="card"><h4><i class="tag-dot" style="background:var(--rose)"></i>DeviceToken</h4><p>Push + widget token per platform for delivery.</p></div>
+    </div>
+  </section>
+
+  <!-- 5. AUTH FLOW -->
+  <section id="flows">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Request &amp; auth flow</h2></div>
+    <p class="sub">Stateless JWT with transparent refresh — the axios client retries once on 401 after silently exchanging the refresh token.</p>
+    <div class="diagram-wrap">
+<pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#eef3fa','primaryBorderColor':'#9fb4d0','primaryTextColor':'#12253d',
+  'lineColor':'#7d93b3','actorBkg':'#eef3fa','actorBorder':'#9fb4d0','actorTextColor':'#12253d',
+  'signalColor':'#5b6b82','signalTextColor':'#12253d','noteBkgColor':'#e6f0fc','noteBorderColor':'#1f7fe0','fontSize':'13px'}}}%%
+sequenceDiagram
+  participant C as Client (axios)
+  participant F as JwtAuthFilter
+  participant S as Service layer
+  participant DB as PostgreSQL
+  participant R as Redis
+  C->>F: GET /api/posts/feed (Bearer access token)
+  F->>F: Validate JWT signature + expiry
+  alt token valid
+    F->>S: forward authenticated request
+    S->>DB: query feed
+    S->>R: read/write cache + presence
+    S-->>C: 200 { code, message, result }
+  else token expired (401)
+    F-->>C: 401 Unauthorized
+    C->>S: POST /api/auth/refresh (refresh token)
+    S-->>C: new access + refresh tokens
+    C->>F: retry original request
+    F-->>C: 200 result
+  end
+</pre>
+    </div>
+  </section>
+
+  <!-- 6. CHARTS -->
+  <section id="metrics">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Codebase metrics</h2></div>
+
+    <h3>REST endpoints by domain</h3>
+    <p class="sub">≈ 80 REST endpoints across 19 controllers, plus 3 STOMP message mappings for chat.</p>
+    <div class="chart">
+      <div class="bar-row"><span class="bar-label">Users</span><div class="bar-track"><span class="bar-fill" style="width:100%;background:var(--accent)"></span></div><span class="bar-val">13</span></div>
+      <div class="bar-row"><span class="bar-label">Posts</span><div class="bar-track"><span class="bar-fill" style="width:85%;background:var(--teal)"></span></div><span class="bar-val">11</span></div>
+      <div class="bar-row"><span class="bar-label">Reels</span><div class="bar-track"><span class="bar-fill" style="width:62%;background:var(--violet)"></span></div><span class="bar-val">8</span></div>
+      <div class="bar-row"><span class="bar-label">Locket Moments</span><div class="bar-track"><span class="bar-fill" style="width:62%;background:var(--amber)"></span></div><span class="bar-val">8</span></div>
+      <div class="bar-row"><span class="bar-label">Friends</span><div class="bar-track"><span class="bar-fill" style="width:54%;background:var(--accent)"></span></div><span class="bar-val">7</span></div>
+      <div class="bar-row"><span class="bar-label">Stories</span><div class="bar-track"><span class="bar-fill" style="width:38%;background:var(--violet)"></span></div><span class="bar-val">5</span></div>
+      <div class="bar-row"><span class="bar-label">Notifications</span><div class="bar-track"><span class="bar-fill" style="width:31%;background:var(--rose)"></span></div><span class="bar-val">4</span></div>
+      <div class="bar-row"><span class="bar-label">Chat (REST)</span><div class="bar-track"><span class="bar-fill" style="width:23%;background:var(--rose)"></span></div><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">Auth</span><div class="bar-track"><span class="bar-fill" style="width:23%;background:var(--accent)"></span></div><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">Comments</span><div class="bar-track"><span class="bar-fill" style="width:23%;background:var(--teal)"></span></div><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">Close Friends</span><div class="bar-track"><span class="bar-fill" style="width:23%;background:var(--amber)"></span></div><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">Other (7 ctrls)</span><div class="bar-track"><span class="bar-fill" style="width:46%;background:var(--muted)"></span></div><span class="bar-val">12</span></div>
+    </div>
+
+    <h3 style="margin-top:34px">Backend source composition</h3>
+    <div class="chart">
+      <div class="bar-row"><span class="bar-label">DTOs</span><div class="bar-track"><span class="bar-fill" style="width:100%;background:var(--accent)"></span></div><span class="bar-val">39</span></div>
+      <div class="bar-row"><span class="bar-label">Service impls</span><div class="bar-track"><span class="bar-fill" style="width:72%;background:var(--teal)"></span></div><span class="bar-val">28</span></div>
+      <div class="bar-row"><span class="bar-label">Entities</span><div class="bar-track"><span class="bar-fill" style="width:62%;background:var(--violet)"></span></div><span class="bar-val">24</span></div>
+      <div class="bar-row"><span class="bar-label">Repositories</span><div class="bar-track"><span class="bar-fill" style="width:62%;background:var(--amber)"></span></div><span class="bar-val">24</span></div>
+      <div class="bar-row"><span class="bar-label">Controllers</span><div class="bar-track"><span class="bar-fill" style="width:49%;background:var(--rose)"></span></div><span class="bar-val">19</span></div>
+      <div class="bar-row"><span class="bar-label">Error codes</span><div class="bar-track"><span class="bar-fill" style="width:36%;background:var(--muted)"></span></div><span class="bar-val">14</span></div>
+      <div class="bar-row"><span class="bar-label">Mappers</span><div class="bar-track"><span class="bar-fill" style="width:21%;background:var(--accent)"></span></div><span class="bar-val">8</span></div>
+      <div class="bar-row"><span class="bar-label">Enums</span><div class="bar-track"><span class="bar-fill" style="width:21%;background:var(--teal)"></span></div><span class="bar-val">8</span></div>
+    </div>
+
+    <h3 style="margin-top:34px">Frontend surface</h3>
+    <div class="chart">
+      <div class="bar-row"><span class="bar-label">Components</span><div class="bar-track"><span class="bar-fill" style="width:100%;background:var(--violet)"></span></div><span class="bar-val">40</span></div>
+      <div class="bar-row"><span class="bar-label">Runtime deps</span><div class="bar-track"><span class="bar-fill" style="width:75%;background:var(--accent)"></span></div><span class="bar-val">30</span></div>
+      <div class="bar-row"><span class="bar-label">Screens/routes</span><div class="bar-track"><span class="bar-fill" style="width:35%;background:var(--teal)"></span></div><span class="bar-val">14</span></div>
+      <div class="bar-row"><span class="bar-label">API modules</span><div class="bar-track"><span class="bar-fill" style="width:33%;background:var(--amber)"></span></div><span class="bar-val">13</span></div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Identity / Auth</span>
+      <span><i style="background:var(--teal)"></i>Feed / Posts</span>
+      <span><i style="background:var(--violet)"></i>Reels / Stories</span>
+      <span><i style="background:var(--amber)"></i>Locket</span>
+      <span><i style="background:var(--rose)"></i>Messaging</span>
+      <span><i style="background:var(--muted)"></i>Other</span>
+    </div>
+    <p class="note" style="margin-top:20px"><b>Counts</b> are derived from a static scan of the repository (<span class="mono">backend/src</span> Java files and <span class="mono">vibenet/src</span> plus <span class="mono">package.json</span>). Endpoint totals count distinct <span class="mono">@*Mapping</span> declarations.</p>
+  </section>
+
+  <!-- 7. REALTIME + KEY ENDPOINTS -->
+  <section id="realtime">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Realtime &amp; key endpoints</h2></div>
+    <div class="two-col">
+      <div>
+        <h3>WebSocket topology (STOMP)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Destination</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><span class="ep">/ws</span></td><td>SockJS handshake endpoint</td></tr>
+              <tr><td><span class="ep">/app/chat.send</span></td><td>Send a message</td></tr>
+              <tr><td><span class="ep">/app/chat.typing</span></td><td>Typing indicator</td></tr>
+              <tr><td><span class="ep">/app/chat.read</span></td><td>Read receipt</td></tr>
+              <tr><td><span class="ep">/topic · /queue</span></td><td>Broadcast broker</td></tr>
+              <tr><td><span class="ep">/user/**</span></td><td>Per-user delivery</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>Representative endpoints</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Method</th><th>Path</th></tr></thead>
+            <tbody>
+              <tr><td><code>POST</code></td><td><span class="ep">/api/auth/login</span></td></tr>
+              <tr><td><code>POST</code></td><td><span class="ep">/api/auth/refresh</span></td></tr>
+              <tr><td><code>GET</code></td><td><span class="ep">/api/posts/feed</span></td></tr>
+              <tr><td><code>POST</code></td><td><span class="ep">/api/posts</span> <span class="ver">(multipart)</span></td></tr>
+              <tr><td><code>GET</code></td><td><span class="ep">/api/reels/feed</span></td></tr>
+              <tr><td><code>GET</code></td><td><span class="ep">/api/stories/feed</span></td></tr>
+              <tr><td><code>POST</code></td><td><span class="ep">/api/locket/moments</span></td></tr>
+              <tr><td><code>GET</code></td><td><span class="ep">/api/explore/grid</span></td></tr>
+              <tr><td><code>POST</code></td><td><span class="ep">/api/users/heartbeat</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    VibeNet architecture dossier · generated from source scan of backend/ (Spring Boot) &amp; vibenet/ (Expo) · API envelope: { code, message, result } · all IDs UUID
+  </footer>
+</div>
