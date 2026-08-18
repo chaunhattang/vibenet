@@ -20,8 +20,7 @@ import { Colors, Radii, Spacing, Typography, MaxContentWidth } from '../../const
 import { useAuth } from '../../contexts/AuthContext';
 import * as postsApi from '../../services/api/posts';
 import * as storiesApi from '../../services/api/stories';
-import * as reelsApi from '../../services/api/reels';
-import { PostResponse, ReelResponse, StoryItemResponse } from '../../services/api/types';
+import { PostResponse, StoryItemResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 
 interface PickedMedia {
@@ -36,7 +35,6 @@ interface CreatePostModalProps {
   onClose: () => void;
   onCreatePost: (newPost: PostResponse) => void;
   onCreateStory: (newStory: StoryItemResponse) => void;
-  onCreateReel: (newReel: ReelResponse) => void;
 }
 
 type PostContentType = 'media' | 'text' | 'video';
@@ -78,7 +76,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   onClose,
   onCreatePost,
   onCreateStory,
-  onCreateReel,
 }) => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'post' | 'story'>('post');
@@ -168,15 +165,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      if (mode === 'post' && contentType === 'video') {
-        // Videos are short-form content, so they're uploaded as Reels (not feed Posts)
-        // to actually show up in the Reels tab.
-        const form = new FormData();
-        form.append('videoFile', await toFormFile(mediaList[0]));
-        if (caption.trim()) form.append('caption', caption.trim());
-        const created = await reelsApi.uploadReel(form);
-        onCreateReel(created);
-      } else if (mode === 'post') {
+      if (mode === 'post') {
         const form = new FormData();
         form.append('textContent', caption.trim());
         if (location.trim()) form.append('location', location.trim());

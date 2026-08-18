@@ -60,6 +60,26 @@ public class LocketMomentController {
     }
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/public")
+    public ApiResponse<PageResponse<PublicMomentResponse>> getPublicFeed(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        UUID viewerId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.<PageResponse<PublicMomentResponse>>builder()
+                .result(momentService.getPublicFeed(viewerId, page, size))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @DeleteMapping("/{momentId}")
+    public ApiResponse<Void> deleteMoment(@PathVariable UUID momentId) {
+        UUID callerId = SecurityUtils.getCurrentUserId();
+        momentService.deleteMoment(momentId, callerId);
+        return ApiResponse.<Void>builder().message("Moment deleted").build();
+    }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping("/sent")
     public ApiResponse<PageResponse<SentMomentResponse>> getSent(
             @RequestParam(defaultValue = "0") int page,

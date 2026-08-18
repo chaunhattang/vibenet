@@ -6,14 +6,13 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 
 interface FeedHeaderProps {
-  activeTab?: 'feed' | 'reels';
-  onChangeTab?: (tab: 'feed' | 'reels') => void;
+  activeTab?: 'feed' | 'everyone';
+  onChangeTab?: (tab: 'feed' | 'everyone') => void;
   unreadChatCount?: number;
   onPressAdd?: () => void;
 }
@@ -25,60 +24,41 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
   onPressAdd,
 }) => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const isReels = activeTab === 'reels';
+  const isEveryone = activeTab === 'everyone';
 
   return (
-    <View
-      style={[
-        styles.headerContainer,
-        isReels
-          ? [styles.reelsHeaderBg, { paddingTop: Math.max(insets.top, 12) + 4 }]
-          : null,
-      ]}>
+    <View style={styles.headerContainer}>
       {/* Left '+' Create Button */}
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={onPressAdd || (() => router.push('/(tabs)/locket'))}
-        style={[styles.iconButton, isReels && styles.reelsIconButton]}>
-        <Feather
-          name="plus"
-          size={22}
-          color={isReels ? '#FFFFFF' : Colors.textPrimary}
-        />
+        style={styles.iconButton}>
+        <Feather name="plus" size={22} color={Colors.textPrimary} />
       </TouchableOpacity>
 
-      {/* Center Dual Feed / Reels Segmented Switcher */}
-      <View style={[styles.switcherContainer, isReels && styles.reelsSwitcherBg]}>
+      {/* Center Dual Feed / Everyone Segmented Switcher */}
+      <View style={styles.switcherContainer}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => onChangeTab?.('feed')}
-          style={[styles.switcherTab, !isReels && styles.activeSwitcherTab]}>
-          <Text
-            style={[
-              styles.switcherText,
-              !isReels ? styles.activeSwitcherText : styles.inactiveReelsText,
-            ]}>
+          style={[styles.switcherTab, !isEveryone && styles.activeSwitcherTab]}>
+          <Text style={[styles.switcherText, !isEveryone && styles.activeSwitcherText]}>
             Feed
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => onChangeTab?.('reels')}
-          style={[styles.switcherTab, isReels && styles.activeReelsTab]}>
-          <View style={styles.reelsTabContent}>
-            <Text
-              style={[
-                styles.switcherText,
-                isReels ? styles.activeReelsText : styles.inactiveFeedText,
-              ]}>
-              Reels
+          onPress={() => onChangeTab?.('everyone')}
+          style={[styles.switcherTab, isEveryone && styles.activeSwitcherTab]}>
+          <View style={styles.everyoneTabContent}>
+            <Text style={[styles.switcherText, isEveryone && styles.activeSwitcherText]}>
+              Everyone
             </Text>
             <Ionicons
-              name="sparkles"
+              name="earth"
               size={11}
-              color={isReels ? '#FF2D55' : Colors.textTertiary}
+              color={isEveryone ? Colors.accentBlue : Colors.textTertiary}
             />
           </View>
         </TouchableOpacity>
@@ -88,11 +68,11 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => router.push('/(tabs)/messages')}
-        style={[styles.iconButton, isReels && styles.reelsIconButton]}>
+        style={styles.iconButton}>
         <Ionicons
           name="paper-plane-outline"
           size={20}
-          color={isReels ? '#FFFFFF' : Colors.textPrimary}
+          color={Colors.textPrimary}
           style={styles.paperPlaneIcon}
         />
         {unreadChatCount > 0 && (
@@ -115,16 +95,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgMain,
     zIndex: 50,
   },
-  reelsHeaderBg: {
-    height: 'auto',
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    paddingBottom: 8,
-  },
   iconButton: {
     width: 40,
     height: 40,
@@ -146,10 +116,6 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' },
     }),
   },
-  reelsIconButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
   paperPlaneIcon: {
     transform: [{ rotate: '-10deg' }],
   },
@@ -159,11 +125,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F3',
     borderRadius: Radii.pill,
     padding: 3,
-  },
-  reelsSwitcherBg: {
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   switcherTab: {
     paddingHorizontal: 16,
@@ -183,10 +144,7 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)' },
     }),
   },
-  activeReelsTab: {
-    backgroundColor: '#FFFFFF',
-  },
-  reelsTabContent: {
+  everyoneTabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -195,18 +153,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.2,
+    color: 'rgba(0, 0, 0, 0.5)',
   },
   activeSwitcherText: {
     color: Colors.textPrimary,
-  },
-  inactiveFeedText: {
-    color: 'rgba(0, 0, 0, 0.5)',
-  },
-  activeReelsText: {
-    color: '#0D0E11',
-  },
-  inactiveReelsText: {
-    color: 'rgba(255, 255, 255, 0.75)',
   },
   notificationDot: {
     position: 'absolute',

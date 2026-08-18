@@ -20,7 +20,8 @@ public enum LocketErrorCode implements ErrorCodeInterface {
     VIDEO_TOO_LONG(5, "Video exceeds 15 second limit", HttpStatus.BAD_REQUEST),
     MEDIA_TOO_LARGE(6, "Media exceeds 50MB limit", HttpStatus.BAD_REQUEST),
     INVALID_MEDIA_TYPE(7, "Unsupported media type", HttpStatus.BAD_REQUEST),
-    NOT_A_RECIPIENT(8, "You are not a recipient of this moment", HttpStatus.FORBIDDEN)
+    NOT_A_RECIPIENT(8, "You are not a recipient of this moment", HttpStatus.FORBIDDEN),
+    NOT_MOMENT_OWNER(9, "You can only delete your own moment", HttpStatus.FORBIDDEN)
     ;
 
     int relativeCode;

@@ -16,6 +16,10 @@ public interface LocketMomentService {
 
     PageResponse<MomentFeedItemResponse> getFeed(UUID userId, int page, int size);
 
+    PageResponse<PublicMomentResponse> getPublicFeed(UUID viewerId, int page, int size);
+
+    void deleteMoment(UUID momentId, UUID callerId);
+
     PageResponse<SentMomentResponse> getSent(UUID userId, int page, int size);
 
     void viewMoment(UUID momentId, UUID userId);

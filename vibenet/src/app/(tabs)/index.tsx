@@ -15,17 +15,16 @@ import { CommentsSheetModal } from '../../components/feed/CommentsSheetModal';
 import { StoryViewerModal } from '../../components/stories/StoryViewerModal';
 import { CreatePostModal } from '../../components/feed/CreatePostModal';
 import { PostOptionsModal } from '../../components/feed/PostOptionsModal';
-import { ReelsFeedView } from '../../components/reels/ReelsFeedView';
-import { ReelCommentsSheetModal } from '../../components/reels/ReelCommentsSheetModal';
+import { EveryoneMomentsView } from '../../components/everyone/EveryoneMomentsView';
 import { FeedSkeleton } from '../../components/skeletons/FeedSkeleton';
 import * as postsApi from '../../services/api/posts';
 import * as storiesApi from '../../services/api/stories';
-import { PostResponse, ReelResponse, StoryUserGroupResponse } from '../../services/api/types';
+import { PostResponse, StoryUserGroupResponse } from '../../services/api/types';
 import { Colors, Spacing, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [homeTab, setHomeTab] = useState<'feed' | 'reels'>('feed');
+  const [homeTab, setHomeTab] = useState<'feed' | 'everyone'>('feed');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [storyGroups, setStoryGroups] = useState<StoryUserGroupResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,9 +38,6 @@ export default function FeedScreen() {
   const [selectedStoryGroupIndex, setSelectedStoryGroupIndex] = useState<number>(0);
   const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-  const [selectedReelForComments, setSelectedReelForComments] = useState<ReelResponse | null>(null);
-  const [isReelCommentsVisible, setIsReelCommentsVisible] = useState(false);
-  const [newlyCreatedReel, setNewlyCreatedReel] = useState<ReelResponse | null>(null);
 
   const loadFeed = useCallback(async () => {
     const [feedPage, stories] = await Promise.all([
@@ -72,11 +68,6 @@ export default function FeedScreen() {
     setIsCommentsVisible(true);
   };
 
-  const handleOpenReelComments = (reel: ReelResponse) => {
-    setSelectedReelForComments(reel);
-    setIsReelCommentsVisible(true);
-  };
-
   const handlePressAuthor = (authorId: string) => {
     router.push(`/profile/${authorId}` as any);
   };
@@ -88,11 +79,6 @@ export default function FeedScreen() {
   const handleCreateStory = () => {
     // Refresh story groups so the new story appears grouped under the current user.
     storiesApi.getStoriesFeed().then(setStoryGroups).catch(() => {});
-  };
-
-  const handleCreateReel = (newReel: ReelResponse) => {
-    setNewlyCreatedReel(newReel);
-    setHomeTab('reels');
   };
 
   const handleOpenOptions = (post: PostResponse) => {
@@ -110,24 +96,19 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.rootContainer}>
-      {/* Dynamic Status Bar */}
-      <StatusBar
-        barStyle={homeTab === 'reels' ? 'light-content' : 'dark-content'}
-        translucent={true}
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="dark-content" translucent={true} backgroundColor="transparent" />
 
-      {homeTab === 'feed' ? (
-        /* 1. PHOTO FEED (Inside SafeAreaView) */
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.container}>
-            <View style={styles.contentWrapper}>
-              <FeedHeader
-                activeTab={homeTab}
-                onChangeTab={setHomeTab}
-                onPressAdd={() => setIsCreateModalVisible(true)}
-              />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <View style={styles.contentWrapper}>
+            <FeedHeader
+              activeTab={homeTab}
+              onChangeTab={setHomeTab}
+              onPressAdd={() => setIsCreateModalVisible(true)}
+            />
 
+            {homeTab === 'feed' ? (
+              /* 1. PHOTO FEED */
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
@@ -163,25 +144,13 @@ export default function FeedScreen() {
                   </>
                 )}
               </ScrollView>
-            </View>
+            ) : (
+              /* 2. EVERYONE — swipe through friends' moments sent via "Send a Moment" */
+              <EveryoneMomentsView />
+            )}
           </View>
-        </SafeAreaView>
-      ) : (
-        /* 2. REELS VERTICAL SNAPPING FULL-SCREEN (Edge-to-Edge) */
-        <View style={styles.reelsFullContainer}>
-          <ReelsFeedView
-            onOpenComments={handleOpenReelComments}
-            onPressAuthor={handlePressAuthor}
-            newReel={newlyCreatedReel}
-          />
-          {/* Floating Header on top of Reels */}
-          <FeedHeader
-            activeTab={homeTab}
-            onChangeTab={setHomeTab}
-            onPressAdd={() => setIsCreateModalVisible(true)}
-          />
         </View>
-      )}
+      </SafeAreaView>
 
       {/* Create Post / Add Story Modal */}
       <CreatePostModal
@@ -189,7 +158,6 @@ export default function FeedScreen() {
         onClose={() => setIsCreateModalVisible(false)}
         onCreatePost={handleCreatePost}
         onCreateStory={handleCreateStory}
-        onCreateReel={handleCreateReel}
       />
 
       {/* Story Viewer Modal */}
@@ -215,13 +183,6 @@ export default function FeedScreen() {
         onDeletePost={handleDeletePost}
         onToggleSave={handleToggleSave}
       />
-
-      {/* Reel Comments Sheet Modal */}
-      <ReelCommentsSheetModal
-        visible={isReelCommentsVisible}
-        reel={selectedReelForComments}
-        onClose={() => setIsReelCommentsVisible(false)}
-      />
     </View>
   );
 }
@@ -229,7 +190,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.bgMain,
   },
   safeArea: {
     flex: 1,
@@ -250,12 +211,5 @@ const styles = StyleSheet.create({
   },
   postsList: {
     marginTop: Spacing.two,
-  },
-  reelsFullContainer: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#000000',
-    position: 'relative',
   },
 });
