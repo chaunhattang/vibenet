@@ -41,6 +41,7 @@ export default function FeedScreen() {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [selectedReelForComments, setSelectedReelForComments] = useState<ReelResponse | null>(null);
   const [isReelCommentsVisible, setIsReelCommentsVisible] = useState(false);
+  const [newlyCreatedReel, setNewlyCreatedReel] = useState<ReelResponse | null>(null);
 
   const loadFeed = useCallback(async () => {
     const [feedPage, stories] = await Promise.all([
@@ -87,6 +88,11 @@ export default function FeedScreen() {
   const handleCreateStory = () => {
     // Refresh story groups so the new story appears grouped under the current user.
     storiesApi.getStoriesFeed().then(setStoryGroups).catch(() => {});
+  };
+
+  const handleCreateReel = (newReel: ReelResponse) => {
+    setNewlyCreatedReel(newReel);
+    setHomeTab('reels');
   };
 
   const handleOpenOptions = (post: PostResponse) => {
@@ -166,6 +172,7 @@ export default function FeedScreen() {
           <ReelsFeedView
             onOpenComments={handleOpenReelComments}
             onPressAuthor={handlePressAuthor}
+            newReel={newlyCreatedReel}
           />
           {/* Floating Header on top of Reels */}
           <FeedHeader
@@ -182,6 +189,7 @@ export default function FeedScreen() {
         onClose={() => setIsCreateModalVisible(false)}
         onCreatePost={handleCreatePost}
         onCreateStory={handleCreateStory}
+        onCreateReel={handleCreateReel}
       />
 
       {/* Story Viewer Modal */}

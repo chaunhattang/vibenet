@@ -20,6 +20,7 @@ import * as commentsApi from '../../services/api/comments';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveMediaUrl } from '../../services/config';
+import { onPostComment } from '../../services/websocket';
 
 interface CommentsSheetModalProps {
   visible: boolean;
@@ -53,6 +54,17 @@ export const CommentsSheetModal: React.FC<CommentsSheetModalProps> = ({
       .then((page) => setComments(page.data))
       .catch(() => setComments([]))
       .finally(() => setIsLoading(false));
+  }, [visible, post]);
+
+  // Live cross-device sync: append comments posted from this account's other
+  // sessions (or by anyone else) while the sheet is open, deduping our own optimistic add.
+  React.useEffect(() => {
+    if (!visible || !post) return;
+    return onPostComment(post.id, (event) => {
+      setComments((prev) =>
+        prev.some((c) => c.id === event.comment.id) ? prev : [event.comment, ...prev]
+      );
+    });
   }, [visible, post]);
 
   const handleAddComment = async () => {

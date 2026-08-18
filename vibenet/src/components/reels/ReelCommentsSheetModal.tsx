@@ -20,6 +20,7 @@ import * as reelsApi from '../../services/api/reels';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveMediaUrl } from '../../services/config';
+import { onReelComment } from '../../services/websocket';
 
 interface ReelCommentsSheetModalProps {
   visible: boolean;
@@ -50,6 +51,17 @@ export const ReelCommentsSheetModal: React.FC<ReelCommentsSheetModalProps> = ({
       .then((page) => setComments(page.data))
       .catch(() => setComments([]))
       .finally(() => setIsLoading(false));
+  }, [visible, reel]);
+
+  // Live cross-device sync: append comments posted from this account's other
+  // sessions (or by anyone else) while the sheet is open, deduping our own optimistic add.
+  React.useEffect(() => {
+    if (!visible || !reel) return;
+    return onReelComment(reel.id, (event) => {
+      setComments((prev) =>
+        prev.some((c) => c.id === event.comment.id) ? prev : [event.comment, ...prev]
+      );
+    });
   }, [visible, reel]);
 
   const handleAddComment = async () => {

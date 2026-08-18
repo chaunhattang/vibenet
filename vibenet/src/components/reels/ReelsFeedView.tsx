@@ -14,6 +14,7 @@ import type { ReelResponse } from '../../services/api/types';
 interface ReelsFeedViewProps {
   onOpenComments: (reel: ReelResponse) => void;
   onPressAuthor?: (authorId: string) => void;
+  newReel?: ReelResponse | null;
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -21,6 +22,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
   onOpenComments,
   onPressAuthor,
+  newReel,
 }) => {
   const [reels, setReels] = useState<ReelResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +36,11 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
       .catch((err) => console.warn('Failed to load reels feed', err))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!newReel) return;
+    setReels((prev) => (prev.some((r) => r.id === newReel.id) ? prev : [newReel, ...prev]));
+  }, [newReel]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
