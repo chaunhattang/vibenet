@@ -158,6 +158,8 @@ export interface ExploreItemResponse {
   type: 'POST' | 'REEL';
   mediaUrl: string | null;
   thumbnailUrl: string | null;
+  textContent: string | null;
+  textGradient: string[] | null;
   likesCount: number;
   commentsCount: number;
   author: ExploreAuthorResponse;

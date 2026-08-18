@@ -73,11 +73,14 @@ public class ExploreServiceImpl implements ExploreService {
     }
 
     private ExploreItemResponse toItem(Post post) {
+        boolean hasMedia = post.getMediaUrl() != null && !post.getMediaUrl().isEmpty();
         return ExploreItemResponse.builder()
                 .id(post.getId())
                 .type("POST")
-                .mediaUrl(post.getMediaUrl() != null && !post.getMediaUrl().isEmpty() ? post.getMediaUrl().get(0) : null)
-                .thumbnailUrl(post.getMediaUrl() != null && !post.getMediaUrl().isEmpty() ? post.getMediaUrl().get(0) : null)
+                .mediaUrl(hasMedia ? post.getMediaUrl().get(0) : null)
+                .thumbnailUrl(hasMedia ? post.getMediaUrl().get(0) : null)
+                .textContent(hasMedia ? null : post.getTextContent())
+                .textGradient(hasMedia ? null : post.getTextGradient())
                 .likesCount((int) reactionRepository.countByPostId(post.getId()))
                 .commentsCount((int) commentRepository.countByPostId(post.getId()))
                 .author(toAuthor(post.getOwner()))

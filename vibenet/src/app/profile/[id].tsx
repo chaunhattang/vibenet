@@ -21,6 +21,7 @@ import type { FriendshipStatus } from '../../services/api/friends';
 import type { PostResponse, ReelResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 import { MediaThumbnail } from '../../components/common/MediaThumbnail';
+import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -355,7 +356,12 @@ export default function OtherUserProfileScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push('/(tabs)')}
                       style={styles.gridItem}>
-                      <MediaThumbnail uri={item.mediaUrl[0]} style={styles.gridItemImg} />
+                      <PostGridThumbnail
+                        mediaUrl={item.mediaUrl[0]}
+                        textContent={item.textContent}
+                        textGradient={item.textGradient}
+                        style={styles.gridItemImg}
+                      />
                       <View style={styles.gridItemOverlay}>
                         <View style={styles.gridStat}>
                           <Ionicons name="heart" size={12} color="#FFFFFF" />

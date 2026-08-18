@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
-import { MediaThumbnail } from '../../components/common/MediaThumbnail';
+import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import * as exploreApi from '../../services/api/explore';
 import type { ExploreItemResponse } from '../../services/api/types';
 
@@ -42,7 +42,12 @@ const ExploreGridCard: React.FC<ExploreGridCardProps> = ({ item, onPress }) => {
       activeOpacity={0.9}
       onPress={() => onPress(item)}
       style={[styles.gridCard, { height: GRID_ITEM_WIDTH * 1.1 }]}>
-      <MediaThumbnail uri={item.thumbnailUrl || item.mediaUrl} style={styles.gridImage} />
+      <PostGridThumbnail
+        mediaUrl={item.thumbnailUrl || item.mediaUrl}
+        textContent={item.textContent}
+        textGradient={item.textGradient}
+        style={styles.gridImage}
+      />
       {isVideo && (
         <View style={styles.reelBadge}>
           <Ionicons name="play" size={10} color="#FFFFFF" />
