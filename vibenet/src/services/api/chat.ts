@@ -12,3 +12,7 @@ export function getChatMessages(chatId: string, page = 0, size = 30) {
 export function getOrCreateRoomWithFriend(friendId: string) {
   return unwrap<string>(apiClient.get(`/api/chat/${friendId}/room`));
 }
+
+export function sendMessage(friendId: string, content: string) {
+  return unwrap<ChatMessageResponse>(apiClient.post(`/api/chat/${friendId}/messages`, { content }));
+}

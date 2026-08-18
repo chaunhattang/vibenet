@@ -3,8 +3,10 @@ package vibe.net.backend.controllers;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import vibe.net.backend.models.dtos.request.ChatMessageRequest;
 import vibe.net.backend.models.dtos.response.ApiResponse;
 import vibe.net.backend.models.dtos.response.ChatMessageResponse;
 import vibe.net.backend.models.dtos.response.ChatRoomResponse;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class ChatController {
 
     ChatService chatService;
+    SimpMessagingTemplate messagingTemplate;
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping("/rooms")
@@ -51,5 +54,28 @@ public class ChatController {
         return ApiResponse.<String>builder()
                 .result(chatService.getOrCreateChatRoom(userId, friendId))
                 .build();
+    }
+
+    // REST send path: guarantees persistence regardless of the sender's WebSocket connection
+    // state (cold start / reconnect windows previously caused STOMP-only sends to silently
+    // drop). Still pushes over WS to both parties so connected clients get it in real time.
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PostMapping("/{friendId}/messages")
+    public ApiResponse<ChatMessageResponse> sendMessage(
+            @PathVariable UUID friendId,
+            @RequestBody ChatMessageRequest request
+    ) {
+        UUID senderId = SecurityUtils.getCurrentUserId();
+        ChatMessageRequest normalized = ChatMessageRequest.builder()
+                .recipientId(friendId)
+                .content(request.getContent())
+                .build();
+
+        ChatMessageResponse saved = chatService.saveMessage(normalized, senderId);
+
+        messagingTemplate.convertAndSend("/user/" + friendId + "/queue/messages", saved);
+        messagingTemplate.convertAndSend("/user/" + senderId + "/queue/messages", saved);
+
+        return ApiResponse.<ChatMessageResponse>builder().result(saved).build();
     }
 }
