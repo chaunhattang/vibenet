@@ -72,6 +72,15 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [post.id, user?.id]);
 
+  // Local state is seeded from props only on mount, so when the feed screen reloads
+  // (e.g. on regaining focus) with a fresh `post` object, re-sync from it too —
+  // otherwise a missed WebSocket event would leave this card stuck on stale data.
+  useEffect(() => {
+    setIsLiked(!!post.currentReaction);
+    setLikesCount(post.reactionCount);
+    setCommentCount(post.commentCount);
+  }, [post.currentReaction, post.reactionCount, post.commentCount]);
+
   const mediaUrls = post.mediaUrl ?? [];
   const isTextOnly = mediaUrls.length === 0;
   const isVideo = !isTextOnly && VIDEO_EXT_RE.test(mediaUrls[currentMediaIdx] ?? mediaUrls[0] ?? '');

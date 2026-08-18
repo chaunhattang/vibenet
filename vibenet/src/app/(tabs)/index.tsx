@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -7,7 +7,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { FeedHeader } from '../../components/feed/FeedHeader';
 import { StoryHighlightBar } from '../../components/feed/StoryHighlightBar';
 import { PostCard } from '../../components/feed/PostCard';
@@ -48,10 +48,23 @@ export default function FeedScreen() {
     setStoryGroups(stories);
   }, []);
 
-  useEffect(() => {
-    setIsLoading(true);
-    loadFeed().finally(() => setIsLoading(false));
-  }, [loadFeed]);
+  // Reload every time the Feed tab gains focus (returning from another tab/screen,
+  // posting a comment, coming back from background, etc.) so reaction/comment counts
+  // and content stay correct even if a live WebSocket update was missed while away.
+  const hasLoadedOnceRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnceRef.current) {
+        setIsLoading(true);
+        loadFeed().finally(() => {
+          setIsLoading(false);
+          hasLoadedOnceRef.current = true;
+        });
+      } else {
+        loadFeed().catch((err) => console.warn('Failed to refresh feed', err));
+      }
+    }, [loadFeed])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
