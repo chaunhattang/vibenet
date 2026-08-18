@@ -10,16 +10,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
+import { MediaThumbnail } from '../../components/common/MediaThumbnail';
 import * as exploreApi from '../../services/api/explore';
 import type { ExploreItemResponse } from '../../services/api/types';
-import { resolveMediaUrl } from '../../services/config';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (Math.min(SCREEN_WIDTH, MaxContentWidth) - 32 - 10) / 2;
+const VIDEO_EXT_RE = /\.(mp4|mov|webm|m4v)$/i;
 
 const CATEGORIES = ['All', 'Photography', 'Architecture', 'Nature', 'Art'];
 
@@ -28,6 +28,38 @@ function formatCount(count: number) {
   if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
   return count.toString();
 }
+
+interface ExploreGridCardProps {
+  item: ExploreItemResponse;
+  onPress: (item: ExploreItemResponse) => void;
+}
+
+const ExploreGridCard: React.FC<ExploreGridCardProps> = ({ item, onPress }) => {
+  const isVideo = item.type === 'REEL' || VIDEO_EXT_RE.test(item.mediaUrl ?? '');
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => onPress(item)}
+      style={[styles.gridCard, { height: GRID_ITEM_WIDTH * 1.1 }]}>
+      <MediaThumbnail uri={item.thumbnailUrl || item.mediaUrl} style={styles.gridImage} />
+      {isVideo && (
+        <View style={styles.reelBadge}>
+          <Ionicons name="play" size={10} color="#FFFFFF" />
+        </View>
+      )}
+      <View style={styles.gridOverlay}>
+        <View style={styles.likesBadge}>
+          <Ionicons name="heart" size={12} color="#FFFFFF" />
+          <Text style={styles.likesText}>{formatCount(item.likesCount)}</Text>
+        </View>
+        <View style={styles.tagBadge}>
+          <Text style={styles.tagText}>@{item.author.username}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -60,34 +92,6 @@ export default function ExploreScreen() {
   const handlePressItem = (item: ExploreItemResponse) => {
     router.push(`/profile/${item.author.id}` as any);
   };
-
-  const renderCard = (item: ExploreItemResponse) => (
-    <TouchableOpacity
-      key={item.id}
-      activeOpacity={0.9}
-      onPress={() => handlePressItem(item)}
-      style={[styles.gridCard, { height: GRID_ITEM_WIDTH * 1.1 }]}>
-      <Image
-        source={{ uri: resolveMediaUrl(item.thumbnailUrl || item.mediaUrl) }}
-        style={styles.gridImage}
-        contentFit="cover"
-      />
-      {item.type === 'REEL' && (
-        <View style={styles.reelBadge}>
-          <Ionicons name="play" size={10} color="#FFFFFF" />
-        </View>
-      )}
-      <View style={styles.gridOverlay}>
-        <View style={styles.likesBadge}>
-          <Ionicons name="heart" size={12} color="#FFFFFF" />
-          <Text style={styles.likesText}>{formatCount(item.likesCount)}</Text>
-        </View>
-        <View style={styles.tagBadge}>
-          <Text style={styles.tagText}>@{item.author.username}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -149,12 +153,20 @@ export default function ExploreScreen() {
               <View style={styles.gridRow}>
                 {/* Column 1 */}
                 <View style={styles.gridColumn}>
-                  {filteredItems.filter((_, i) => i % 2 === 0).map(renderCard)}
+                  {filteredItems
+                    .filter((_, i) => i % 2 === 0)
+                    .map((item) => (
+                      <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
+                    ))}
                 </View>
 
                 {/* Column 2 */}
                 <View style={styles.gridColumn}>
-                  {filteredItems.filter((_, i) => i % 2 === 1).map(renderCard)}
+                  {filteredItems
+                    .filter((_, i) => i % 2 === 1)
+                    .map((item) => (
+                      <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
+                    ))}
                 </View>
               </View>
 

@@ -20,6 +20,7 @@ import * as friendsApi from '../../services/api/friends';
 import type { FriendshipStatus } from '../../services/api/friends';
 import type { PostResponse, ReelResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
+import { MediaThumbnail } from '../../components/common/MediaThumbnail';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -354,11 +355,7 @@ export default function OtherUserProfileScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push('/(tabs)')}
                       style={styles.gridItem}>
-                      <Image
-                        source={{ uri: resolveMediaUrl(item.mediaUrl[0]) }}
-                        style={styles.gridItemImg}
-                        contentFit="cover"
-                      />
+                      <MediaThumbnail uri={item.mediaUrl[0]} style={styles.gridItemImg} />
                       <View style={styles.gridItemOverlay}>
                         <View style={styles.gridStat}>
                           <Ionicons name="heart" size={12} color="#FFFFFF" />
@@ -373,11 +370,7 @@ export default function OtherUserProfileScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push('/(tabs)/explore')}
                       style={styles.gridItem}>
-                      <Image
-                        source={{ uri: resolveMediaUrl(item.thumbnailUrl || item.videoUrl) }}
-                        style={styles.gridItemImg}
-                        contentFit="cover"
-                      />
+                      <MediaThumbnail uri={item.thumbnailUrl || item.videoUrl} style={styles.gridItemImg} />
                       <View style={styles.gridItemOverlay}>
                         <View style={styles.gridStat}>
                           <Ionicons name="heart" size={12} color="#FFFFFF" />

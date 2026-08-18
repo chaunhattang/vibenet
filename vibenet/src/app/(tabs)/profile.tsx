@@ -27,6 +27,7 @@ import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
+import { MediaThumbnail } from '../../components/common/MediaThumbnail';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTAINER_WIDTH = Math.min(SCREEN_WIDTH, MaxContentWidth);
@@ -127,11 +128,7 @@ export default function ProfileScreen() {
           activeOpacity={0.9}
           onPress={() => router.push('/(tabs)')}
           style={styles.gridItem}>
-          <Image
-            source={{ uri: resolveMediaUrl(post.mediaUrl[0]) }}
-            style={styles.gridItemImg}
-            contentFit="cover"
-          />
+          <MediaThumbnail uri={post.mediaUrl[0]} style={styles.gridItemImg} />
           <View style={styles.gridItemOverlay}>
             <View style={styles.gridStat}>
               <Ionicons name="heart" size={12} color="#FFFFFF" />
