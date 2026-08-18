@@ -108,7 +108,11 @@ export default function NotificationsScreen() {
         activeOpacity={0.7}
         onPress={() => {
           if (!item.isRead) markNotificationRead(item.id).catch(() => {});
-          router.push('/(tabs)');
+          if (item.type === 'FRIEND_REQUEST' || item.type === 'FRIEND_ACCEPTED') {
+            router.push(`/profile/${item.actorId}` as any);
+          } else {
+            router.push('/(tabs)');
+          }
         }}
         style={styles.notificationRow}>
         <View style={styles.avatarContainer}>
@@ -169,7 +173,10 @@ export default function NotificationsScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}>
               {incomingRequests.length > 0 && (
-                <View style={styles.followRequestsRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/friend-requests' as any)}
+                  style={styles.followRequestsRow}>
                   <View style={styles.followRequestIcon}>
                     <Feather name="user" size={24} color="#8E8E93" />
                   </View>
@@ -181,8 +188,9 @@ export default function NotificationsScreen() {
                   </View>
                   <View style={styles.followRequestRight}>
                     <View style={styles.blueUnreadDot} />
+                    <Feather name="chevron-right" size={18} color="#C7C7CC" />
                   </View>
-                </View>
+                </TouchableOpacity>
               )}
 
               <View style={styles.sectionBlock}>

@@ -16,6 +16,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import * as usersApi from '../../services/api/users';
 import * as postsApi from '../../services/api/posts';
 import * as reelsApi from '../../services/api/reels';
+import * as friendsApi from '../../services/api/friends';
+import type { FriendshipStatus } from '../../services/api/friends';
 import type { PostResponse, ReelResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
@@ -34,6 +36,9 @@ export default function OtherUserProfileScreen() {
   const [profileUser, setProfileUser] = useState<UserResponse | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [friendStatus, setFriendStatus] = useState<FriendshipStatus>('NONE');
+  const [friendshipId, setFriendshipId] = useState<string | null>(null);
+  const [isFriendActionPending, setIsFriendActionPending] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'reels'>('posts');
   const [userPosts, setUserPosts] = useState<PostResponse[]>([]);
   const [userReels, setUserReels] = useState<ReelResponse[]>([]);
@@ -54,6 +59,10 @@ export default function OtherUserProfileScreen() {
       if (!isSelf && currentUser) {
         const myFollowing = await usersApi.getFollowing(currentUser.id, 0, 100);
         setIsFollowing(myFollowing.data.some((u) => u.id === id));
+
+        const status = await friendsApi.checkFriendshipStatus(id);
+        setFriendStatus(status.status);
+        setFriendshipId(status.friendshipId);
       }
     } catch (err) {
       console.warn('Failed to load profile', err);
@@ -86,6 +95,60 @@ export default function OtherUserProfileScreen() {
       }
     } catch (err) {
       console.warn('Follow toggle failed', err);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!id || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.sendFriendRequest(id);
+      setFriendStatus('PENDING_SENT');
+    } catch (err) {
+      console.warn('Send friend request failed', err);
+    } finally {
+      setIsFriendActionPending(false);
+    }
+  };
+
+  const handleCancelOrUnfriend = async () => {
+    if (!id || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.unfriend(id);
+      setFriendStatus('NONE');
+      setFriendshipId(null);
+    } catch (err) {
+      console.warn('Cancel/unfriend failed', err);
+    } finally {
+      setIsFriendActionPending(false);
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    if (!friendshipId || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.acceptFriendRequest(friendshipId);
+      setFriendStatus('FRIENDS');
+    } catch (err) {
+      console.warn('Accept friend request failed', err);
+    } finally {
+      setIsFriendActionPending(false);
+    }
+  };
+
+  const handleDeclineFriendRequest = async () => {
+    if (!friendshipId || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.declineFriendRequest(friendshipId);
+      setFriendStatus('NONE');
+      setFriendshipId(null);
+    } catch (err) {
+      console.warn('Decline friend request failed', err);
+    } finally {
+      setIsFriendActionPending(false);
     }
   };
 
@@ -197,6 +260,63 @@ export default function OtherUserProfileScreen() {
                   <Ionicons name="chatbubble-ellipses-outline" size={18} color={Colors.textPrimary} />
                   <Text style={styles.messageBtnText}>Message</Text>
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Friend Request Row */}
+            {!isSelf && (
+              <View style={styles.friendActionRow}>
+                {friendStatus === 'NONE' && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isFriendActionPending}
+                    onPress={handleSendFriendRequest}
+                    style={styles.friendBtn}>
+                    <Ionicons name="person-add-outline" size={16} color={Colors.textPrimary} />
+                    <Text style={styles.friendBtnText}>Add Friend</Text>
+                  </TouchableOpacity>
+                )}
+
+                {friendStatus === 'PENDING_SENT' && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isFriendActionPending}
+                    onPress={handleCancelOrUnfriend}
+                    style={styles.friendBtn}>
+                    <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
+                    <Text style={styles.friendBtnText}>Request Sent · Cancel</Text>
+                  </TouchableOpacity>
+                )}
+
+                {friendStatus === 'PENDING_RECEIVED' && (
+                  <>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={isFriendActionPending}
+                      onPress={handleAcceptFriendRequest}
+                      style={styles.friendAcceptBtn}>
+                      <Text style={styles.friendAcceptBtnText}>Accept Friend Request</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={isFriendActionPending}
+                      onPress={handleDeclineFriendRequest}
+                      style={styles.friendDeclineBtn}>
+                      <Ionicons name="close" size={18} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {friendStatus === 'FRIENDS' && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isFriendActionPending}
+                    onPress={handleCancelOrUnfriend}
+                    style={styles.friendBtn}>
+                    <Ionicons name="people" size={16} color={Colors.textPrimary} />
+                    <Text style={styles.friendBtnText}>Friends</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -441,6 +561,53 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
     color: Colors.textPrimary,
+  },
+  friendActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    marginBottom: Spacing.four,
+  },
+  friendBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 40,
+    borderRadius: Radii.pill,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+  },
+  friendBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: Colors.textPrimary,
+  },
+  friendAcceptBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.accentBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendAcceptBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  friendDeclineBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabsRow: {
     flexDirection: 'row',

@@ -1,6 +1,13 @@
 import { apiClient, unwrap } from './client';
 import type { FriendRequestResponse, UserResponse } from './types';
 
+export type FriendshipStatus = 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'FRIENDS' | 'SELF';
+
+export interface FriendshipStatusResponse {
+  status: FriendshipStatus;
+  friendshipId: string | null;
+}
+
 export function sendFriendRequest(receiverId: string) {
   return unwrap<void>(apiClient.post(`/api/friends/${receiverId}/request`));
 }
@@ -26,5 +33,5 @@ export function getIncomingFriendRequests() {
 }
 
 export function checkFriendshipStatus(targetUserId: string) {
-  return unwrap<Record<string, string>>(apiClient.get(`/api/friends/${targetUserId}/status`));
+  return unwrap<FriendshipStatusResponse>(apiClient.get(`/api/friends/${targetUserId}/status`));
 }
