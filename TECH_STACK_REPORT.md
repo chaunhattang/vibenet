@@ -7,7 +7,7 @@
 | Folder | Role | Technology |
 |--------|------|-----------|
 | `backend/` | REST + WebSocket API server | Java 21 · Spring Boot 4.1.0 |
-| `vibenet/` | Cross-platform mobile/web client | Expo SDK 56 · React Native 0.85 · TypeScript |
+| `vibenet/` | Cross-platform mobile/web client | Expo SDK 54 · React Native 0.85 · TypeScript |
 
 > Note: an older `frontend/` folder has been retired; `vibenet/` is the canonical client.
 
