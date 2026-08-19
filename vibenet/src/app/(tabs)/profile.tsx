@@ -28,6 +28,7 @@ import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } f
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTAINER_WIDTH = Math.min(SCREEN_WIDTH, MaxContentWidth);
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [myPosts, setMyPosts] = useState<PostResponse[]>([]);
@@ -107,6 +109,15 @@ export default function ProfileScreen() {
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorTranslateX.value }],
   }));
+
+  const handleLogoutPress = () => {
+    setIsLogoutModalVisible(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setIsLogoutModalVisible(false);
+    logout();
+  };
 
   const handleSwitchTab = (tab: ProfileTab) => {
     if (tab !== activeTab) {
@@ -207,7 +218,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={logout}
+                onPress={handleLogoutPress}
                 style={styles.topIconBtn}>
                 <Ionicons name="log-out-outline" size={20} color={Colors.statusLive} />
               </TouchableOpacity>
@@ -343,6 +354,18 @@ export default function ProfileScreen() {
         <EditProfileModal
           visible={isEditModalVisible}
           onClose={() => setIsEditModalVisible(false)}
+        />
+
+        <ConfirmModal
+          visible={isLogoutModalVisible}
+          title="Log out of VibeNet?"
+          description="You'll need to sign back in with your username and password to use the app again."
+          icon="log-out-outline"
+          confirmText="Log Out"
+          cancelText="Cancel"
+          destructive
+          onCancel={() => setIsLogoutModalVisible(false)}
+          onConfirm={handleConfirmLogout}
         />
       </View>
     </SafeAreaView>

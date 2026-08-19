@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -24,17 +25,29 @@ import {
 } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { createMoment } from "../../services/api/locket";
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Colors, Radii, Spacing, Typography, MaxContentWidth } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
+import { createMoment, getCloseFriends, type CloseFriendResponse } from '../../services/api/locket';
+import { resolveMediaUrl } from '../../services/config';
 
 interface SendMomentModalProps {
   visible: boolean;
   onClose: () => void;
   onSendMoment: () => void; // caller refetches the moments feed
+  onManageCloseFriends?: () => void;
 }
 
 export const SendMomentModal: React.FC<SendMomentModalProps> = ({
   visible,
   onClose,
   onSendMoment,
+  onManageCloseFriends,
 }) => {
   const { user } = useAuth();
   const [pickedImage, setPickedImage] = useState<{
@@ -44,6 +57,37 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
   } | null>(null);
   const [caption, setCaption] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [closeFriends, setCloseFriends] = useState<CloseFriendResponse[]>([]);
+  const [isLoadingCloseFriends, setIsLoadingCloseFriends] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const loadCloseFriends = useCallback(async () => {
+    setIsLoadingCloseFriends(true);
+    try {
+      const res = await getCloseFriends();
+      setCloseFriends(res.closeFriends);
+      // Default to sending to everyone, same as Locket's default "blast" behavior.
+      setSelectedIds(new Set(res.closeFriends.map((cf) => cf.userId)));
+    } catch (err) {
+      console.warn('Failed to load close friends', err);
+    } finally {
+      setIsLoadingCloseFriends(false);
+    }
+  }, []);
+
+  const toggleRecipient = (friendId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(friendId)) {
+        next.delete(friendId);
+      } else {
+        next.add(friendId);
+      }
+      return next;
+    });
+  };
+
+  const allSelected = closeFriends.length > 0 && selectedIds.size === closeFriends.length;
 
   const handlePickFromGallery = async () => {
     try {
@@ -71,6 +115,10 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
 
   const handleSend = async () => {
     if (!user || !pickedImage) return;
+    if (closeFriends.length > 0 && selectedIds.size === 0) {
+      Alert.alert('No recipients selected', 'Pick at least one close friend to send this moment to.');
+      return;
+    }
     setIsSending(true);
     try {
       const form = new FormData();
@@ -86,6 +134,11 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
         form.append("media", pickedImage as unknown as Blob);
       }
       if (caption.trim()) form.append("caption", caption.trim());
+      if (caption.trim()) form.append('caption', caption.trim());
+      // Omit recipientIds when everyone is selected - backend defaults to "all close friends".
+      if (!allSelected) {
+        selectedIds.forEach((id) => form.append('recipientIds', id));
+      }
 
       await createMoment(form);
       onSendMoment();
@@ -101,6 +154,10 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
       setIsSending(false);
     }
   };
+
+  React.useEffect(() => {
+    if (visible) loadCloseFriends();
+  }, [visible, loadCloseFriends]);
 
   if (!visible) return null;
 
@@ -202,7 +259,81 @@ export const SendMomentModal: React.FC<SendMomentModalProps> = ({
               <View style={styles.audienceBadge}>
                 <View style={styles.greenDot} />
                 <Text style={styles.audienceText}>All Close Friends</Text>
+            {/* Recipient Audience Info - tap a friend to include/exclude them from this moment */}
+            <View style={styles.audienceSection}>
+              <View style={styles.optionRow}>
+                <View style={styles.optionLeft}>
+                  <Ionicons name="people" size={18} color={Colors.statusCloseFriend} />
+                  <Text style={styles.optionLabel}>Send to</Text>
+                </View>
+                {isLoadingCloseFriends ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : closeFriends.length > 0 ? (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      setSelectedIds(
+                        allSelected ? new Set() : new Set(closeFriends.map((cf) => cf.userId))
+                      )
+                    }
+                    style={styles.audienceBadge}>
+                    <View style={styles.greenDot} />
+                    <Text style={styles.audienceText}>
+                      {allSelected
+                        ? `All Close Friends (${closeFriends.length})`
+                        : `${selectedIds.size} of ${closeFriends.length} selected`}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.audienceBadge}>
+                    <View style={styles.greenDot} />
+                    <Text style={styles.audienceText}>No close friends</Text>
+                  </View>
+                )}
               </View>
+
+              {!isLoadingCloseFriends && closeFriends.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recipientsRow}>
+                  {closeFriends.map((cf) => {
+                    const isSelected = selectedIds.has(cf.userId);
+                    return (
+                      <TouchableOpacity
+                        key={cf.userId}
+                        activeOpacity={0.7}
+                        onPress={() => toggleRecipient(cf.userId)}
+                        style={styles.recipientChip}>
+                        <View style={styles.recipientAvatarWrap}>
+                          <Image
+                            source={{ uri: resolveMediaUrl(cf.avatarUrl) }}
+                            style={[styles.recipientAvatar, !isSelected && styles.recipientAvatarDimmed]}
+                          />
+                          {isSelected ? (
+                            <View style={styles.recipientCheckBadge}>
+                              <Ionicons name="checkmark" size={11} color="#0D0E11" />
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.recipientName, !isSelected && styles.recipientNameDimmed]} numberOfLines={1}>
+                          {(cf.fullName || cf.userName).split(' ')[0]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
+
+              {!isLoadingCloseFriends && closeFriends.length === 0 ? (
+                <View style={styles.noRecipientsWarning}>
+                  <Text style={styles.noRecipientsText}>
+                    You have no close friends yet, so this moment won't reach anyone.
+                  </Text>
+                  {onManageCloseFriends ? (
+                    <TouchableOpacity activeOpacity={0.8} onPress={onManageCloseFriends}>
+                      <Text style={styles.manageFriendsLink}>Add close friends</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -313,12 +444,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFFFFF",
   },
+  audienceSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: Spacing.one,
+  },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderTopWidth: 1,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: Spacing.three,
   },
   optionLeft: {
@@ -350,5 +489,62 @@ const styles = StyleSheet.create({
     color: Colors.statusCloseFriend,
     fontSize: 12,
     fontWeight: "700",
+  },
+  recipientsRow: {
+    gap: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
+  recipientChip: {
+    alignItems: 'center',
+    width: 56,
+  },
+  recipientAvatarWrap: {
+    position: 'relative',
+  },
+  recipientAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E1E22',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  recipientAvatarDimmed: {
+    opacity: 0.3,
+  },
+  recipientCheckBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.statusCloseFriend,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0D0E11',
+  },
+  recipientName: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  recipientNameDimmed: {
+    color: 'rgba(255,255,255,0.35)',
+  },
+  noRecipientsWarning: {
+    paddingBottom: Spacing.three,
+    gap: 6,
+  },
+  noRecipientsText: {
+    color: '#FF9F43',
+    fontSize: 12,
+  },
+  manageFriendsLink: {
+    color: Colors.statusCloseFriend,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

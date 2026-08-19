@@ -47,6 +47,43 @@ export interface MomentCreationResponse {
   recipientCount: number;
 }
 
+export interface SentMomentResponse {
+  momentId: string;
+  mediaUrl: string;
+  mediaType: MediaType;
+  caption: string | null;
+  createdAt: string;
+  recipientCount: number;
+  viewedCount: number;
+}
+
+export interface MomentViewerResponse {
+  userId: string;
+  userName: string;
+  avatarUrl: string | null;
+  viewedAt: string | null;
+}
+
+export interface MomentViewersResponse {
+  viewedCount: number;
+  totalRecipients: number;
+  viewers: MomentViewerResponse[];
+}
+
+export interface CloseFriendResponse {
+  userId: string;
+  userName: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  addedAt: string;
+}
+
+export interface CloseFriendsListResponse {
+  closeFriends: CloseFriendResponse[];
+  count: number;
+  limit: number;
+}
+
 export function createMoment(form: FormData) {
   return unwrap<MomentCreationResponse>(
     apiClient.post('/api/locket/moments', form)
@@ -70,7 +107,7 @@ export function deleteMoment(momentId: string) {
 }
 
 export function getSentMoments(page = 0, size = 20) {
-  return unwrap<PageResponse<unknown>>(apiClient.get('/api/locket/moments/sent', { params: { page, size } }));
+  return unwrap<PageResponse<SentMomentResponse>>(apiClient.get('/api/locket/moments/sent', { params: { page, size } }));
 }
 
 export function getMomentsUnreadCount() {
@@ -82,7 +119,7 @@ export function viewMoment(momentId: string) {
 }
 
 export function getMomentViewers(momentId: string) {
-  return unwrap<unknown>(apiClient.get(`/api/locket/moments/${momentId}/viewers`));
+  return unwrap<MomentViewersResponse>(apiClient.get(`/api/locket/moments/${momentId}/viewers`));
 }
 
 export function reactToMoment(momentId: string, emoji: string) {
@@ -90,11 +127,11 @@ export function reactToMoment(momentId: string, emoji: string) {
 }
 
 export function getCloseFriends() {
-  return unwrap<unknown>(apiClient.get('/api/locket/close-friends'));
+  return unwrap<CloseFriendsListResponse>(apiClient.get('/api/locket/close-friends'));
 }
 
 export function addCloseFriend(friendId: string) {
-  return unwrap<unknown>(apiClient.post(`/api/locket/close-friends/${friendId}`));
+  return unwrap<{ friendId: string; addedAt: string }>(apiClient.post(`/api/locket/close-friends/${friendId}`));
 }
 
 export function removeCloseFriend(friendId: string) {

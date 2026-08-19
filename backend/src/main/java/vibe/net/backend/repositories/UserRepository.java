@@ -1,6 +1,7 @@
 package vibe.net.backend.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import vibe.net.backend.enums.Status;
 import vibe.net.backend.models.entities.User;
 
 import java.util.List;
@@ -14,7 +15,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
-    List<User> findByUsernameContainingIgnoreCase(String username);
+    List<User> findByUsernameContainingIgnoreCaseAndStatusNot(String username, Status status);
 
     List <User> findTop15ByLastActiveAtIsNotNullOrderByLastActiveAtDesc();
 

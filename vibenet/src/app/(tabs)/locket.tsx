@@ -16,6 +16,8 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { SendMomentModal } from '../../components/locket/SendMomentModal';
+import { CloseFriendsModal } from '../../components/locket/CloseFriendsModal';
+import { MyMomentsModal } from '../../components/locket/MyMomentsModal';
 import { getMomentsFeed, reactToMoment, viewMoment, type MomentFeedItemResponse } from '../../services/api/locket';
 import { resolveMediaUrl } from '../../services/config';
 
@@ -26,6 +28,8 @@ export default function LocketScreen() {
   const [replyText, setReplyText] = useState('');
   const [flyingEmojis, setFlyingEmojis] = useState<{ id: string; emoji: string }[]>([]);
   const [isSendModalVisible, setIsSendModalVisible] = useState(false);
+  const [isCloseFriendsVisible, setIsCloseFriendsVisible] = useState(false);
+  const [isMyMomentsVisible, setIsMyMomentsVisible] = useState(false);
 
   const activeMoment = moments[activeMomentIdx] ?? moments[0];
 
@@ -74,12 +78,26 @@ export default function LocketScreen() {
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <View style={styles.container}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No moments yet. Be the first to share one!</Text>
+            <Text style={styles.emptyStateText}>
+              No moments yet. This feed only shows moments your close friends send you — post one, and add close friends so they can see it too.
+            </Text>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setIsSendModalVisible(true)}
               style={styles.emptyStateBtn}>
               <Text style={styles.emptyStateBtnText}>Send a moment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIsCloseFriendsVisible(true)}
+              style={styles.emptyStateSecondaryBtn}>
+              <Text style={styles.emptyStateSecondaryBtnText}>Manage close friends</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIsMyMomentsVisible(true)}
+              style={styles.emptyStateSecondaryBtn}>
+              <Text style={styles.emptyStateSecondaryBtnText}>View your sent moments</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -87,6 +105,22 @@ export default function LocketScreen() {
           visible={isSendModalVisible}
           onClose={() => setIsSendModalVisible(false)}
           onSendMoment={handleSendMoment}
+          onManageCloseFriends={() => {
+            setIsSendModalVisible(false);
+            setIsCloseFriendsVisible(true);
+          }}
+        />
+        <CloseFriendsModal
+          visible={isCloseFriendsVisible}
+          onClose={() => setIsCloseFriendsVisible(false)}
+        />
+        <MyMomentsModal
+          visible={isMyMomentsVisible}
+          onClose={() => setIsMyMomentsVisible(false)}
+          onSendNew={() => {
+            setIsMyMomentsVisible(false);
+            setIsSendModalVisible(true);
+          }}
         />
       </SafeAreaView>
     );
@@ -101,9 +135,9 @@ export default function LocketScreen() {
           <View style={styles.header}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => setIsSendModalVisible(true)}
+              onPress={() => setIsCloseFriendsVisible(true)}
               style={styles.iconBtn}>
-              <Ionicons name="add" size={22} color="#FFFFFF" />
+              <Ionicons name="people-outline" size={20} color="#FFFFFF" />
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>Locket Moments</Text>
@@ -117,10 +151,20 @@ export default function LocketScreen() {
           </View>
 
           <View style={styles.audienceContainer}>
-            <View style={styles.audiencePill}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setIsCloseFriendsVisible(true)}
+              style={styles.audiencePill}>
               <View style={styles.greenDot} />
               <Text style={styles.audienceText}>Close Friends</Text>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setIsMyMomentsVisible(true)}
+              style={styles.myMomentsPill}>
+              <Ionicons name="images-outline" size={13} color="#FFFFFF" />
+              <Text style={styles.audienceText}>Your Moments</Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView
@@ -212,6 +256,22 @@ export default function LocketScreen() {
           visible={isSendModalVisible}
           onClose={() => setIsSendModalVisible(false)}
           onSendMoment={handleSendMoment}
+          onManageCloseFriends={() => {
+            setIsSendModalVisible(false);
+            setIsCloseFriendsVisible(true);
+          }}
+        />
+        <CloseFriendsModal
+          visible={isCloseFriendsVisible}
+          onClose={() => setIsCloseFriendsVisible(false)}
+        />
+        <MyMomentsModal
+          visible={isMyMomentsVisible}
+          onClose={() => setIsMyMomentsVisible(false)}
+          onSendNew={() => {
+            setIsMyMomentsVisible(false);
+            setIsSendModalVisible(true);
+          }}
         />
       </View>
     </SafeAreaView>
@@ -255,6 +315,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  emptyStateSecondaryBtn: {
+    paddingHorizontal: Spacing.six,
+    paddingVertical: Spacing.two,
+  },
+  emptyStateSecondaryBtnText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
   header: {
     height: 56,
     flexDirection: 'row',
@@ -278,7 +348,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   audienceContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
     marginVertical: Spacing.two,
   },
   audiencePill: {
@@ -291,6 +364,17 @@ const styles = StyleSheet.create({
     borderRadius: Radii.pill,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  myMomentsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: 8,
+    borderRadius: Radii.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   greenDot: {
     width: 8,

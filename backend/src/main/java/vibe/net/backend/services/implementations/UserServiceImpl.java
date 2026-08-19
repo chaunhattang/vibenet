@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService {
         if (username == null || username.isBlank()) {
             return List.of();
         }
-        return userMapper.toListResponse(userRepository.findByUsernameContainingIgnoreCase(username.trim()));
+        return userMapper.toListResponse(userRepository.findByUsernameContainingIgnoreCaseAndStatusNot(username.trim(), Status.DELETED));
     }
 
     @Override
