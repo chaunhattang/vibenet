@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,7 +16,8 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
 import * as exploreApi from '../../services/api/explore';
-import type { ExploreItemResponse } from '../../services/api/types';
+import * as usersApi from '../../services/api/users';
+import type { ExploreItemResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -35,6 +37,9 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<ExploreItemResponse[]>([]);
+  const [userResults, setUserResults] = useState<UserResponse[]>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async (category: string) => {
     setIsLoading(true);
@@ -52,13 +57,41 @@ export default function ExploreScreen() {
     load(activeCategory);
   }, [activeCategory, load]);
 
-  const filteredItems = items.filter((item) => {
-    if (!searchQuery) return true;
-    return item.author.username.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const trimmedQuery = searchQuery.trim();
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    if (!trimmedQuery) {
+      setUserResults([]);
+      setIsSearchingUsers(false);
+      return;
+    }
+
+    setIsSearchingUsers(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await usersApi.searchUsers(trimmedQuery);
+        setUserResults(results);
+      } catch (err) {
+        console.warn('User search failed', err);
+        setUserResults([]);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [trimmedQuery]);
 
   const handlePressItem = (item: ExploreItemResponse) => {
     router.push(`/profile/${item.author.id}` as any);
+  };
+
+  const handlePressUser = (userId: string) => {
+    router.push(`/profile/${userId}` as any);
   };
 
   const renderCard = (item: ExploreItemResponse) => (
@@ -98,7 +131,7 @@ export default function ExploreScreen() {
             <View style={styles.searchBox}>
               <Ionicons name="search" size={18} color={Colors.textTertiary} />
               <TextInput
-                placeholder="Search creators..."
+                placeholder="Search users..."
                 placeholderTextColor={Colors.textPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -112,59 +145,95 @@ export default function ExploreScreen() {
             </View>
           </View>
 
-          {/* Categories Pill Bar */}
-          <View style={styles.categoriesSection}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesScroll}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  activeOpacity={0.7}
-                  onPress={() => setActiveCategory(cat)}
-                  style={[
-                    styles.categoryPill,
-                    activeCategory === cat && styles.activeCategoryPill,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      activeCategory === cat && styles.activeCategoryText,
-                    ]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Masonry Grid or Skeleton */}
-          {isLoading ? (
-            <ExploreSkeleton />
-          ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}>
-              <View style={styles.gridRow}>
-                {/* Column 1 */}
-                <View style={styles.gridColumn}>
-                  {filteredItems.filter((_, i) => i % 2 === 0).map(renderCard)}
+          {trimmedQuery ? (
+            // Search mode: real backend user search, replaces the explore grid.
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.userResultsContent}>
+              {isSearchingUsers ? (
+                <View style={styles.searchLoadingWrap}>
+                  <ActivityIndicator color={Colors.textPrimary} />
                 </View>
-
-                {/* Column 2 */}
-                <View style={styles.gridColumn}>
-                  {filteredItems.filter((_, i) => i % 2 === 1).map(renderCard)}
-                </View>
-              </View>
-
-              {filteredItems.length === 0 && (
+              ) : userResults.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="compass-outline" size={36} color={Colors.textTertiary} />
-                  <Text style={styles.emptyStateText}>Nothing to explore yet</Text>
+                  <Ionicons name="person-outline" size={36} color={Colors.textTertiary} />
+                  <Text style={styles.emptyStateText}>No users found for "{trimmedQuery}"</Text>
                 </View>
+              ) : (
+                userResults.map((u) => (
+                  <TouchableOpacity
+                    key={u.id}
+                    activeOpacity={0.7}
+                    onPress={() => handlePressUser(u.id)}
+                    style={styles.userRow}>
+                    <Image
+                      source={{ uri: resolveMediaUrl(u.profileResponse?.avatarUrl ?? null) }}
+                      style={styles.userAvatar}
+                    />
+                    <View style={styles.userText}>
+                      <Text style={styles.userFullName}>{u.profileResponse?.fullName || u.username}</Text>
+                      <Text style={styles.userUsername}>@{u.username}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                  </TouchableOpacity>
+                ))
               )}
             </ScrollView>
+          ) : (
+            <>
+              {/* Categories Pill Bar */}
+              <View style={styles.categoriesSection}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoriesScroll}>
+                  {CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      activeOpacity={0.7}
+                      onPress={() => setActiveCategory(cat)}
+                      style={[
+                        styles.categoryPill,
+                        activeCategory === cat && styles.activeCategoryPill,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          activeCategory === cat && styles.activeCategoryText,
+                        ]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Masonry Grid or Skeleton */}
+              {isLoading ? (
+                <ExploreSkeleton />
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.scrollContent}>
+                  <View style={styles.gridRow}>
+                    {/* Column 1 */}
+                    <View style={styles.gridColumn}>
+                      {items.filter((_, i) => i % 2 === 0).map(renderCard)}
+                    </View>
+
+                    {/* Column 2 */}
+                    <View style={styles.gridColumn}>
+                      {items.filter((_, i) => i % 2 === 1).map(renderCard)}
+                    </View>
+                  </View>
+
+                  {items.length === 0 && (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="compass-outline" size={36} color={Colors.textTertiary} />
+                      <Text style={styles.emptyStateText}>Nothing to explore yet</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+            </>
           )}
         </View>
       </View>
@@ -314,5 +383,42 @@ const styles = StyleSheet.create({
     ...Typography.bodyMedium,
     color: Colors.textSecondary,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  userResultsContent: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.six,
+  },
+  searchLoadingWrap: {
+    paddingVertical: Spacing.eight,
+    alignItems: 'center',
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFEF',
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surfaceMuted,
+  },
+  userText: {
+    flex: 1,
+  },
+  userFullName: {
+    ...Typography.bodyMedium,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+  },
+  userUsername: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });
