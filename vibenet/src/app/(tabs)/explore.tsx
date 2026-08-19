@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -16,7 +17,6 @@ import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } f
 import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import * as exploreApi from '../../services/api/explore';
-import type { ExploreItemResponse } from '../../services/api/types';
 import * as usersApi from '../../services/api/users';
 import type { ExploreItemResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
@@ -133,34 +133,6 @@ export default function ExploreScreen() {
     router.push(`/profile/${userId}` as any);
   };
 
-  const renderCard = (item: ExploreItemResponse) => (
-    <TouchableOpacity
-      key={item.id}
-      activeOpacity={0.9}
-      onPress={() => handlePressItem(item)}
-      style={[styles.gridCard, { height: GRID_ITEM_WIDTH * 1.1 }]}>
-      <Image
-        source={{ uri: resolveMediaUrl(item.thumbnailUrl || item.mediaUrl) }}
-        style={styles.gridImage}
-        contentFit="cover"
-      />
-      {item.type === 'REEL' && (
-        <View style={styles.reelBadge}>
-          <Ionicons name="play" size={10} color="#FFFFFF" />
-        </View>
-      )}
-      <View style={styles.gridOverlay}>
-        <View style={styles.likesBadge}>
-          <Ionicons name="heart" size={12} color="#FFFFFF" />
-          <Text style={styles.likesText}>{formatCount(item.likesCount)}</Text>
-        </View>
-        <View style={styles.tagBadge}>
-          <Text style={styles.tagText}>@{item.author.username}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -184,57 +156,6 @@ export default function ExploreScreen() {
             </View>
           </View>
 
-          {/* Categories Pill Bar */}
-          <View style={styles.categoriesSection}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesScroll}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  activeOpacity={0.7}
-                  onPress={() => setActiveCategory(cat)}
-                  style={[
-                    styles.categoryPill,
-                    activeCategory === cat && styles.activeCategoryPill,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      activeCategory === cat && styles.activeCategoryText,
-                    ]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Masonry Grid or Skeleton */}
-          {isLoading ? (
-            <ExploreSkeleton />
-          ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}>
-              <View style={styles.gridRow}>
-                {/* Column 1 */}
-                <View style={styles.gridColumn}>
-                  {filteredItems
-                    .filter((_, i) => i % 2 === 0)
-                    .map((item) => (
-                      <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
-                    ))}
-                </View>
-
-                {/* Column 2 */}
-                <View style={styles.gridColumn}>
-                  {filteredItems
-                    .filter((_, i) => i % 2 === 1)
-                    .map((item) => (
-                      <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
-                    ))}
           {trimmedQuery ? (
             // Search mode: real backend user search, replaces the explore grid.
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.userResultsContent}>
@@ -306,12 +227,20 @@ export default function ExploreScreen() {
                   <View style={styles.gridRow}>
                     {/* Column 1 */}
                     <View style={styles.gridColumn}>
-                      {items.filter((_, i) => i % 2 === 0).map(renderCard)}
+                      {items
+                        .filter((_, i) => i % 2 === 0)
+                        .map((item) => (
+                          <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
+                        ))}
                     </View>
 
                     {/* Column 2 */}
                     <View style={styles.gridColumn}>
-                      {items.filter((_, i) => i % 2 === 1).map(renderCard)}
+                      {items
+                        .filter((_, i) => i % 2 === 1)
+                        .map((item) => (
+                          <ExploreGridCard key={item.id} item={item} onPress={handlePressItem} />
+                        ))}
                     </View>
                   </View>
 

@@ -1,13 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-  Share,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,62 +12,58 @@ import Animated, {
   withSequence,
   withDelay,
 } from 'react-native-reanimated';
-import type { ReelResponse } from '../../services/api/types';
+import type { PostResponse } from '../../services/api/types';
 import * as reactionsApi from '../../services/api/reactions';
-import * as reelsApi from '../../services/api/reels';
-import * as usersApi from '../../services/api/users';
-import { Colors, Radii, Spacing, BottomTabInset } from '../../constants/theme';
+import * as postsApi from '../../services/api/posts';
+import { Colors, Spacing, BottomTabInset } from '../../constants/theme';
 import { resolveMediaUrl } from '../../services/config';
-import { onReelReaction, onReelComment } from '../../services/websocket';
+import { onPostReaction, onPostComment } from '../../services/websocket';
 import { useAuth } from '../../contexts/AuthContext';
 
-interface ReelCardProps {
-  reel: ReelResponse;
+interface FeedVideoCardProps {
+  post: PostResponse;
   isActive: boolean;
-  onOpenComments: (reel: ReelResponse) => void;
+  onOpenComments: (post: PostResponse) => void;
   onPressAuthor?: (authorId: string) => void;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const ReelCard: React.FC<ReelCardProps> = ({
-  reel,
+// Full-screen vertical player for a video Post — the "Reels" tab reuses the same
+// Post entity/APIs as the Feed tab instead of a separate reel upload flow.
+export const FeedVideoCard: React.FC<FeedVideoCardProps> = ({
+  post,
   isActive,
   onOpenComments,
   onPressAuthor,
 }) => {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(reel.liked);
-  const [likesCount, setLikesCount] = useState(reel.likesCount);
-  const [commentsCount, setCommentsCount] = useState(reel.commentsCount);
-  const [sharesCount, setSharesCount] = useState(reel.sharesCount);
-  const [isSaved, setIsSaved] = useState(reel.saved);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isLiked, setIsLiked] = useState(!!post.currentReaction);
+  const [likesCount, setLikesCount] = useState(post.reactionCount);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [sharesCount, setSharesCount] = useState(post.sharesCount);
+  const [isSaved, setIsSaved] = useState(post.saved);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Live cross-device sync: reflect likes/comments made from this account's other
-  // sessions (or anyone else currently viewing this reel) without a manual refresh.
   useEffect(() => {
-    const unsubReaction = onReelReaction(reel.id, (event) => {
-      setLikesCount(event.likesCount);
+    const unsubReaction = onPostReaction(post.id, (event) => {
+      setLikesCount(event.reactionCount);
       if (event.actorUserId === user?.id) {
         setIsLiked(!!event.actorReaction);
       }
     });
-    const unsubComment = onReelComment(reel.id, (event) => {
-      setCommentsCount(event.commentsCount);
+    const unsubComment = onPostComment(post.id, (event) => {
+      setCommentCount(event.commentCount);
     });
     return () => {
       unsubReaction();
       unsubComment();
     };
-  }, [reel.id, user?.id]);
+  }, [post.id, user?.id]);
 
-  const isVideoSource = true; // reels are always uploaded as video
-
-  // expo-video Native Player instance
-  const player = useVideoPlayer(resolveMediaUrl(reel.videoUrl) ?? null, (p) => {
+  const videoUrl = resolveMediaUrl(post.mediaUrl[0]);
+  const player = useVideoPlayer(videoUrl ?? null, (p) => {
     p.loop = true;
     p.muted = isMuted;
     if (isActive && !isPaused) {
@@ -93,12 +81,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   }, [isActive, isPaused, player]);
 
   useEffect(() => {
-    if (player) {
-      player.muted = isMuted;
-    }
+    if (player) player.muted = isMuted;
   }, [isMuted, player]);
 
-  // Reanimated 4 Shared Values for Double-Tap Heart Burst
   const heartScale = useSharedValue(0);
   const heartOpacity = useSharedValue(0);
   const lastTapRef = useRef<number>(0);
@@ -118,13 +103,22 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     opacity: heartOpacity.value,
   }));
 
-  const doLike = () => {
-    reactionsApi.toggleReelReaction(reel.id, 'LOVE').catch((err) => {
-      console.warn('Failed to toggle reel reaction', err);
-      // revert optimistic update on failure
-      setIsLiked((prev) => !prev);
-      setLikesCount((prev) => (isLiked ? prev + 1 : Math.max(0, prev - 1)));
-    });
+  const toggleLike = async () => {
+    const wasLiked = isLiked;
+    const optimisticLiked = !wasLiked;
+    setIsLiked(optimisticLiked);
+    setLikesCount((prev) => Math.max(0, prev + (optimisticLiked ? 1 : -1)));
+    try {
+      const result = await reactionsApi.togglePostReaction(post.id, 'LOVE');
+      const nowLiked = !!result;
+      if (nowLiked !== optimisticLiked) {
+        setIsLiked(nowLiked);
+        setLikesCount((prev) => Math.max(0, prev + (nowLiked ? 1 : -1)));
+      }
+    } catch {
+      setIsLiked(wasLiked);
+      setLikesCount((prev) => Math.max(0, prev + (wasLiked ? 1 : -1)));
+    }
   };
 
   const handleDoubleTap = () => {
@@ -132,11 +126,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     const DOUBLE_TAP_DELAY = 300;
     if (lastTapRef.current && now - lastTapRef.current < DOUBLE_TAP_DELAY) {
       if (!isLiked) {
-        setIsLiked(true);
-        setLikesCount((prev) => prev + 1);
-        doLike();
+        triggerHeartBurst();
+        toggleLike();
       }
-      triggerHeartBurst();
     } else {
       setIsPaused((prev) => !prev);
     }
@@ -144,32 +136,14 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   };
 
   const handleLikeToggle = () => {
-    if (isLiked) {
-      setIsLiked(false);
-      setLikesCount((prev) => Math.max(0, prev - 1));
-    } else {
-      setIsLiked(true);
-      setLikesCount((prev) => prev + 1);
-      triggerHeartBurst();
-    }
-    doLike();
+    if (!isLiked) triggerHeartBurst();
+    toggleLike();
   };
 
   const handleSaveToggle = () => {
     const next = !isSaved;
     setIsSaved(next);
-    reelsApi.toggleSaveReel(reel.id).catch((err) => {
-      console.warn('Failed to toggle reel save', err);
-      setIsSaved(!next);
-    });
-  };
-
-  const handleFollowToggle = () => {
-    setIsFollowing(true);
-    usersApi.follow(reel.creator.id).catch((err) => {
-      console.warn('Failed to follow creator', err);
-      setIsFollowing(false);
-    });
+    postsApi.toggleSavePost(post.id).catch(() => setIsSaved(!next));
   };
 
   const formatCount = (count: number) => {
@@ -178,13 +152,13 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     return count.toString();
   };
 
-  const handleShareReel = async () => {
+  const handleShare = async () => {
     try {
       await Share.share({
-        message: `Watch @${reel.creator.username}'s Reel on VibeNet: "${reel.caption ?? ''}" https://vibenet.io/reels/${reel.id}`,
+        message: `Check out @${post.owner.username}'s video on VibeNet.`,
       });
       setSharesCount((prev) => prev + 1);
-      reelsApi.shareReel(reel.id).then(setSharesCount).catch(() => {});
+      postsApi.sharePost(post.id).then(setSharesCount).catch(() => {});
     } catch (err) {
       console.warn('Share error:', err);
     }
@@ -192,12 +166,8 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
   return (
     <View style={styles.cardContainer}>
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleDoubleTap}
-        style={styles.touchArea}>
-        {/* Full-Screen Hardware Video / Media Canvas */}
-        {isVideoSource && Platform.OS !== 'web' ? (
+      <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap} style={styles.touchArea}>
+        {Platform.OS !== 'web' ? (
           <VideoView
             player={player}
             style={styles.mediaVideo}
@@ -207,13 +177,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           />
         ) : (
           <Image
-            source={{ uri: resolveMediaUrl(reel.thumbnailUrl || reel.videoUrl) }}
+            source={{ uri: resolveMediaUrl(post.mediaUrl[0]) }}
             style={styles.mediaVideo}
             contentFit="cover"
           />
         )}
 
-        {/* Paused Indicator Overlay */}
         {isPaused && (
           <View style={styles.pausedOverlay}>
             <View style={styles.pauseCircle}>
@@ -222,14 +191,10 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           </View>
         )}
 
-        {/* Double-Tap Heart Burst Animation */}
-        <Animated.View
-          style={[styles.heartBurstOverlay, animatedHeartStyle]}
-          pointerEvents="none">
+        <Animated.View style={[styles.heartBurstOverlay, animatedHeartStyle]} pointerEvents="none">
           <Ionicons name="heart" size={96} color="#FFFFFF" />
         </Animated.View>
 
-        {/* Dark Vignette Bottom Gradient */}
         <LinearGradient
           colors={['transparent', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.88)']}
           locations={[0, 0.55, 1]}
@@ -237,33 +202,15 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           pointerEvents="box-none"
         />
 
-        {/* Right Floating Actions Column */}
         <View style={styles.rightActionsCol}>
-          {/* Author Avatar + Follow Badge */}
-          <View style={styles.avatarActionWrap}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => onPressAuthor?.(reel.creator.id)}>
-              <Image
-                source={{ uri: resolveMediaUrl(reel.creator.avatarUrl) }}
-                style={styles.authorAvatar}
-              />
-            </TouchableOpacity>
-            {!isFollowing && (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleFollowToggle}
-                style={styles.followBadge}>
-                <Feather name="plus" size={12} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Like Button */}
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleLikeToggle}
-            style={styles.actionBtn}>
+            activeOpacity={0.8}
+            onPress={() => onPressAuthor?.(post.owner.id)}
+            style={styles.avatarActionWrap}>
+            <Image source={{ uri: resolveMediaUrl(post.owner.avatarUrl) }} style={styles.authorAvatar} />
+          </TouchableOpacity>
+
+          <TouchableOpacity activeOpacity={0.7} onPress={handleLikeToggle} style={styles.actionBtn}>
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={30}
@@ -272,20 +219,15 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             <Text style={styles.actionCount}>{formatCount(likesCount)}</Text>
           </TouchableOpacity>
 
-          {/* Comments Button */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => onOpenComments(reel)}
+            onPress={() => onOpenComments(post)}
             style={styles.actionBtn}>
             <Ionicons name="chatbubble-outline" size={28} color="#FFFFFF" />
-            <Text style={styles.actionCount}>{formatCount(commentsCount)}</Text>
+            <Text style={styles.actionCount}>{formatCount(commentCount)}</Text>
           </TouchableOpacity>
 
-          {/* Bookmark / Save Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleSaveToggle}
-            style={styles.actionBtn}>
+          <TouchableOpacity activeOpacity={0.7} onPress={handleSaveToggle} style={styles.actionBtn}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
               size={28}
@@ -294,66 +236,32 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             <Text style={styles.actionCount}>Save</Text>
           </TouchableOpacity>
 
-          {/* Share Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleShareReel}
-            style={styles.actionBtn}>
-            <Feather
-              name="send"
-              size={26}
-              color="#FFFFFF"
-              style={{ transform: [{ rotate: '12deg' }] }}
-            />
+          <TouchableOpacity activeOpacity={0.7} onPress={handleShare} style={styles.actionBtn}>
+            <Feather name="send" size={26} color="#FFFFFF" style={{ transform: [{ rotate: '12deg' }] }} />
             <Text style={styles.actionCount}>{formatCount(sharesCount)}</Text>
           </TouchableOpacity>
 
-          {/* Sound / Mute Toggle Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setIsMuted(!isMuted)}
-            style={styles.actionBtn}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setIsMuted(!isMuted)} style={styles.actionBtn}>
             <Ionicons
               name={isMuted ? 'volume-mute-outline' : 'volume-high-outline'}
               size={24}
               color="#FFFFFF"
             />
           </TouchableOpacity>
-
-          {/* Spinning Vinyl Audio Disc */}
-          <View style={styles.vinylWrapper}>
-            <Image
-              source={{ uri: resolveMediaUrl(reel.creator.avatarUrl) }}
-              style={styles.vinylDisc}
-            />
-          </View>
         </View>
 
-        {/* Bottom-Left Information Overlay */}
         <View style={styles.bottomInfoOverlay}>
-          {/* Author Tag */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => onPressAuthor?.(reel.creator.id)}
+            onPress={() => onPressAuthor?.(post.owner.id)}
             style={styles.authorRow}>
-            <Text style={styles.authorName}>@{reel.creator.username}</Text>
+            <Text style={styles.authorName}>@{post.owner.username}</Text>
           </TouchableOpacity>
 
-          {/* Caption */}
-          {reel.caption ? (
+          {post.textContent ? (
             <Text numberOfLines={2} style={styles.captionText}>
-              {reel.caption}
+              {post.textContent}
             </Text>
-          ) : null}
-
-          {/* Music Audio Ticker */}
-          {reel.audioTitle ? (
-            <View style={styles.audioTickerRow}>
-              <Ionicons name="musical-notes" size={13} color="#FFFFFF" />
-              <Text numberOfLines={1} style={styles.audioTitleText}>
-                {reel.audioTitle}
-              </Text>
-            </View>
           ) : null}
         </View>
       </TouchableOpacity>
@@ -379,7 +287,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   pausedOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 15,
@@ -421,7 +329,6 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   avatarActionWrap: {
-    position: 'relative',
     marginBottom: 4,
   },
   authorAvatar: {
@@ -431,19 +338,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     backgroundColor: Colors.surfaceMuted,
-  },
-  followBadge: {
-    position: 'absolute',
-    bottom: -6,
-    alignSelf: 'center',
-    backgroundColor: '#FF3B30',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
   },
   actionBtn: {
     alignItems: 'center',
@@ -456,22 +350,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  vinylWrapper: {
-    marginTop: 6,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1C1C1E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  vinylDisc: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
   },
   bottomInfoOverlay: {
     position: 'absolute',
@@ -504,21 +382,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-  audioTickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: Radii.pill,
-    alignSelf: 'flex-start',
-    maxWidth: '90%',
-  },
-  audioTitleText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
   },
 });

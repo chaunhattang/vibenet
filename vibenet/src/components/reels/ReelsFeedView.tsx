@@ -1,57 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  Dimensions,
-  ViewToken,
-  ActivityIndicator,
-} from 'react-native';
-import { ReelCard } from './ReelCard';
-import * as reelsApi from '../../services/api/reels';
-import type { ReelResponse } from '../../services/api/types';
+import React, { useRef, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, Dimensions, ViewToken } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FeedVideoCard } from './FeedVideoCard';
+import type { PostResponse } from '../../services/api/types';
 
 interface ReelsFeedViewProps {
-  onOpenComments: (reel: ReelResponse) => void;
+  posts: PostResponse[];
+  onOpenComments: (post: PostResponse) => void;
   onPressAuthor?: (authorId: string) => void;
-  newReel?: ReelResponse | null;
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// The Reels tab is just a full-screen vertical player over video Posts from the
+// regular Feed — there's no separate reel upload flow or backend entity involved.
 export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
+  posts,
   onOpenComments,
   onPressAuthor,
-  newReel,
 }) => {
-  const [reels, setReels] = useState<ReelResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeReelIndex, setActiveReelIndex] = useState(0);
-  const viewedReelIds = useRef(new Set<string>());
-
-  useEffect(() => {
-    reelsApi
-      .getReelsFeed(0, 10)
-      .then((page) => setReels(page.data))
-      .catch((err) => console.warn('Failed to load reels feed', err))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!newReel) return;
-    setReels((prev) => (prev.some((r) => r.id === newReel.id) ? prev : [newReel, ...prev]));
-  }, [newReel]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        const index = viewableItems[0].index;
-        setActiveReelIndex(index);
-        const reel = reels[index];
-        if (reel && !viewedReelIds.current.has(reel.id)) {
-          viewedReelIds.current.add(reel.id);
-          reelsApi.incrementReelView(reel.id).catch(() => {});
-        }
+        setActiveIndex(viewableItems[0].index);
       }
     }
   ).current;
@@ -60,10 +33,14 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
     itemVisiblePercentThreshold: 70,
   }).current;
 
-  if (isLoading) {
+  if (posts.length === 0) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator color="#FFFFFF" />
+        <Ionicons name="film-outline" size={40} color="rgba(255,255,255,0.5)" />
+        <Text style={styles.emptyTitle}>No videos yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Videos posted to the Feed show up here automatically.
+        </Text>
       </View>
     );
   }
@@ -71,7 +48,7 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
   return (
     <View style={styles.container}>
       <FlatList
-        data={reels}
+        data={posts}
         keyExtractor={(item) => item.id}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
@@ -86,9 +63,9 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
           index,
         })}
         renderItem={({ item, index }) => (
-          <ReelCard
-            reel={item}
-            isActive={index === activeReelIndex}
+          <FeedVideoCard
+            post={item}
+            isActive={index === activeIndex}
             onOpenComments={onOpenComments}
             onPressAuthor={onPressAuthor}
           />
@@ -106,5 +83,18 @@ const styles = StyleSheet.create({
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  emptySubtitle: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

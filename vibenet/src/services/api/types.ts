@@ -92,24 +92,9 @@ export interface ReelResponse {
   createdAt: string;
 }
 
-export interface ReelCommentResponse {
-  id: string;
-  reelId: string;
-  owner: PostOwnerResponse;
-  content: string;
-  createdAt: string;
-}
-
 export interface PostReactionEvent {
   postId: string;
   reactionCount: number;
-  actorUserId: string;
-  actorReaction: ReactionType | null;
-}
-
-export interface ReelReactionEvent {
-  reelId: string;
-  likesCount: number;
   actorUserId: string;
   actorReaction: ReactionType | null;
 }
@@ -118,12 +103,6 @@ export interface PostCommentEvent {
   postId: string;
   commentCount: number;
   comment: CommentResponse;
-}
-
-export interface ReelCommentEvent {
-  reelId: string;
-  commentsCount: number;
-  comment: ReelCommentResponse;
 }
 
 export interface StoryItemResponse {
