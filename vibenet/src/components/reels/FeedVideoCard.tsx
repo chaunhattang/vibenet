@@ -62,6 +62,14 @@ export const FeedVideoCard: React.FC<FeedVideoCardProps> = ({
     };
   }, [post.id, user?.id]);
 
+ 
+  useEffect(() => {
+    setIsLiked(!!post.currentReaction);
+    setLikesCount(post.reactionCount);
+    setCommentCount(post.commentCount);
+    setIsSaved(post.saved);
+  }, [post.currentReaction, post.reactionCount, post.commentCount, post.saved]);
+
   const videoUrl = resolveMediaUrl(post.mediaUrl[0]);
   const player = useVideoPlayer(videoUrl ?? null, (p) => {
     p.loop = true;

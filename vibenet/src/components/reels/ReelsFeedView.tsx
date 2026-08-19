@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions, ViewToken } from 'react-native';
+import { View, Text, FlatList, RefreshControl, StyleSheet, Dimensions, ViewToken } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FeedVideoCard } from './FeedVideoCard';
 import type { PostResponse } from '../../services/api/types';
@@ -8,6 +8,8 @@ interface ReelsFeedViewProps {
   posts: PostResponse[];
   onOpenComments: (post: PostResponse) => void;
   onPressAuthor?: (authorId: string) => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -18,6 +20,8 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
   posts,
   onOpenComments,
   onPressAuthor,
+  refreshing,
+  onRefresh,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -35,13 +39,30 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
 
   if (posts.length === 0) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Ionicons name="film-outline" size={40} color="rgba(255,255,255,0.5)" />
-        <Text style={styles.emptyTitle}>No videos yet</Text>
-        <Text style={styles.emptySubtitle}>
-          Videos posted to the Feed show up here automatically.
-        </Text>
-      </View>
+      <FlatList
+        data={[]}
+        keyExtractor={() => 'empty'}
+        renderItem={null}
+        style={styles.container}
+        contentContainerStyle={[styles.container, styles.centered]}
+        refreshControl={
+          <RefreshControl
+            refreshing={!!refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#FFFFFF']}
+          />
+        }
+        ListEmptyComponent={
+          <>
+            <Ionicons name="film-outline" size={40} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.emptyTitle}>No videos yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Videos posted to the Feed show up here automatically. Pull down to refresh.
+            </Text>
+          </>
+        }
+      />
     );
   }
 
@@ -57,6 +78,22 @@ export const ReelsFeedView: React.FC<ReelsFeedViewProps> = ({
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl
+            refreshing={!!refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#FFFFFF']}
+          />
+        }
+        // Keep every card mounted for as long as the Reels tab is open. Virtualization
+        // would unmount off-screen cards and drop their WebSocket like/comment
+        // subscription — the update never arrives, and it only reappears once the
+        // card remounts with a fresh `post` prop (e.g. after leaving and returning).
+        removeClippedSubviews={false}
+        initialNumToRender={posts.length}
+        windowSize={posts.length * 2 + 1}
+        maxToRenderPerBatch={posts.length}
         getItemLayout={(_, index) => ({
           length: SCREEN_HEIGHT,
           offset: SCREEN_HEIGHT * index,

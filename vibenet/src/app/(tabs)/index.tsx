@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -83,6 +83,14 @@ export default function FeedScreen() {
     loadFeed().finally(() => setRefreshing(false));
   }, [loadFeed]);
 
+  // Reels has no live update mechanism of its own — it just re-reads whatever the
+  // Feed already has, so re-fetch every time the tab is switched to, to pick up
+  // likes/comments made elsewhere while this screen was open.
+  useEffect(() => {
+    if (homeTab !== 'reels') return;
+    loadFeed().catch((err) => console.warn('Failed to refresh reels', err));
+  }, [homeTab, loadFeed]);
+
   const handleSelectStory = (group: StoryUserGroupResponse, index: number) => {
     setSelectedStoryGroupIndex(index);
     setIsStoryViewerVisible(true);
@@ -134,6 +142,8 @@ export default function FeedScreen() {
             posts={videoPosts}
             onOpenComments={handleOpenComments}
             onPressAuthor={handlePressAuthor}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
           />
           {/* Floating Header on top of Reels */}
           <FeedHeader
