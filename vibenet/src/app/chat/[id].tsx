@@ -77,6 +77,27 @@ export default function ChatDetailScreen() {
     };
   }, [id, currentUser]);
 
+  // Safety net alongside the WebSocket push: poll for new messages while this
+  // screen is open, so a message still shows up promptly even if a WS frame is
+  // missed (e.g. the socket silently drops after the app was backgrounded).
+  useEffect(() => {
+    if (!chatId) return;
+    const interval = setInterval(async () => {
+      try {
+        const history = await getChatMessages(chatId, 0, 20);
+        const latest = history.data.slice().reverse();
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const missing = latest.filter((m) => !existingIds.has(m.id));
+          return missing.length > 0 ? [...prev, ...missing] : prev;
+        });
+      } catch (err) {
+        console.warn('Failed to poll chat messages', err);
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [chatId]);
+
   useEffect(() => {
     if (!chatId) return;
     const unsubTyping = onTyping(chatId, (e) => {

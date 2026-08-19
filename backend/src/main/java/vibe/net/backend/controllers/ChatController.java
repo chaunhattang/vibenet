@@ -73,8 +73,8 @@ public class ChatController {
 
         ChatMessageResponse saved = chatService.saveMessage(normalized, senderId);
 
-        messagingTemplate.convertAndSend("/user/" + friendId + "/queue/messages", saved);
-        messagingTemplate.convertAndSend("/user/" + senderId + "/queue/messages", saved);
+        messagingTemplate.convertAndSendToUser(friendId.toString(), "/queue/messages", saved);
+        messagingTemplate.convertAndSendToUser(senderId.toString(), "/queue/messages", saved);
 
         return ApiResponse.<ChatMessageResponse>builder().result(saved).build();
     }

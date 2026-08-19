@@ -15,10 +15,13 @@ import { getChatRooms } from '../../services/api/chat';
 import { getOnlineUsers } from '../../services/api/users';
 import type { ChatRoomResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
+import { onChatMessage } from '../../services/websocket';
+import { useAuth } from '../../contexts/AuthContext';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 export default function MessagesScreen() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatRoomResponse[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<UserResponse[]>([]);
@@ -38,6 +41,35 @@ export default function MessagesScreen() {
       load();
     }, [load])
   );
+
+  // Live-update the inbox as messages arrive, instead of only refreshing on
+  // screen focus — bump the matching chat's preview/time and move it to the
+  // top; a message from a brand-new conversation isn't in `chats` yet, so
+  // just reload to pick it up.
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubscribe = onChatMessage((msg) => {
+      const friendId = msg.senderId === currentUser.id ? msg.recipientId : msg.senderId;
+      setChats((prev) => {
+        const idx = prev.findIndex((c) => c.friendId === friendId);
+        if (idx === -1) {
+          load();
+          return prev;
+        }
+        const updated: ChatRoomResponse = {
+          ...prev[idx],
+          lastMessage: msg.content,
+          lastMessageTime: msg.timestamp,
+        };
+        const next = prev.filter((_, i) => i !== idx);
+        next.unshift(updated);
+        return next;
+      });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [currentUser, load]);
 
   const filteredChats = chats.filter(
     (c) =>

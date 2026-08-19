@@ -36,8 +36,8 @@ public class ChatWebSocketController {
 
         ChatMessageResponse saved = chatService.saveMessage(msgRequest, senderId);
 
-        messagingTemplate.convertAndSend("/user/" + request.getRecipientId() + "/queue/messages", saved);
-        messagingTemplate.convertAndSend("/user/" + senderId + "/queue/messages", saved);
+        messagingTemplate.convertAndSendToUser(request.getRecipientId().toString(), "/queue/messages", saved);
+        messagingTemplate.convertAndSendToUser(senderId.toString(), "/queue/messages", saved);
     }
 
     @MessageMapping("/chat.typing")
