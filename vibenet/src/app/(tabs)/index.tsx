@@ -15,7 +15,6 @@ import { CommentsSheetModal } from '../../components/feed/CommentsSheetModal';
 import { StoryViewerModal } from '../../components/stories/StoryViewerModal';
 import { CreatePostModal } from '../../components/feed/CreatePostModal';
 import { PostOptionsModal } from '../../components/feed/PostOptionsModal';
-import { EveryoneMomentsView } from '../../components/everyone/EveryoneMomentsView';
 import { ReelsFeedView } from '../../components/reels/ReelsFeedView';
 import { FeedSkeleton } from '../../components/skeletons/FeedSkeleton';
 import * as postsApi from '../../services/api/posts';
@@ -23,7 +22,7 @@ import * as storiesApi from '../../services/api/stories';
 import { PostResponse, StoryUserGroupResponse } from '../../services/api/types';
 import { Colors, Spacing, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
-type HomeTab = 'feed' | 'reels' | 'everyone';
+type HomeTab = 'feed' | 'reels';
 
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|m4v)$/i;
 
@@ -162,47 +161,42 @@ export default function FeedScreen() {
                 onPressAdd={() => setIsCreateModalVisible(true)}
               />
 
-              {homeTab === 'feed' ? (
-                /* 1. PHOTO FEED */
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.scrollContent}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={onRefresh}
-                      tintColor={Colors.textPrimary}
+              {/* 1. PHOTO FEED */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    tintColor={Colors.textPrimary}
+                  />
+                }>
+                {isLoading ? (
+                  <FeedSkeleton />
+                ) : (
+                  <>
+                    {/* Story Bar */}
+                    <StoryHighlightBar
+                      stories={storyGroups}
+                      onSelectStory={handleSelectStory}
                     />
-                  }>
-                  {isLoading ? (
-                    <FeedSkeleton />
-                  ) : (
-                    <>
-                      {/* Story Bar */}
-                      <StoryHighlightBar
-                        stories={storyGroups}
-                        onSelectStory={handleSelectStory}
-                      />
 
-                      {/* Posts List */}
-                      <View style={styles.postsList}>
-                        {posts.map((post) => (
-                          <PostCard
-                            key={post.id}
-                            post={post}
-                            onOpenComments={handleOpenComments}
-                            onPressAuthor={handlePressAuthor}
-                            onPressOptions={handleOpenOptions}
-                          />
-                        ))}
-                      </View>
-                    </>
-                  )}
-                </ScrollView>
-              ) : (
-                /* 2. EVERYONE — swipe through friends' moments sent via "Send a Moment" */
-                <EveryoneMomentsView />
-              )}
+                    {/* Posts List */}
+                    <View style={styles.postsList}>
+                      {posts.map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          onOpenComments={handleOpenComments}
+                          onPressAuthor={handlePressAuthor}
+                          onPressOptions={handleOpenOptions}
+                        />
+                      ))}
+                    </View>
+                  </>
+                )}
+              </ScrollView>
             </View>
           </View>
         </SafeAreaView>

@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 
-type HomeTab = 'feed' | 'reels' | 'everyone';
+type HomeTab = 'feed' | 'reels';
 
 interface FeedHeaderProps {
   activeTab?: HomeTab;
@@ -50,7 +50,7 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
         />
       </TouchableOpacity>
 
-      {/* Center Feed / Reels / Everyone Segmented Switcher */}
+      {/* Center Feed / Reels Segmented Switcher */}
       <View style={[styles.switcherContainer, isReels && styles.reelsSwitcherBg]}>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -85,30 +85,6 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
               name="sparkles"
               size={11}
               color={isReels ? '#FF2D55' : Colors.textTertiary}
-            />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => onChangeTab?.('everyone')}
-          style={[styles.switcherTab, activeTab === 'everyone' && styles.activeSwitcherTab]}>
-          <View style={styles.switcherTabContent}>
-            <Text
-              style={[
-                styles.switcherText,
-                activeTab === 'everyone'
-                  ? styles.activeSwitcherText
-                  : isReels
-                  ? styles.inactiveReelsText
-                  : styles.inactiveSwitcherText,
-              ]}>
-              Everyone
-            </Text>
-            <Ionicons
-              name="earth"
-              size={11}
-              color={activeTab === 'everyone' ? Colors.accentBlue : Colors.textTertiary}
             />
           </View>
         </TouchableOpacity>

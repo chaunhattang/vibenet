@@ -39,7 +39,13 @@
         }
       ],
       "expo-video",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to capture moments."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
