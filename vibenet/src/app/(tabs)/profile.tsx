@@ -27,6 +27,7 @@ import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
+import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -138,10 +139,11 @@ export default function ProfileScreen() {
           activeOpacity={0.9}
           onPress={() => router.push('/(tabs)')}
           style={styles.gridItem}>
-          <Image
-            source={{ uri: resolveMediaUrl(post.mediaUrl[0]) }}
+          <PostGridThumbnail
+            mediaUrl={post.mediaUrl[0]}
+            textContent={post.textContent}
+            textGradient={post.textGradient}
             style={styles.gridItemImg}
-            contentFit="cover"
           />
           <View style={styles.gridItemOverlay}>
             <View style={styles.gridStat}>

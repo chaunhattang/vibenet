@@ -1,7 +1,13 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import { WS_URL } from './config';
 import { getAccessToken } from './api/client';
-import type { ChatMessageResponse } from './api/types';
+import type {
+  ChatMessageResponse,
+  PostReactionEvent,
+  ReelReactionEvent,
+  PostCommentEvent,
+  ReelCommentEvent,
+} from './api/types';
 
 interface TypingEvent {
   userId: string;
@@ -16,6 +22,8 @@ interface ReadEvent {
 let client: Client | null = null;
 const messageSubscribers = new Set<(msg: ChatMessageResponse) => void>();
 const chatTopicSubscriptions = new Map<string, { typing: Set<(e: TypingEvent) => void>; read: Set<(e: ReadEvent) => void> }>();
+const postTopicSubscriptions = new Map<string, { reactions: Set<(e: PostReactionEvent) => void>; comments: Set<(e: PostCommentEvent) => void> }>();
+const reelTopicSubscriptions = new Map<string, { reactions: Set<(e: ReelReactionEvent) => void>; comments: Set<(e: ReelCommentEvent) => void> }>();
 
 function ensureClient(): Client {
   if (client) return client;
@@ -46,6 +54,8 @@ function ensureClient(): Client {
     });
     // Re-subscribe to every chat's typing/read topics on (re)connect.
     chatTopicSubscriptions.forEach((entry, chatId) => subscribeChatTopics(chatId, entry));
+    postTopicSubscriptions.forEach((entry, postId) => subscribePostTopics(postId, entry));
+    reelTopicSubscriptions.forEach((entry, reelId) => subscribeReelTopics(reelId, entry));
   };
 
   return client;
@@ -63,6 +73,36 @@ function subscribeChatTopics(
   c.subscribe(`/topic/chat/${chatId}/read`, (frame: IMessage) => {
     const body = JSON.parse(frame.body) as ReadEvent;
     entry.read.forEach((cb) => cb(body));
+  });
+}
+
+function subscribePostTopics(
+  postId: string,
+  entry: { reactions: Set<(e: PostReactionEvent) => void>; comments: Set<(e: PostCommentEvent) => void> }
+) {
+  const c = ensureClient();
+  c.subscribe(`/topic/posts/${postId}/reactions`, (frame: IMessage) => {
+    const body = JSON.parse(frame.body) as PostReactionEvent;
+    entry.reactions.forEach((cb) => cb(body));
+  });
+  c.subscribe(`/topic/posts/${postId}/comments`, (frame: IMessage) => {
+    const body = JSON.parse(frame.body) as PostCommentEvent;
+    entry.comments.forEach((cb) => cb(body));
+  });
+}
+
+function subscribeReelTopics(
+  reelId: string,
+  entry: { reactions: Set<(e: ReelReactionEvent) => void>; comments: Set<(e: ReelCommentEvent) => void> }
+) {
+  const c = ensureClient();
+  c.subscribe(`/topic/reels/${reelId}/reactions`, (frame: IMessage) => {
+    const body = JSON.parse(frame.body) as ReelReactionEvent;
+    entry.reactions.forEach((cb) => cb(body));
+  });
+  c.subscribe(`/topic/reels/${reelId}/comments`, (frame: IMessage) => {
+    const body = JSON.parse(frame.body) as ReelCommentEvent;
+    entry.comments.forEach((cb) => cb(body));
   });
 }
 
@@ -121,4 +161,62 @@ export function sendRead(chatId: string, lastMessageId: string) {
   const c = ensureClient();
   if (!c.connected) return;
   c.publish({ destination: '/app/chat.read', body: JSON.stringify({ chatId, lastMessageId }) });
+}
+
+function ensurePostTopicSubscribed(postId: string) {
+  const c = ensureClient();
+  if (postTopicSubscriptions.has(postId)) return;
+
+  const entry = { reactions: new Set<(e: PostReactionEvent) => void>(), comments: new Set<(e: PostCommentEvent) => void>() };
+  postTopicSubscriptions.set(postId, entry);
+
+  if (c.connected) subscribePostTopics(postId, entry);
+  // otherwise the shared onConnect handler above will pick it up once connected
+}
+
+function ensureReelTopicSubscribed(reelId: string) {
+  const c = ensureClient();
+  if (reelTopicSubscriptions.has(reelId)) return;
+
+  const entry = { reactions: new Set<(e: ReelReactionEvent) => void>(), comments: new Set<(e: ReelCommentEvent) => void>() };
+  reelTopicSubscriptions.set(reelId, entry);
+
+  if (c.connected) subscribeReelTopics(reelId, entry);
+  // otherwise the shared onConnect handler above will pick it up once connected
+}
+
+export function onPostReaction(postId: string, callback: (e: PostReactionEvent) => void): () => void {
+  ensurePostTopicSubscribed(postId);
+  const entry = postTopicSubscriptions.get(postId)!;
+  entry.reactions.add(callback);
+  return () => {
+    entry.reactions.delete(callback);
+  };
+}
+
+export function onPostComment(postId: string, callback: (e: PostCommentEvent) => void): () => void {
+  ensurePostTopicSubscribed(postId);
+  const entry = postTopicSubscriptions.get(postId)!;
+  entry.comments.add(callback);
+  return () => {
+    entry.comments.delete(callback);
+  };
+}
+
+export function onReelReaction(reelId: string, callback: (e: ReelReactionEvent) => void): () => void {
+  ensureReelTopicSubscribed(reelId);
+  const entry = reelTopicSubscriptions.get(reelId)!;
+  entry.reactions.add(callback);
+  return () => {
+    entry.reactions.delete(callback);
+  };
+}
+
+export function onReelComment(reelId: string, callback: (e: ReelCommentEvent) => void): () => void {
+  ensureReelTopicSubscribed(reelId);
+  const entry = reelTopicSubscriptions.get(reelId)!;
+  entry.comments.add(callback);
+  return () => {
+    entry.comments.delete(callback);
+  };
 }

@@ -26,6 +26,8 @@ import * as reelsApi from '../../services/api/reels';
 import * as usersApi from '../../services/api/users';
 import { Colors, Radii, Spacing, BottomTabInset } from '../../constants/theme';
 import { resolveMediaUrl } from '../../services/config';
+import { onReelReaction, onReelComment } from '../../services/websocket';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ReelCardProps {
   reel: ReelResponse;
@@ -42,13 +44,33 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onOpenComments,
   onPressAuthor,
 }) => {
+  const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(reel.liked);
   const [likesCount, setLikesCount] = useState(reel.likesCount);
+  const [commentsCount, setCommentsCount] = useState(reel.commentsCount);
   const [sharesCount, setSharesCount] = useState(reel.sharesCount);
   const [isSaved, setIsSaved] = useState(reel.saved);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+
+  // Live cross-device sync: reflect likes/comments made from this account's other
+  // sessions (or anyone else currently viewing this reel) without a manual refresh.
+  useEffect(() => {
+    const unsubReaction = onReelReaction(reel.id, (event) => {
+      setLikesCount(event.likesCount);
+      if (event.actorUserId === user?.id) {
+        setIsLiked(!!event.actorReaction);
+      }
+    });
+    const unsubComment = onReelComment(reel.id, (event) => {
+      setCommentsCount(event.commentsCount);
+    });
+    return () => {
+      unsubReaction();
+      unsubComment();
+    };
+  }, [reel.id, user?.id]);
 
   const isVideoSource = true; // reels are always uploaded as video
 
@@ -256,7 +278,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             onPress={() => onOpenComments(reel)}
             style={styles.actionBtn}>
             <Ionicons name="chatbubble-outline" size={28} color="#FFFFFF" />
-            <Text style={styles.actionCount}>{formatCount(reel.commentsCount)}</Text>
+            <Text style={styles.actionCount}>{formatCount(commentsCount)}</Text>
           </TouchableOpacity>
 
           {/* Bookmark / Save Button */}

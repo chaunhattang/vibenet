@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id"}))
 @Data
 @Builder
 @NoArgsConstructor

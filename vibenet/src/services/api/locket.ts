@@ -25,6 +25,17 @@ export interface LatestMomentResponse {
   createdAt: string | null;
 }
 
+export interface PublicMomentResponse {
+  momentId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl: string | null;
+  mediaUrl: string;
+  mediaType: MediaType;
+  caption: string | null;
+  createdAt: string;
+}
+
 export interface MomentCreationResponse {
   momentId: string;
   mediaUrl: string;
@@ -85,6 +96,14 @@ export function getLatestMoment() {
 
 export function getMomentsFeed(page = 0, size = 20) {
   return unwrap<PageResponse<MomentFeedItemResponse>>(apiClient.get('/api/locket/moments/feed', { params: { page, size } }));
+}
+
+export function getPublicMoments(page = 0, size = 30) {
+  return unwrap<PageResponse<PublicMomentResponse>>(apiClient.get('/api/locket/moments/public', { params: { page, size } }));
+}
+
+export function deleteMoment(momentId: string) {
+  return unwrap<void>(apiClient.delete(`/api/locket/moments/${momentId}`));
 }
 
 export function getSentMoments(page = 0, size = 20) {

@@ -3,6 +3,7 @@ package vibe.net.backend.models.dtos.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -15,6 +16,8 @@ public class ExploreItemResponse {
     String type;
     String mediaUrl;
     String thumbnailUrl;
+    String textContent;
+    List<String> textGradient;
     int likesCount;
     int commentsCount;
     ExploreAuthorResponse author;

@@ -100,6 +100,32 @@ export interface ReelCommentResponse {
   createdAt: string;
 }
 
+export interface PostReactionEvent {
+  postId: string;
+  reactionCount: number;
+  actorUserId: string;
+  actorReaction: ReactionType | null;
+}
+
+export interface ReelReactionEvent {
+  reelId: string;
+  likesCount: number;
+  actorUserId: string;
+  actorReaction: ReactionType | null;
+}
+
+export interface PostCommentEvent {
+  postId: string;
+  commentCount: number;
+  comment: CommentResponse;
+}
+
+export interface ReelCommentEvent {
+  reelId: string;
+  commentsCount: number;
+  comment: ReelCommentResponse;
+}
+
 export interface StoryItemResponse {
   id: string;
   mediaUrl: string;
@@ -132,6 +158,8 @@ export interface ExploreItemResponse {
   type: 'POST' | 'REEL';
   mediaUrl: string | null;
   thumbnailUrl: string | null;
+  textContent: string | null;
+  textGradient: string[] | null;
   likesCount: number;
   commentsCount: number;
   author: ExploreAuthorResponse;

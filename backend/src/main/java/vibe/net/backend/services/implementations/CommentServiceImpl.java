@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vibe.net.backend.enums.NotificationType;
@@ -18,6 +19,7 @@ import vibe.net.backend.mappers.CommentMapper;
 import vibe.net.backend.models.dtos.request.CommentRequest;
 import vibe.net.backend.models.dtos.response.CommentResponse;
 import vibe.net.backend.models.dtos.response.PageResponse;
+import vibe.net.backend.models.dtos.response.PostCommentEvent;
 import vibe.net.backend.models.entities.Comment;
 import vibe.net.backend.models.entities.Post;
 import vibe.net.backend.models.entities.User;
@@ -42,6 +44,7 @@ public class CommentServiceImpl implements CommentService {
     CommentMapper commentMapper;
     NotificationPublisher notificationPublisher;
     CommentReactionRepository commentReactionRepository;
+    SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -74,7 +77,18 @@ public class CommentServiceImpl implements CommentService {
             notificationPublisher.publish(post.getOwner().getId(), currentUserId, NotificationType.COMMENT, comment.getId());
         }
 
-        return enrich(commentMapper.toResponse(comment), currentUserId);
+        CommentResponse response = enrich(commentMapper.toResponse(comment), currentUserId);
+
+        int commentCount = (int) commentRepository.countByPostId(postId);
+        messagingTemplate.convertAndSend(
+                "/topic/posts/" + postId + "/comments",
+                PostCommentEvent.builder()
+                        .postId(postId)
+                        .commentCount(commentCount)
+                        .comment(response)
+                        .build());
+
+        return response;
     }
 
     @Override

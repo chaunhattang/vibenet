@@ -2,6 +2,7 @@ package vibe.net.backend.services.interfaces;
 
 import org.springframework.stereotype.Service;
 import vibe.net.backend.models.dtos.response.FriendRequestResponse;
+import vibe.net.backend.models.dtos.response.FriendshipStatusResponse;
 import vibe.net.backend.models.dtos.response.UserResponse;
 
 import java.util.List;
@@ -21,5 +22,5 @@ public interface FriendshipService {
 
     void unfriend(UUID targetUserId);
 
-    String checkFriendshipStatus(UUID targetUserId);
+    FriendshipStatusResponse checkFriendshipStatus(UUID targetUserId);
 }

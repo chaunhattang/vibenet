@@ -7,11 +7,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vibe.net.backend.models.dtos.response.ApiResponse;
 import vibe.net.backend.models.dtos.response.FriendRequestResponse;
+import vibe.net.backend.models.dtos.response.FriendshipStatusResponse;
 import vibe.net.backend.models.dtos.response.UserResponse;
 import vibe.net.backend.services.interfaces.FriendshipService;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -63,9 +63,9 @@ public class FriendShipController {
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping("/{targetUserId}/status")
-    public ApiResponse<Map<String, String>> checkFriendshipStatus(@PathVariable UUID targetUserId) {
-        return ApiResponse.<Map<String, String>>builder()
-                .result(Map.of("status", friendshipService.checkFriendshipStatus(targetUserId)))
+    public ApiResponse<FriendshipStatusResponse> checkFriendshipStatus(@PathVariable UUID targetUserId) {
+        return ApiResponse.<FriendshipStatusResponse>builder()
+                .result(friendshipService.checkFriendshipStatus(targetUserId))
                 .build();
     }
 }

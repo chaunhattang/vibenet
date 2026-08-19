@@ -4,12 +4,15 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import vibe.net.backend.enums.NotificationType;
 import vibe.net.backend.enums.ReactionType;
 import vibe.net.backend.exception.AppException;
 import vibe.net.backend.exception.errors.PostErrorCode;
 import vibe.net.backend.exception.errors.UserErrorCode;
+import vibe.net.backend.models.dtos.response.PostReactionEvent;
 import vibe.net.backend.models.entities.Post;
 import vibe.net.backend.models.entities.Reaction;
 import vibe.net.backend.models.entities.User;
@@ -30,6 +33,8 @@ public class ReactionServiceImpl implements ReactionService {
     PostRepository postRepository;
     UserRepository userRepository;
     NotificationPublisher notificationPublisher;
+    ReactionInsertHelper reactionInsertHelper;
+    SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -43,27 +48,50 @@ public class ReactionServiceImpl implements ReactionService {
 
         Optional<Reaction> existingReactionOpt = reactionRepository.findByPostIdAndUserId(postId, currentUserId);
 
+        ReactionType result;
         if (existingReactionOpt.isPresent()) {
             Reaction existingReaction = existingReactionOpt.get();
             if (existingReaction.getType() == newType) {
                 reactionRepository.delete(existingReaction);
-                return null;
+                result = null;
+            } else {
+                existingReaction.setType(newType);
+                reactionRepository.save(existingReaction);
+                result = newType;
             }
-            existingReaction.setType(newType);
-            reactionRepository.save(existingReaction);
-            return newType;
+        } else {
+            Reaction newReaction = Reaction.builder()
+                    .post(post)
+                    .user(user)
+                    .type(newType)
+                    .build();
+            try {
+                reactionInsertHelper.insert(newReaction);
+            } catch (DataIntegrityViolationException e) {
+                // Lost a race against a concurrent toggle (e.g. a rapid double-tap) that already
+                // inserted a reaction for this (post, user) pair; fall back to updating it instead.
+                Reaction existing = reactionRepository.findByPostIdAndUserId(postId, currentUserId)
+                        .orElseThrow(() -> e);
+                existing.setType(newType);
+                reactionRepository.save(existing);
+            }
+            result = newType;
+
+            if (!post.getOwner().getId().equals(currentUserId)) {
+                notificationPublisher.publish(post.getOwner().getId(), currentUserId, NotificationType.REACTION, post.getId());
+            }
         }
 
-        Reaction newReaction = Reaction.builder()
-                .post(post)
-                .user(user)
-                .type(newType)
-                .build();
-        reactionRepository.save(newReaction);
+        int reactionCount = (int) reactionRepository.countByPostId(postId);
+        messagingTemplate.convertAndSend(
+                "/topic/posts/" + postId + "/reactions",
+                PostReactionEvent.builder()
+                        .postId(postId)
+                        .reactionCount(reactionCount)
+                        .actorUserId(currentUserId)
+                        .actorReaction(result)
+                        .build());
 
-        if (!post.getOwner().getId().equals(currentUserId)) {
-            notificationPublisher.publish(post.getOwner().getId(), currentUserId, NotificationType.REACTION, post.getId());
-        }
-        return newType;
+        return result;
     }
 }

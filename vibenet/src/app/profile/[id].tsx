@@ -17,8 +17,11 @@ import * as usersApi from '../../services/api/users';
 import * as postsApi from '../../services/api/posts';
 import * as reelsApi from '../../services/api/reels';
 import * as friendsApi from '../../services/api/friends';
+import type { FriendshipStatus } from '../../services/api/friends';
 import type { PostResponse, ReelResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
+import { MediaThumbnail } from '../../components/common/MediaThumbnail';
+import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -35,6 +38,9 @@ export default function OtherUserProfileScreen() {
   const [profileUser, setProfileUser] = useState<UserResponse | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [friendStatus, setFriendStatus] = useState<FriendshipStatus>('NONE');
+  const [friendshipId, setFriendshipId] = useState<string | null>(null);
+  const [isFriendActionPending, setIsFriendActionPending] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'reels'>('posts');
   const [userPosts, setUserPosts] = useState<PostResponse[]>([]);
   const [userReels, setUserReels] = useState<ReelResponse[]>([]);
@@ -61,6 +67,9 @@ export default function OtherUserProfileScreen() {
         const myFollowing = await usersApi.getFollowing(currentUser.id, 0, 100);
         setIsFollowing(myFollowing.data.some((u) => u.id === id));
 
+        const status = await friendsApi.checkFriendshipStatus(id);
+        setFriendStatus(status.status);
+        setFriendshipId(status.friendshipId);
         const statusRes = await friendsApi.checkFriendshipStatus(id);
         const status = statusRes.status as typeof friendStatus;
         setFriendStatus(status);
@@ -107,6 +116,8 @@ export default function OtherUserProfileScreen() {
     }
   };
 
+  const handleSendFriendRequest = async () => {
+    if (!id || isFriendActionPending) return;
   const handleAddFriend = async () => {
     if (!id) return;
     setIsFriendActionPending(true);
@@ -120,12 +131,17 @@ export default function OtherUserProfileScreen() {
     }
   };
 
+  const handleCancelOrUnfriend = async () => {
+    if (!id || isFriendActionPending) return;
   const handleCancelRequest = async () => {
     if (!id) return;
     setIsFriendActionPending(true);
     try {
       await friendsApi.unfriend(id);
       setFriendStatus('NONE');
+      setFriendshipId(null);
+    } catch (err) {
+      console.warn('Cancel/unfriend failed', err);
     } catch (err) {
       console.warn('Cancel friend request failed', err);
     } finally {
@@ -133,6 +149,12 @@ export default function OtherUserProfileScreen() {
     }
   };
 
+  const handleAcceptFriendRequest = async () => {
+    if (!friendshipId || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.acceptFriendRequest(friendshipId);
+      setFriendStatus('FRIENDS');
   const handleAcceptRequest = async () => {
     if (!incomingRequestId) return;
     setIsFriendActionPending(true);
@@ -147,6 +169,13 @@ export default function OtherUserProfileScreen() {
     }
   };
 
+  const handleDeclineFriendRequest = async () => {
+    if (!friendshipId || isFriendActionPending) return;
+    setIsFriendActionPending(true);
+    try {
+      await friendsApi.declineFriendRequest(friendshipId);
+      setFriendStatus('NONE');
+      setFriendshipId(null);
   const handleDeclineRequest = async () => {
     if (!incomingRequestId) return;
     setIsFriendActionPending(true);
@@ -285,6 +314,9 @@ export default function OtherUserProfileScreen() {
               </View>
             )}
 
+            {/* Friend Request Row */}
+            {!isSelf && (
+              <View style={styles.friendActionRow}>
             {/* Friend request state */}
             {!isSelf && friendStatus && friendStatus !== 'SELF' && (
               <View style={styles.friendActionsRow}>
@@ -292,6 +324,10 @@ export default function OtherUserProfileScreen() {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     disabled={isFriendActionPending}
+                    onPress={handleSendFriendRequest}
+                    style={styles.friendBtn}>
+                    <Ionicons name="person-add-outline" size={16} color={Colors.textPrimary} />
+                    <Text style={styles.friendBtnText}>Add Friend</Text>
                     onPress={handleAddFriend}
                     style={[styles.friendBtn, styles.addFriendBtn]}>
                     <Ionicons name="person-add-outline" size={16} color="#FFFFFF" />
@@ -303,6 +339,10 @@ export default function OtherUserProfileScreen() {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     disabled={isFriendActionPending}
+                    onPress={handleCancelOrUnfriend}
+                    style={styles.friendBtn}>
+                    <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
+                    <Text style={styles.friendBtnText}>Request Sent · Cancel</Text>
                     onPress={handleCancelRequest}
                     style={[styles.friendBtn, styles.pendingBtn]}>
                     <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
@@ -314,6 +354,17 @@ export default function OtherUserProfileScreen() {
                   <>
                     <TouchableOpacity
                       activeOpacity={0.8}
+                      disabled={isFriendActionPending}
+                      onPress={handleAcceptFriendRequest}
+                      style={styles.friendAcceptBtn}>
+                      <Text style={styles.friendAcceptBtnText}>Accept Friend Request</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={isFriendActionPending}
+                      onPress={handleDeclineFriendRequest}
+                      style={styles.friendDeclineBtn}>
+                      <Ionicons name="close" size={18} color={Colors.textSecondary} />
                       disabled={isFriendActionPending || !incomingRequestId}
                       onPress={handleAcceptRequest}
                       style={[styles.friendBtn, styles.addFriendBtn]}>
@@ -333,6 +384,10 @@ export default function OtherUserProfileScreen() {
                   <TouchableOpacity
                     activeOpacity={0.8}
                     disabled={isFriendActionPending}
+                    onPress={handleCancelOrUnfriend}
+                    style={styles.friendBtn}>
+                    <Ionicons name="people" size={16} color={Colors.textPrimary} />
+                    <Text style={styles.friendBtnText}>Friends</Text>
                     onPress={handleUnfriend}
                     style={[styles.friendBtn, styles.friendsBtn]}>
                     <Ionicons name="checkmark-circle" size={16} color={Colors.statusCloseFriend} />
@@ -376,10 +431,11 @@ export default function OtherUserProfileScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push('/(tabs)')}
                       style={styles.gridItem}>
-                      <Image
-                        source={{ uri: resolveMediaUrl(item.mediaUrl[0]) }}
+                      <PostGridThumbnail
+                        mediaUrl={item.mediaUrl[0]}
+                        textContent={item.textContent}
+                        textGradient={item.textGradient}
                         style={styles.gridItemImg}
-                        contentFit="cover"
                       />
                       <View style={styles.gridItemOverlay}>
                         <View style={styles.gridStat}>
@@ -395,11 +451,7 @@ export default function OtherUserProfileScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push('/(tabs)/explore')}
                       style={styles.gridItem}>
-                      <Image
-                        source={{ uri: resolveMediaUrl(item.thumbnailUrl || item.videoUrl) }}
-                        style={styles.gridItemImg}
-                        contentFit="cover"
-                      />
+                      <MediaThumbnail uri={item.thumbnailUrl || item.videoUrl} style={styles.gridItemImg} />
                       <View style={styles.gridItemOverlay}>
                         <View style={styles.gridStat}>
                           <Ionicons name="heart" size={12} color="#FFFFFF" />
@@ -584,12 +636,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textPrimary,
   },
+  friendActionRow: {
   friendActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
     marginBottom: Spacing.four,
+  },
+  friendBtn: {
+    flex: 1,
     marginTop: -Spacing.two,
   },
   friendBtn: {
@@ -600,6 +656,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    height: 40,
+    borderRadius: Radii.pill,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+  },
+  friendBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: Colors.textPrimary,
+  },
+  friendAcceptBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.accentBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendAcceptBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  friendDeclineBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addFriendBtn: {
     backgroundColor: Colors.statusCloseFriend,

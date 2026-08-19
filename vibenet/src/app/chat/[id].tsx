@@ -8,6 +8,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,9 +16,9 @@ import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, MaxContentWidth } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { getChatMessages, getOrCreateRoomWithFriend } from '../../services/api/chat';
+import { getChatMessages, getOrCreateRoomWithFriend, sendMessage } from '../../services/api/chat';
 import { getUserById } from '../../services/api/users';
-import { onChatMessage, onRead, onTyping, sendChatMessage, sendRead, sendTyping } from '../../services/websocket';
+import { onChatMessage, onRead, onTyping, sendRead, sendTyping } from '../../services/websocket';
 import type { ChatMessageResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 
@@ -67,7 +68,8 @@ export default function ChatDetailScreen() {
         (msg.senderId === id && msg.recipientId === currentUser.id) ||
         (msg.senderId === currentUser.id && msg.recipientId === id);
       if (isForThisChat) {
-        setMessages((prev) => [...prev, msg]);
+        // De-dupe: a message we just sent via REST also gets echoed back over the socket.
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
       }
     });
     return () => {
@@ -101,11 +103,20 @@ export default function ChatDetailScreen() {
     }
   }, [messages, chatId, currentUser]);
 
-  const handleSendMessage = () => {
-    if (!inputText.trim() || !currentUser || !id) return;
-    sendChatMessage(id, inputText.trim());
+  const handleSendMessage = async () => {
+    const content = inputText.trim();
+    if (!content || !currentUser || !id) return;
     setInputText('');
     if (chatId) sendTyping(chatId, false);
+
+    try {
+      const saved = await sendMessage(id, content);
+      setMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]));
+    } catch (err) {
+      console.warn('Failed to send message', err);
+      setInputText(content);
+      Alert.alert('Message not sent', 'Check your connection and try again.');
+    }
   };
 
   const handleChangeText = useCallback(

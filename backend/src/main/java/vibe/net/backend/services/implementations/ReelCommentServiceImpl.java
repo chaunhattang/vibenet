@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vibe.net.backend.enums.NotificationType;
@@ -16,6 +17,7 @@ import vibe.net.backend.exception.errors.UserErrorCode;
 import vibe.net.backend.mappers.ReelCommentMapper;
 import vibe.net.backend.models.dtos.request.CommentRequest;
 import vibe.net.backend.models.dtos.response.PageResponse;
+import vibe.net.backend.models.dtos.response.ReelCommentEvent;
 import vibe.net.backend.models.dtos.response.ReelCommentResponse;
 import vibe.net.backend.models.entities.Reel;
 import vibe.net.backend.models.entities.ReelComment;
@@ -39,6 +41,7 @@ public class ReelCommentServiceImpl implements ReelCommentService {
     UserRepository userRepository;
     ReelCommentMapper reelCommentMapper;
     NotificationPublisher notificationPublisher;
+    SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -61,7 +64,18 @@ public class ReelCommentServiceImpl implements ReelCommentService {
             notificationPublisher.publish(reel.getCreator().getId(), currentUserId, NotificationType.COMMENT, comment.getId());
         }
 
-        return reelCommentMapper.toResponse(comment);
+        ReelCommentResponse response = reelCommentMapper.toResponse(comment);
+
+        int commentsCount = (int) reelCommentRepository.countByReelId(reelId);
+        messagingTemplate.convertAndSend(
+                "/topic/reels/" + reelId + "/comments",
+                ReelCommentEvent.builder()
+                        .reelId(reelId)
+                        .commentsCount(commentsCount)
+                        .comment(response)
+                        .build());
+
+        return response;
     }
 
     @Override

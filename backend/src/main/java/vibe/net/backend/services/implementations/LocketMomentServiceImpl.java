@@ -42,6 +42,7 @@ public class LocketMomentServiceImpl implements LocketMomentService {
     LocketMomentRecipientRepository recipientRepository;
     LocketReactionRepository reactionRepository;
     CloseFriendRepository closeFriendRepository;
+    FriendshipRepository friendshipRepository;
     UserRepository userRepository;
     FileService fileService;
     VideoDurationProbe videoDurationProbe;
@@ -171,6 +172,39 @@ public class LocketMomentServiceImpl implements LocketMomentService {
     }
 
     @Override
+    public PageResponse<PublicMomentResponse> getPublicFeed(UUID viewerId, int page, int size) {
+        Set<UUID> friendIds = friendshipRepository.findAllFriendsByUserId(viewerId).stream()
+                .map(f -> f.getSender().getId().equals(viewerId) ? f.getReceiver().getId() : f.getSender().getId())
+                .collect(Collectors.toSet());
+        friendIds.add(viewerId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LocketMoment> momentPage = momentRepository.findBySenderIdInOrderByCreatedAtDesc(friendIds, pageable);
+
+        List<PublicMomentResponse> data = momentPage.getContent().stream().map(moment -> {
+            User sender = moment.getSender();
+            return PublicMomentResponse.builder()
+                    .momentId(moment.getId())
+                    .senderId(sender.getId())
+                    .senderName(displayName(sender))
+                    .senderAvatarUrl(avatar(sender))
+                    .mediaUrl(moment.getMediaUrl())
+                    .mediaType(moment.getMediaType())
+                    .caption(moment.getCaption())
+                    .createdAt(moment.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+
+        return PageResponse.<PublicMomentResponse>builder()
+                .currentPage(page)
+                .totalPages(momentPage.getTotalPages())
+                .pageSize(size)
+                .totalElements(momentPage.getTotalElements())
+                .data(data)
+                .build();
+    }
+
+    @Override
     public PageResponse<SentMomentResponse> getSent(UUID userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<LocketMoment> momentPage = momentRepository.findBySenderIdOrderByCreatedAtDesc(userId, pageable);
@@ -260,6 +294,25 @@ public class LocketMomentServiceImpl implements LocketMomentService {
                 .emoji(reaction.getEmoji())
                 .reactedAt(reaction.getReactedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteMoment(UUID momentId, UUID callerId) {
+        LocketMoment moment = momentRepository.findById(momentId)
+                .orElseThrow(() -> new AppException(LocketErrorCode.MOMENT_NOT_FOUND));
+        if (!moment.getSender().getId().equals(callerId)) {
+            throw new AppException(LocketErrorCode.NOT_MOMENT_OWNER);
+        }
+
+        // Detach any replies pointing at this moment, then remove its reactions/recipient
+        // rows before the moment itself so no FK reference is left dangling.
+        momentRepository.clearReplyReferences(momentId);
+        reactionRepository.deleteByMomentId(momentId);
+        recipientRepository.deleteByMomentId(momentId);
+        momentRepository.delete(moment);
+
+        fileService.deleteFile(moment.getMediaUrl());
     }
 
     @Override

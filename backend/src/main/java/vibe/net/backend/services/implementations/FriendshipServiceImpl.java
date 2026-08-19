@@ -12,6 +12,7 @@ import vibe.net.backend.exception.errors.FriendshipErrorCode;
 import vibe.net.backend.exception.errors.UserErrorCode;
 import vibe.net.backend.mappers.UserMapper;
 import vibe.net.backend.models.dtos.response.FriendRequestResponse;
+import vibe.net.backend.models.dtos.response.FriendshipStatusResponse;
 import vibe.net.backend.models.dtos.response.UserResponse;
 import vibe.net.backend.models.entities.Friendship;
 import vibe.net.backend.models.entities.User;
@@ -150,21 +151,24 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     @Override
-    public String checkFriendshipStatus(UUID targetUserId) {
+    public FriendshipStatusResponse checkFriendshipStatus(UUID targetUserId) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (currentUserId.equals(targetUserId)) {
-            return "SELF";
+            return FriendshipStatusResponse.builder().status("SELF").build();
         }
 
         Optional<Friendship> friendshipOpt = friendshipRepository.findFriendshipBetween(currentUserId, targetUserId);
         if (friendshipOpt.isEmpty()) {
-            return "NONE";
+            return FriendshipStatusResponse.builder().status("NONE").build();
         }
 
         Friendship friendship = friendshipOpt.get();
+        String status;
         if (friendship.getStatus() == FriendStatus.ACCEPTED) {
-            return "FRIENDS";
+            status = "FRIENDS";
+        } else {
+            status = friendship.getSender().getId().equals(currentUserId) ? "PENDING_SENT" : "PENDING_RECEIVED";
         }
-        return friendship.getSender().getId().equals(currentUserId) ? "PENDING_SENT" : "PENDING_RECEIVED";
+        return FriendshipStatusResponse.builder().status(status).friendshipId(friendship.getId()).build();
     }
 }

@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import vibe.net.backend.enums.NotificationType;
 import vibe.net.backend.enums.ReactionType;
@@ -31,6 +32,7 @@ public class CommentReactionServiceImpl implements CommentReactionService {
     CommentRepository commentRepository;
     UserRepository userRepository;
     NotificationPublisher notificationPublisher;
+    ReactionInsertHelper reactionInsertHelper;
 
     @Override
     @Transactional
@@ -61,7 +63,16 @@ public class CommentReactionServiceImpl implements CommentReactionService {
                     .user(user)
                     .type(newType)
                     .build();
-            commentReactionRepository.save(newReaction);
+            try {
+                reactionInsertHelper.insert(newReaction);
+            } catch (DataIntegrityViolationException e) {
+                // Lost a race against a concurrent toggle (e.g. a rapid double-tap) that already
+                // inserted a reaction for this (comment, user) pair; fall back to updating it instead.
+                CommentReaction existing = commentReactionRepository.findByCommentIdAndUserId(commentId, currentUserId)
+                        .orElseThrow(() -> e);
+                existing.setType(newType);
+                commentReactionRepository.save(existing);
+            }
             isLiked = true;
 
             if (!comment.getOwner().getId().equals(currentUserId)) {

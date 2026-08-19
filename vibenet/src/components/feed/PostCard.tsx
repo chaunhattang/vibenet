@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, {
   FadeInDown,
   useSharedValue,
@@ -24,6 +25,8 @@ import { PostResponse } from '../../services/api/types';
 import * as reactionsApi from '../../services/api/reactions';
 import * as postsApi from '../../services/api/posts';
 import { resolveMediaUrl } from '../../services/config';
+import { onPostReaction, onPostComment } from '../../services/websocket';
+import { useAuth } from '../../contexts/AuthContext';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 
 interface PostCardProps {
@@ -44,10 +47,39 @@ export const PostCard: React.FC<PostCardProps> = ({
   onPressAuthor,
   onPressOptions,
 }) => {
+  const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(!!post.currentReaction);
   const [likesCount, setLikesCount] = useState(post.reactionCount);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
   const [sharesCount, setSharesCount] = useState(post.sharesCount);
   const [currentMediaIdx, setCurrentMediaIdx] = useState(0);
+
+  // Live cross-device sync: reflect likes/comments made from this account's other
+  // sessions (or anyone else currently viewing this post) without a manual refresh.
+  useEffect(() => {
+    const unsubReaction = onPostReaction(post.id, (event) => {
+      setLikesCount(event.reactionCount);
+      if (event.actorUserId === user?.id) {
+        setIsLiked(!!event.actorReaction);
+      }
+    });
+    const unsubComment = onPostComment(post.id, (event) => {
+      setCommentCount(event.commentCount);
+    });
+    return () => {
+      unsubReaction();
+      unsubComment();
+    };
+  }, [post.id, user?.id]);
+
+  // Local state is seeded from props only on mount, so when the feed screen reloads
+  // (e.g. on regaining focus) with a fresh `post` object, re-sync from it too —
+  // otherwise a missed WebSocket event would leave this card stuck on stale data.
+  useEffect(() => {
+    setIsLiked(!!post.currentReaction);
+    setLikesCount(post.reactionCount);
+    setCommentCount(post.commentCount);
+  }, [post.currentReaction, post.reactionCount, post.commentCount]);
 
   const mediaUrls = post.mediaUrl ?? [];
   const isTextOnly = mediaUrls.length === 0;
@@ -57,6 +89,18 @@ export const PostCard: React.FC<PostCardProps> = ({
     post.textGradient && post.textGradient.length >= 2
       ? (post.textGradient as [string, string, ...string[]])
       : DEFAULT_TEXT_GRADIENT;
+
+  const [isMuted, setIsMuted] = useState(true);
+  const videoUrl = isVideo ? resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) : undefined;
+  const player = useVideoPlayer(videoUrl ?? null, (p) => {
+    p.loop = true;
+    p.muted = isMuted;
+    p.play();
+  });
+
+  useEffect(() => {
+    if (player) player.muted = isMuted;
+  }, [isMuted, player]);
 
   const handleShare = async () => {
     setSharesCount((prev) => prev + 1);
@@ -88,20 +132,20 @@ export const PostCard: React.FC<PostCardProps> = ({
     opacity: heartOpacity.value,
   }));
 
-  const applyReactionResult = (result: 'LOVE' | 'FIRE' | null, wasLiked: boolean) => {
-    const nowLiked = !!result;
-    setIsLiked(nowLiked);
-    setLikesCount((prev) => Math.max(0, prev + (nowLiked ? (wasLiked ? 0 : 1) : wasLiked ? -1 : 0)));
-  };
-
   const toggleLike = async () => {
     const wasLiked = isLiked;
+    const optimisticLiked = !wasLiked;
     // optimistic update
-    setIsLiked(!wasLiked);
-    setLikesCount((prev) => Math.max(0, prev + (wasLiked ? -1 : 1)));
+    setIsLiked(optimisticLiked);
+    setLikesCount((prev) => Math.max(0, prev + (optimisticLiked ? 1 : -1)));
     try {
       const result = await reactionsApi.togglePostReaction(post.id, 'LOVE');
-      applyReactionResult(result, wasLiked);
+      const nowLiked = !!result;
+      // only reconcile if the server disagrees with the optimistic guess
+      if (nowLiked !== optimisticLiked) {
+        setIsLiked(nowLiked);
+        setLikesCount((prev) => Math.max(0, prev + (nowLiked ? 1 : -1)));
+      }
     } catch {
       // revert on failure
       setIsLiked(wasLiked);
@@ -165,20 +209,35 @@ export const PostCard: React.FC<PostCardProps> = ({
         ) : (
           /* Photo / Video / Carousel Canvas */
           <View style={styles.mediaCanvasWrapper}>
-            <Image
-              source={{ uri: resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) }}
-              style={styles.mediaImage}
-              contentFit="cover"
-              transition={200}
-            />
+            {isVideo && videoUrl && Platform.OS !== 'web' ? (
+              <VideoView
+                player={player}
+                style={styles.mediaImage}
+                contentFit="cover"
+                nativeControls={false}
+                allowsPictureInPicture={false}
+              />
+            ) : (
+              <Image
+                source={{ uri: resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) }}
+                style={styles.mediaImage}
+                contentFit="cover"
+                transition={200}
+              />
+            )}
 
-            {/* Video Play Badge */}
-            {isVideo && (
-              <View style={styles.videoPlayOverlay}>
-                <View style={styles.playButtonCircle}>
-                  <Ionicons name="play" size={24} color="#FFFFFF" />
-                </View>
-              </View>
+            {/* Mute / Unmute Toggle */}
+            {isVideo && videoUrl && Platform.OS !== 'web' && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsMuted((prev) => !prev)}
+                style={styles.videoMuteBtn}>
+                <Ionicons
+                  name={isMuted ? 'volume-mute' : 'volume-high'}
+                  size={16}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
             )}
 
             {/* Multi-Image Carousel Dot Switcher */}
@@ -268,7 +327,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                 size={17}
                 color="#FFFFFF"
               />
-              <Text style={styles.statCount}>{post.commentCount}</Text>
+              <Text style={styles.statCount}>{commentCount}</Text>
             </TouchableOpacity>
 
             {/* Share */}
@@ -354,20 +413,16 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.3,
   },
-  videoPlayOverlay: {
-    ...StyleSheet.absoluteFill,
+  videoMuteBtn: {
+    position: 'absolute',
+    top: Spacing.four + 44,
+    right: Spacing.four,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playButtonCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   carouselNavRow: {
     position: 'absolute',

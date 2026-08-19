@@ -25,4 +25,6 @@ public interface LocketMomentRecipientRepository extends JpaRepository<LocketMom
     long countByRecipientIdAndViewedAtIsNull(UUID recipientId);
 
     List<LocketMomentRecipient> findByRecipientIdAndViewedAtIsNull(UUID recipientId);
+
+    void deleteByMomentId(UUID momentId);
 }
