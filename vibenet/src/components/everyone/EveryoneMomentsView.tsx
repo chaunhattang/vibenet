@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   TouchableOpacity,
   Dimensions,
   ViewToken,
@@ -97,6 +98,7 @@ const MomentPage: React.FC<MomentPageProps> = ({ moment, pageHeight, isActive, i
 export const EveryoneMomentsView: React.FC = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [moments, setMoments] = useState<PublicMomentResponse[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -117,6 +119,11 @@ export const EveryoneMomentsView: React.FC = () => {
   useEffect(() => {
     setIsLoading(true);
     load().finally(() => setIsLoading(false));
+  }, [load]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load().finally(() => setRefreshing(false));
   }, [load]);
 
   const handleDelete = useCallback((momentId: string) => {
@@ -146,10 +153,22 @@ export const EveryoneMomentsView: React.FC = () => {
 
   if (moments.length === 0) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Ionicons name="planet-outline" size={36} color="rgba(255,255,255,0.6)" />
-        <Text style={styles.emptyText}>No moments from friends yet</Text>
-      </View>
+      <FlatList
+        data={[]}
+        keyExtractor={() => 'empty'}
+        renderItem={null}
+        style={styles.container}
+        contentContainerStyle={[styles.container, styles.centered]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" colors={['#FFFFFF']} />
+        }
+        ListEmptyComponent={
+          <>
+            <Ionicons name="planet-outline" size={36} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.emptyText}>No moments from friends yet</Text>
+          </>
+        }
+      />
     );
   }
 
@@ -165,6 +184,9 @@ export const EveryoneMomentsView: React.FC = () => {
           showsVerticalScrollIndicator={false}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" colors={['#FFFFFF']} />
+          }
           getItemLayout={(_, index) => ({ length: containerHeight, offset: containerHeight * index, index })}
           renderItem={({ item, index }) => (
             <MomentPage

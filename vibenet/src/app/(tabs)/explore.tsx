@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   TextInput,
   TouchableOpacity,
   Dimensions,
@@ -11,7 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { ExploreSkeleton } from '../../components/skeletons/ExploreSkeleton';
@@ -75,25 +76,37 @@ export default function ExploreScreen() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<ExploreItemResponse[]>([]);
   const [userResults, setUserResults] = useState<UserResponse[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async (category: string) => {
-    setIsLoading(true);
     try {
       const page = await exploreApi.getExploreGrid(category === 'All' ? 'all' : category.toLowerCase(), 0, 30);
       setItems(page.data);
     } catch (err) {
       console.warn('Failed to load explore grid', err);
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load(activeCategory);
+    setIsLoading(true);
+    load(activeCategory).finally(() => setIsLoading(false));
+  }, [activeCategory, load]);
+
+  // Re-fetch every time this tab regains focus (switching over from another tab,
+  // coming back from a profile, etc.) so new posts/reels show up without a manual pull.
+  useFocusEffect(
+    useCallback(() => {
+      load(activeCategory).catch(() => {});
+    }, [activeCategory, load])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load(activeCategory).finally(() => setRefreshing(false));
   }, [activeCategory, load]);
 
   const trimmedQuery = searchQuery.trim();
@@ -223,7 +236,14 @@ export default function ExploreScreen() {
               ) : (
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.scrollContent}>
+                  contentContainerStyle={styles.scrollContent}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                      tintColor={Colors.textPrimary}
+                    />
+                  }>
                   <View style={styles.gridRow}>
                     {/* Column 1 */}
                     <View style={styles.gridColumn}>
