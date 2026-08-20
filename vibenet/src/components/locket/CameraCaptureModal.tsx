@@ -200,8 +200,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               </View>
             </View>
 
-            <SafeAreaView style={styles.overlaySafeArea} pointerEvents="box-none">
-              <View style={styles.topBar}>
+            {/* Plain View, not SafeAreaView — this overlay is absolutely positioned to
+                fill the Modal (see overlaySafeArea), and SafeAreaView's automatic inset
+                padding isn't reliable measured against a <Modal>'s own surface, so insets
+                are applied manually here (same approach the post-capture topBar already
+                uses below). */}
+            <View style={styles.overlaySafeArea} pointerEvents="box-none">
+              <View style={[styles.topBar, { paddingTop: insets.top + Spacing.two }]}>
                 <TouchableOpacity activeOpacity={0.7} onPress={resetAndClose} style={styles.iconBtn}>
                   <Ionicons name="close" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
@@ -213,7 +218,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.shutterRow}>
+              <View style={[styles.shutterRow, { paddingBottom: insets.bottom + Spacing.eight }]}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   disabled={isCapturing}
@@ -222,7 +227,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   <View style={styles.shutterInner} />
                 </TouchableOpacity>
               </View>
-            </SafeAreaView>
+            </View>
           </>
         )}
       </View>

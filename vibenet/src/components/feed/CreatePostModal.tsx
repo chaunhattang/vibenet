@@ -28,6 +28,7 @@ interface PickedMedia {
   fileName: string;
   mimeType: string;
   isVideo: boolean;
+  durationMs?: number;
 }
 
 interface CreatePostModalProps {
@@ -129,6 +130,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             fileName: asset.fileName || `upload-${Date.now()}-${idx}.${isVideo ? 'mp4' : 'jpg'}`,
             mimeType: asset.mimeType || guessMime(asset.uri, isVideo),
             isVideo,
+            durationMs: isVideo && asset.duration ? asset.duration : undefined,
           };
         });
 
@@ -191,6 +193,12 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         const form = new FormData();
         form.append('mediaType', contentType === 'video' ? 'VIDEO' : 'PHOTO');
         if (caption.trim()) form.append('caption', caption.trim());
+        // Play the story for as long as the actual clip runs instead of the
+        // backend's flat 5s default, which was cutting every video story short.
+        const durationMs = mediaList[0].durationMs;
+        if (contentType === 'video' && durationMs) {
+          form.append('durationSeconds', String(Math.max(1, Math.round(durationMs / 1000))));
+        }
         form.append('mediaFile', await toFormFile(mediaList[0]));
         const created = await storiesApi.uploadStory(form);
         onCreateStory(created);

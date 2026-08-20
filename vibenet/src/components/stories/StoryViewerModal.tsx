@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { StoryUserGroupResponse } from '../../services/api/types';
 import * as storiesApi from '../../services/api/stories';
@@ -49,6 +50,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const viewedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -61,6 +63,31 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   const activeGroup = stories[currentGroupIdx] || stories[0];
   const activeFrame = activeGroup?.stories[currentFrameIdx] || activeGroup?.stories[0];
   const totalFrames = activeGroup?.stories?.length || 1;
+
+  const isVideoFrame = activeFrame?.mediaType === 'VIDEO';
+  // expo-video's VideoView isn't rendered on web (falls back to a static <Image>
+  // there), so only web-unsupported playback drives the real-duration logic below —
+  // web keeps advancing on the fixed timer like a photo would.
+  const isVideoPlayback = isVideoFrame && Platform.OS !== 'web';
+  const videoUri = isVideoFrame ? resolveMediaUrl(activeFrame?.mediaUrl) : null;
+  const videoPlayer = useVideoPlayer(isVideoPlayback ? videoUri ?? null : null, (p) => {
+    p.loop = false;
+    p.muted = isMuted;
+  });
+
+  useEffect(() => {
+    if (!videoPlayer) return;
+    videoPlayer.muted = isMuted;
+  }, [isMuted, videoPlayer]);
+
+  useEffect(() => {
+    if (!videoPlayer || !isVideoPlayback) return;
+    if (!visible || isPaused || isDeleting) {
+      videoPlayer.pause();
+    } else {
+      videoPlayer.play();
+    }
+  }, [videoPlayer, isVideoPlayback, visible, isPaused, isDeleting]);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -85,6 +112,30 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
       onClose();
     }
   }, [currentFrameIdx, totalFrames, currentGroupIdx, stories.length, onClose]);
+
+  // Video frames advance on the real playToEnd event instead of a guessed fixed
+  // duration — a stored/estimated duration can drift from the actual clip and was
+  // cutting videos off before they finished.
+  useEffect(() => {
+    if (!videoPlayer || !isVideoPlayback || !visible) return;
+    const subscription = videoPlayer.addListener('playToEnd', () => {
+      handleNext();
+    });
+    return () => subscription.remove();
+  }, [videoPlayer, isVideoPlayback, visible, handleNext]);
+
+  // Segmented progress bar tracks the video's real playback position for video
+  // frames, rather than a fixed timer racing against however long the clip is.
+  useEffect(() => {
+    if (!videoPlayer || !isVideoPlayback || !visible) return;
+    const subscription = videoPlayer.addListener('timeUpdate', ({ currentTime }) => {
+      const duration = videoPlayer.duration;
+      if (duration > 0) {
+        progressAnim.setValue(Math.min(1, currentTime / duration));
+      }
+    });
+    return () => subscription.remove();
+  }, [videoPlayer, isVideoPlayback, visible, progressAnim]);
 
   const handlePrev = useCallback(() => {
     if (currentFrameIdx > 0) {
@@ -127,6 +178,12 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
     if (!visible || !activeGroup) return;
 
     progressAnim.setValue(0);
+
+    // Video frames are advanced by the playToEnd listener above and their progress
+    // bar is driven by the timeUpdate listener — this fixed-duration timer is only
+    // for photo frames (and video on web, which falls back to a static image).
+    if (isVideoPlayback) return;
+
     if (!isPaused && !isDeleting) {
       const anim = Animated.timing(progressAnim, {
         toValue: 1,
@@ -144,7 +201,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         progressAnim.stopAnimation();
       };
     }
-  }, [currentGroupIdx, currentFrameIdx, isPaused, isDeleting, visible, activeGroup, activeFrame, handleNext, progressAnim]);
+  }, [currentGroupIdx, currentFrameIdx, isPaused, isDeleting, visible, activeGroup, activeFrame, isVideoPlayback, handleNext, progressAnim]);
 
   const handlePressZone = (e: any) => {
     const x = e.nativeEvent.locationX;
@@ -160,12 +217,22 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   const content = (
     <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-        {/* Story Background Image */}
-        <Image
-          source={{ uri: resolveMediaUrl(activeFrame.mediaUrl) }}
-          style={styles.storyImage}
-          contentFit="cover"
-        />
+        {/* Story Background Media — video when mediaType is VIDEO, photo otherwise */}
+        {isVideoFrame && Platform.OS !== 'web' ? (
+          <VideoView
+            player={videoPlayer}
+            style={styles.storyImage}
+            contentFit="cover"
+            nativeControls={false}
+            allowsPictureInPicture={false}
+          />
+        ) : (
+          <Image
+            source={{ uri: resolveMediaUrl(activeFrame.mediaUrl) }}
+            style={styles.storyImage}
+            contentFit="cover"
+          />
+        )}
 
         {/* Dark subtle gradient overlays */}
         <View style={styles.topGradient} />
@@ -223,6 +290,14 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
             </View>
 
             <View style={styles.headerActionsRow}>
+              {isVideoFrame && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setIsMuted((prev) => !prev)}
+                  style={styles.closeButton}>
+                  <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
               {isOwnStory && (
                 <TouchableOpacity
                   activeOpacity={0.7}
