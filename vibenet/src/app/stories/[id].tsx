@@ -45,6 +45,7 @@ export default function StoryRouteScreen() {
       initialStoryIndex={0}
       onClose={() => router.back()}
       onDeleteStory={handleDeleteStory}
+      renderAsModal={false}
     />
   );
 }

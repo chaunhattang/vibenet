@@ -13,11 +13,11 @@ import vibe.net.backend.mappers.StoryMapper;
 import vibe.net.backend.models.dtos.request.StoryCreationRequest;
 import vibe.net.backend.models.dtos.response.StoryItemResponse;
 import vibe.net.backend.models.dtos.response.StoryUserGroupResponse;
-import vibe.net.backend.models.entities.Follow;
 import vibe.net.backend.models.entities.Story;
 import vibe.net.backend.models.entities.StoryView;
 import vibe.net.backend.models.entities.User;
 import vibe.net.backend.repositories.FollowRepository;
+import vibe.net.backend.repositories.FriendshipRepository;
 import vibe.net.backend.repositories.StoryRepository;
 import vibe.net.backend.repositories.StoryViewRepository;
 import vibe.net.backend.repositories.UserRepository;
@@ -29,8 +29,10 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,6 +44,7 @@ public class StoryServiceImpl implements StoryService {
     StoryViewRepository storyViewRepository;
     UserRepository userRepository;
     FollowRepository followRepository;
+    FriendshipRepository friendshipRepository;
     FileService fileService;
     StoryMapper storyMapper;
 
@@ -73,14 +76,24 @@ public class StoryServiceImpl implements StoryService {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         LocalDateTime now = LocalDateTime.now();
 
-        List<UUID> followingIds = followRepository.findByFollowerIdOrderByCreatedAtDesc(currentUserId, org.springframework.data.domain.Pageable.unpaged())
-                .getContent().stream().map(Follow::getFollowing).map(User::getId).collect(Collectors.toList());
+        // Visible to: people the user follows, accepted friends (friending someone
+        // doesn't auto-create a Follow row, so relying on follows alone hid every
+        // friend's story), and the user's own stories.
+        Set<UUID> visibleUserIds = new LinkedHashSet<>();
+        visibleUserIds.add(currentUserId);
 
-        if (followingIds.isEmpty()) {
-            return List.of();
-        }
+        followRepository.findByFollowerIdOrderByCreatedAtDesc(currentUserId, org.springframework.data.domain.Pageable.unpaged())
+                .getContent().forEach(follow -> visibleUserIds.add(follow.getFollowing().getId()));
 
-        List<Story> stories = storyRepository.findByUserIdInAndExpiresAtAfterOrderByCreatedAtAsc(followingIds, now);
+        friendshipRepository.findAllFriendsByUserId(currentUserId).forEach(friendship -> {
+            UUID friendId = friendship.getSender().getId().equals(currentUserId)
+                    ? friendship.getReceiver().getId()
+                    : friendship.getSender().getId();
+            visibleUserIds.add(friendId);
+        });
+
+        List<UUID> visibleUserIdList = new ArrayList<>(visibleUserIds);
+        List<Story> stories = storyRepository.findByUserIdInAndExpiresAtAfterOrderByCreatedAtAsc(visibleUserIdList, now);
 
         Map<UUID, List<Story>> byUser = new LinkedHashMap<>();
         for (Story story : stories) {

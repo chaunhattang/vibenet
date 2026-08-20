@@ -28,6 +28,7 @@ import type { PostResponse, StoryItemResponse, UserResponse } from '../../servic
 import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import { PostDetailModal } from '../../components/feed/PostDetailModal';
 import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import { AvatarStoryRing } from '../../components/common/AvatarStoryRing';
@@ -56,6 +57,8 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<PostResponse | null>(null);
+  const [isPostDetailVisible, setIsPostDetailVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -131,7 +134,7 @@ export default function ProfileScreen() {
       } else {
         refreshProfile().catch((err) => console.warn('Failed to refresh profile', err));
       }
-    }, [user, refreshProfile])
+    }, [user?.id, refreshProfile])
   );
 
   const onRefresh = useCallback(() => {
@@ -182,7 +185,10 @@ export default function ProfileScreen() {
         <TouchableOpacity
           key={post.id}
           activeOpacity={0.9}
-          onPress={() => router.push('/(tabs)')}
+          onPress={() => {
+            setSelectedPost(post);
+            setIsPostDetailVisible(true);
+          }}
           style={styles.gridItem}>
           <PostGridThumbnail
             mediaUrl={post.mediaUrl[0]}
@@ -221,7 +227,7 @@ export default function ProfileScreen() {
         <TouchableOpacity
           key={friend.id}
           activeOpacity={0.7}
-          onPress={() => router.push(`/chat/${friend.id}` as any)}
+          onPress={() => router.push(`/profile/${friend.id}` as any)}
           style={styles.friendCard}>
           <Image source={{ uri: resolveMediaUrl(friend.profileResponse?.avatarUrl) || DEFAULT_AVATAR }} style={styles.friendAvatar} />
           <View style={styles.friendDetails}>
@@ -406,6 +412,13 @@ export default function ProfileScreen() {
         <EditProfileModal
           visible={isEditModalVisible}
           onClose={() => setIsEditModalVisible(false)}
+        />
+
+        {/* Post Detail Modal */}
+        <PostDetailModal
+          visible={isPostDetailVisible}
+          post={selectedPost}
+          onClose={() => setIsPostDetailVisible(false)}
         />
 
         <ConfirmModal

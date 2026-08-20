@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [loadUserFromToken]);
 
-  const login = async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     setIsLoading(true);
     try {
       const tokens = await authApi.login(username, password);
@@ -112,9 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadUserFromToken]);
 
-  const register = async (data: { username: string; email: string; password: string }) => {
+  const register = useCallback(async (data: { username: string; email: string; password: string }) => {
     setIsLoading(true);
     try {
       await authApi.register(data.username, data.email, data.password);
@@ -125,39 +125,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [login]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearTokens();
     disconnectWebSocket();
     setUser(null);
-  };
+  }, []);
 
-  const refreshCurrentUser = async () => {
+  const refreshCurrentUser = useCallback(async () => {
     const token = getAccessToken();
     if (!token) return;
     await loadUserFromToken(token);
-  };
+  }, [loadUserFromToken]);
 
-  const updateCurrentUser = (updates: Partial<UserResponse>) => {
+  const updateCurrentUser = useCallback((updates: Partial<UserResponse>) => {
     setUser((prev) => (prev ? { ...prev, ...updates } : null));
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        register,
-        logout,
-        refreshCurrentUser,
-        updateCurrentUser,
-      }}>
-      {children}
-    </AuthContext.Provider>
+  const value = React.useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      login,
+      register,
+      logout,
+      refreshCurrentUser,
+      updateCurrentUser,
+    }),
+    [user, isLoading, login, register, logout, refreshCurrentUser, updateCurrentUser]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

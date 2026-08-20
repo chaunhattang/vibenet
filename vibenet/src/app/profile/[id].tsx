@@ -24,6 +24,7 @@ import { resolveMediaUrl } from '../../services/config';
 import { MediaThumbnail } from '../../components/common/MediaThumbnail';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
 import { AvatarStoryRing } from '../../components/common/AvatarStoryRing';
+import { PostDetailModal } from '../../components/feed/PostDetailModal';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -47,6 +48,8 @@ export default function OtherUserProfileScreen() {
   const [userPosts, setUserPosts] = useState<PostResponse[]>([]);
   const [userReels, setUserReels] = useState<ReelResponse[]>([]);
   const [userStories, setUserStories] = useState<StoryItemResponse[]>([]);
+  const [selectedPost, setSelectedPost] = useState<PostResponse | null>(null);
+  const [isPostDetailVisible, setIsPostDetailVisible] = useState(false);
 
   const isSelf = currentUser?.id === id;
 
@@ -74,7 +77,7 @@ export default function OtherUserProfileScreen() {
     } catch (err) {
       console.warn('Failed to load profile', err);
     }
-  }, [id, isSelf, currentUser]);
+  }, [id, isSelf, currentUser?.id]);
 
   useEffect(() => {
     load();
@@ -361,7 +364,10 @@ export default function OtherUserProfileScreen() {
                     <TouchableOpacity
                       key={item.id}
                       activeOpacity={0.85}
-                      onPress={() => router.push('/(tabs)')}
+                      onPress={() => {
+                        setSelectedPost(item);
+                        setIsPostDetailVisible(true);
+                      }}
                       style={styles.gridItem}>
                       <PostGridThumbnail
                         mediaUrl={item.mediaUrl[0]}
@@ -396,6 +402,13 @@ export default function OtherUserProfileScreen() {
           </ScrollView>
         </View>
       </View>
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        visible={isPostDetailVisible}
+        post={selectedPost}
+        onClose={() => setIsPostDetailVisible(false)}
+      />
     </SafeAreaView>
   );
 }

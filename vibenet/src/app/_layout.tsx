@@ -15,10 +15,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
 
+  // Hide once, the instant loading finishes — not tied to segments, since that
+  // fires on every navigation and repeat calls throw "no native splash screen
+  // registered" once it's already been hidden.
+  useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isLoading]);
+
   useEffect(() => {
     if (isLoading) return;
-
-    SplashScreen.hideAsync().catch(() => {});
 
     const inAuthGroup = segments[0] === 'auth';
 

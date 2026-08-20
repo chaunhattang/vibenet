@@ -27,6 +27,11 @@ interface StoryViewerModalProps {
   initialStoryIndex?: number;
   onClose: () => void;
   onDeleteStory?: (storyId: string) => void;
+  // False when the caller already presents this as a full-screen modal route
+  // (e.g. app/stories/[id].tsx, which has presentation: 'fullScreenModal' at
+  // the navigator level) — wrapping in another RN <Modal> there double-stacks
+  // native modal layers and leaves a black screen behind on close.
+  renderAsModal?: boolean;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -37,6 +42,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   initialStoryIndex = 0,
   onClose,
   onDeleteStory,
+  renderAsModal = true,
 }) => {
   const { user } = useAuth();
   const [currentGroupIdx, setCurrentGroupIdx] = useState(initialStoryIndex);
@@ -151,13 +157,8 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
   if (!visible || !activeGroup || !activeFrame) return null;
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent={false}
-      onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
+  const content = (
+    <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
         {/* Story Background Image */}
         <Image
@@ -247,7 +248,14 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
             <Text style={styles.captionText}>{activeFrame.caption}</Text>
           </View>
         ) : null}
-      </SafeAreaView>
+    </SafeAreaView>
+  );
+
+  if (!renderAsModal) return content;
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onClose}>
+      {content}
     </Modal>
   );
 };
