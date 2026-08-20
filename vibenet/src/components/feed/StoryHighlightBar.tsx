@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 import { StoryUserGroupResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
@@ -15,13 +16,20 @@ import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 interface StoryHighlightBarProps {
   stories: StoryUserGroupResponse[];
   onSelectStory: (group: StoryUserGroupResponse, index: number) => void;
+  currentUserId?: string;
+  currentUserAvatarUrl?: string | null;
+  onAddStory: () => void;
 }
 
 export const StoryHighlightBar: React.FC<StoryHighlightBarProps> = ({
   stories,
   onSelectStory,
+  currentUserId,
+  currentUserAvatarUrl,
+  onAddStory,
 }) => {
-  if (stories.length === 0) return null;
+  const ownIndex = stories.findIndex((g) => g.userId === currentUserId);
+  const ownGroup = ownIndex >= 0 ? stories[ownIndex] : null;
 
   return (
     <View style={styles.container}>
@@ -29,7 +37,49 @@ export const StoryHighlightBar: React.FC<StoryHighlightBarProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
+        {/* "Your Story" — always first, Facebook/Instagram-style: shows the gradient
+            ring when you have an active story, otherwise a plain avatar with a "+"
+            badge that opens the add-story flow. */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => (ownGroup ? onSelectStory(ownGroup, ownIndex) : onAddStory())}
+          style={styles.storyBubbleItem}>
+          <View style={styles.avatarWrapper}>
+            {ownGroup && ownGroup.hasUnseenStories ? (
+              <LinearGradient
+                colors={Colors.storyGradient as [string, string, ...string[]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientRing}>
+                <View style={styles.avatarInner}>
+                  <Image
+                    source={{ uri: resolveMediaUrl(currentUserAvatarUrl) }}
+                    style={styles.avatarImage}
+                  />
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={styles.viewedBorder}>
+                <Image
+                  source={{ uri: resolveMediaUrl(currentUserAvatarUrl) }}
+                  style={styles.avatarImage}
+                />
+              </View>
+            )}
+            {!ownGroup && (
+              <View style={styles.addStoryBadge}>
+                <Feather name="plus" size={12} color="#FFFFFF" />
+              </View>
+            )}
+          </View>
+
+          <Text numberOfLines={1} style={styles.storyName}>
+            Your Story
+          </Text>
+        </TouchableOpacity>
+
         {stories.map((group, index) => {
+          if (group.userId === currentUserId) return null;
           const isViewed = !group.hasUnseenStories;
           const ringGradient = isViewed
             ? null
@@ -97,6 +147,19 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 76,
     height: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addStoryBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 2,
+    borderColor: Colors.bgMain,
     alignItems: 'center',
     justifyContent: 'center',
   },

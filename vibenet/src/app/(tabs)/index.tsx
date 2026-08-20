@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
+  Text,
   ScrollView,
   StyleSheet,
   RefreshControl,
@@ -15,12 +16,16 @@ import { CommentsSheetModal } from '../../components/feed/CommentsSheetModal';
 import { StoryViewerModal } from '../../components/stories/StoryViewerModal';
 import { CreatePostModal } from '../../components/feed/CreatePostModal';
 import { PostOptionsModal } from '../../components/feed/PostOptionsModal';
+import { EditCaptionModal } from '../../components/feed/EditCaptionModal';
 import { ReelsFeedView } from '../../components/reels/ReelsFeedView';
 import { FeedSkeleton } from '../../components/skeletons/FeedSkeleton';
+import { VibenetMark } from '../../components/common/VibenetMark';
 import * as postsApi from '../../services/api/posts';
 import * as storiesApi from '../../services/api/stories';
 import { PostResponse, StoryUserGroupResponse } from '../../services/api/types';
-import { Colors, Spacing, BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { Colors, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
+import { resolveMediaUrl } from '../../services/config';
 
 type HomeTab = 'feed' | 'reels';
 
@@ -28,6 +33,7 @@ const VIDEO_EXT_RE = /\.(mp4|mov|webm|m4v)$/i;
 
 export default function FeedScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [homeTab, setHomeTab] = useState<HomeTab>('feed');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [storyGroups, setStoryGroups] = useState<StoryUserGroupResponse[]>([]);
@@ -39,9 +45,12 @@ export default function FeedScreen() {
   const [isCommentsVisible, setIsCommentsVisible] = useState(false);
   const [selectedPostForOptions, setSelectedPostForOptions] = useState<PostResponse | null>(null);
   const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [selectedPostForEdit, setSelectedPostForEdit] = useState<PostResponse | null>(null);
+  const [isEditCaptionVisible, setIsEditCaptionVisible] = useState(false);
   const [selectedStoryGroupIndex, setSelectedStoryGroupIndex] = useState<number>(0);
   const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [createModalInitialMode, setCreateModalInitialMode] = useState<'post' | 'story'>('post');
 
   // "Reels" is just the video Posts from the Feed, played back full-screen —
   // no separate reel upload flow or backend entity.
@@ -113,6 +122,19 @@ export default function FeedScreen() {
     storiesApi.getStoriesFeed().then(setStoryGroups).catch(() => {});
   };
 
+  const handleAddStory = () => {
+    setCreateModalInitialMode('story');
+    setIsCreateModalVisible(true);
+  };
+
+  const handleDeleteStory = (storyId: string) => {
+    setStoryGroups((prev) =>
+      prev
+        .map((group) => ({ ...group, stories: group.stories.filter((s) => s.id !== storyId) }))
+        .filter((group) => group.stories.length > 0)
+    );
+  };
+
   const handleOpenOptions = (post: PostResponse) => {
     setSelectedPostForOptions(post);
     setIsOptionsModalVisible(true);
@@ -124,6 +146,15 @@ export default function FeedScreen() {
 
   const handleToggleSave = (postId: string, isSaved: boolean) => {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, saved: isSaved } : p)));
+  };
+
+  const handleEditCaption = (post: PostResponse) => {
+    setSelectedPostForEdit(post);
+    setIsEditCaptionVisible(true);
+  };
+
+  const handleCaptionSaved = (updatedPost: PostResponse) => {
+    setPosts((prev) => prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)));
   };
 
   return (
@@ -148,7 +179,10 @@ export default function FeedScreen() {
           <FeedHeader
             activeTab={homeTab}
             onChangeTab={setHomeTab}
-            onPressAdd={() => setIsCreateModalVisible(true)}
+            onPressAdd={() => {
+              setCreateModalInitialMode('post');
+              setIsCreateModalVisible(true);
+            }}
           />
         </View>
       ) : (
@@ -158,7 +192,10 @@ export default function FeedScreen() {
               <FeedHeader
                 activeTab={homeTab}
                 onChangeTab={setHomeTab}
-                onPressAdd={() => setIsCreateModalVisible(true)}
+                onPressAdd={() => {
+              setCreateModalInitialMode('post');
+              setIsCreateModalVisible(true);
+            }}
               />
 
               {/* 1. PHOTO FEED */}
@@ -180,20 +217,33 @@ export default function FeedScreen() {
                     <StoryHighlightBar
                       stories={storyGroups}
                       onSelectStory={handleSelectStory}
+                      currentUserId={user?.id}
+                      currentUserAvatarUrl={resolveMediaUrl(user?.profileResponse?.avatarUrl)}
+                      onAddStory={handleAddStory}
                     />
 
                     {/* Posts List */}
-                    <View style={styles.postsList}>
-                      {posts.map((post) => (
-                        <PostCard
-                          key={post.id}
-                          post={post}
-                          onOpenComments={handleOpenComments}
-                          onPressAuthor={handlePressAuthor}
-                          onPressOptions={handleOpenOptions}
-                        />
-                      ))}
-                    </View>
+                    {posts.length === 0 ? (
+                      <View style={styles.emptyFeedState}>
+                        <VibenetMark size={56} />
+                        <Text style={styles.emptyFeedTitle}>Your feed is quiet</Text>
+                        <Text style={styles.emptyFeedSubtitle}>
+                          Follow people or share your first post to get things started.
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.postsList}>
+                        {posts.map((post) => (
+                          <PostCard
+                            key={post.id}
+                            post={post}
+                            onOpenComments={handleOpenComments}
+                            onPressAuthor={handlePressAuthor}
+                            onPressOptions={handleOpenOptions}
+                          />
+                        ))}
+                      </View>
+                    )}
                   </>
                 )}
               </ScrollView>
@@ -205,6 +255,7 @@ export default function FeedScreen() {
       {/* Create Post / Add Story Modal */}
       <CreatePostModal
         visible={isCreateModalVisible}
+        initialMode={createModalInitialMode}
         onClose={() => setIsCreateModalVisible(false)}
         onCreatePost={handleCreatePost}
         onCreateStory={handleCreateStory}
@@ -216,6 +267,7 @@ export default function FeedScreen() {
         stories={storyGroups}
         initialStoryIndex={selectedStoryGroupIndex}
         onClose={() => setIsStoryViewerVisible(false)}
+        onDeleteStory={handleDeleteStory}
       />
 
       {/* Comments Sheet Modal */}
@@ -232,6 +284,15 @@ export default function FeedScreen() {
         onClose={() => setIsOptionsModalVisible(false)}
         onDeletePost={handleDeletePost}
         onToggleSave={handleToggleSave}
+        onEditCaption={handleEditCaption}
+      />
+
+      {/* Edit Caption Modal */}
+      <EditCaptionModal
+        visible={isEditCaptionVisible}
+        post={selectedPostForEdit}
+        onClose={() => setIsEditCaptionVisible(false)}
+        onSaved={handleCaptionSaved}
       />
     </View>
   );
@@ -261,6 +322,24 @@ const styles = StyleSheet.create({
   },
   postsList: {
     marginTop: Spacing.two,
+  },
+  emptyFeedState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: Spacing.eight * 2,
+    paddingHorizontal: Spacing.six,
+    gap: Spacing.three,
+  },
+  emptyFeedTitle: {
+    ...Typography.titleSmall,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  emptyFeedSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   reelsFullContainer: {
     flex: 1,

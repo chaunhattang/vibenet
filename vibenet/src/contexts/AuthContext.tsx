@@ -41,6 +41,20 @@ function base64Decode(input: string): string {
   return output;
 }
 
+// Backend returns raw error-code messages (see UserErrorCode.java); translate the
+// ones surfaced on the login/register screens into copy a user should actually read.
+const FRIENDLY_AUTH_ERRORS: Record<string, string> = {
+  'User not found': 'No account found with that username or email.',
+  'User wrong password': 'Incorrect password. Please try again.',
+  'User account banned': 'This account has been suspended. Contact support for help.',
+  'User existed': 'That username is already taken.',
+  'Email already registered': 'An account with that email already exists.',
+};
+
+function friendlyAuthError(message: string): string {
+  return FRIENDLY_AUTH_ERRORS[message] ?? message;
+}
+
 function decodeUserId(token: string): string | null {
   try {
     const payload = token.split('.')[1];
@@ -93,7 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectWebSocket();
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Login failed' };
+      const message = err instanceof Error ? friendlyAuthError(err.message) : 'Login failed';
+      return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authApi.register(data.username, data.email, data.password);
       return await login(data.username, data.password);
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Registration failed' };
+      const message = err instanceof Error ? friendlyAuthError(err.message) : 'Registration failed';
+      return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }

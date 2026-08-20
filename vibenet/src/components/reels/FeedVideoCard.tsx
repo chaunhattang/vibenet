@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, Share }
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEvent } from 'expo';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,6 +30,13 @@ interface FeedVideoCardProps {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Videos at (or near) a standard vertical ratio fill the screen edge-to-edge like
+// TikTok's native 9:16 content — a portrait video with width/height at or below this
+// ratio is close enough to crop-fill without losing meaningful content. Anything wider
+// (square, 4:5, landscape) instead gets letterboxed with a blurred backdrop of itself,
+// same as TikTok does for non-vertical uploads.
+const PORTRAIT_FILL_RATIO = 0.62;
 
 // Full-screen vertical player for a video Post — the "Reels" tab reuses the same
 // Post entity/APIs as the Feed tab instead of a separate reel upload flow.
@@ -91,6 +100,28 @@ export const FeedVideoCard: React.FC<FeedVideoCardProps> = ({
   useEffect(() => {
     if (player) player.muted = isMuted;
   }, [isMuted, player]);
+
+  // Read the decoded video's native pixel size once metadata loads, to decide whether
+  // it fills the screen naturally (cover) or needs a letterboxed/blurred treatment.
+  const { videoTrack } = useEvent(player, 'videoTrackChange', { videoTrack: player.videoTrack });
+  const naturalRatio = videoTrack ? videoTrack.size.width / videoTrack.size.height : null;
+  const needsLetterbox = naturalRatio !== null && naturalRatio > PORTRAIT_FILL_RATIO;
+
+  // Second player driving a blurred, cover-filled backdrop copy behind the letterboxed
+  // foreground — only actually used (mounted) when needsLetterbox is true.
+  const bgPlayer = useVideoPlayer(needsLetterbox && videoUrl ? videoUrl : null, (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    if (!bgPlayer) return;
+    if (isActive && !isPaused) {
+      bgPlayer.play();
+    } else {
+      bgPlayer.pause();
+    }
+  }, [isActive, isPaused, bgPlayer, needsLetterbox]);
 
   const heartScale = useSharedValue(0);
   const heartOpacity = useSharedValue(0);
@@ -176,13 +207,36 @@ export const FeedVideoCard: React.FC<FeedVideoCardProps> = ({
     <View style={styles.cardContainer}>
       <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap} style={styles.touchArea}>
         {Platform.OS !== 'web' ? (
-          <VideoView
-            player={player}
-            style={styles.mediaVideo}
-            contentFit="cover"
-            nativeControls={false}
-            allowsPictureInPicture={false}
-          />
+          needsLetterbox ? (
+            <>
+              {/* Blurred, cover-filled backdrop of the same video — fills the letterbox
+                  bars instead of plain black, matching TikTok's non-vertical treatment. */}
+              <VideoView
+                player={bgPlayer}
+                style={styles.mediaVideoAbsolute}
+                contentFit="cover"
+                nativeControls={false}
+                pointerEvents="none"
+              />
+              <BlurView intensity={45} tint="dark" style={styles.mediaVideoAbsolute} />
+              <View style={styles.letterboxScrim} pointerEvents="none" />
+              <VideoView
+                player={player}
+                style={styles.mediaVideoAbsolute}
+                contentFit="contain"
+                nativeControls={false}
+                allowsPictureInPicture={false}
+              />
+            </>
+          ) : (
+            <VideoView
+              player={player}
+              style={styles.mediaVideo}
+              contentFit="cover"
+              nativeControls={false}
+              allowsPictureInPicture={false}
+            />
+          )
         ) : (
           <Image
             source={{ uri: resolveMediaUrl(post.mediaUrl[0]) }}
@@ -293,6 +347,13 @@ const styles = StyleSheet.create({
   mediaVideo: {
     width: '100%',
     height: '100%',
+  },
+  mediaVideoAbsolute: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  letterboxScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   pausedOverlay: {
     ...StyleSheet.absoluteFillObject,

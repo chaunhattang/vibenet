@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
+import { VibenetMark } from '../common/VibenetMark';
 
 type HomeTab = 'feed' | 'reels';
 
@@ -38,17 +39,20 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
           ? [styles.reelsHeaderBg, { paddingTop: Math.max(insets.top, 12) + 4 }]
           : null,
       ]}>
-      {/* Left '+' Create Button */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={onPressAdd || (() => router.push('/(tabs)/locket'))}
-        style={[styles.iconButton, isReels && styles.reelsIconButton]}>
-        <Feather
-          name="plus"
-          size={22}
-          color={isReels ? '#FFFFFF' : Colors.textPrimary}
-        />
-      </TouchableOpacity>
+      {/* Brand Mark + Left '+' Create Button */}
+      <View style={styles.leftGroup}>
+        <VibenetMark size={26} />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onPressAdd || (() => router.push('/(tabs)/locket'))}
+          style={[styles.iconButton, isReels && styles.reelsIconButton]}>
+          <Feather
+            name="plus"
+            size={22}
+            color={isReels ? '#FFFFFF' : Colors.textPrimary}
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* Center Feed / Reels Segmented Switcher */}
       <View style={[styles.switcherContainer, isReels && styles.reelsSwitcherBg]}>
@@ -112,6 +116,11 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
+  leftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two + 2,
+  },
   headerContainer: {
     height: 54,
     flexDirection: 'row',

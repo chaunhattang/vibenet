@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../contexts/AuthContext';
-import { VibeNetLogo } from '../../components/ui/VibeNetLogo';
+import { VibenetMark } from '../../components/common/VibenetMark';
 import { saveOrUpdateProfile } from '../../services/api/users';
 import { Typography, Spacing } from '../../constants/theme';
 
@@ -117,7 +117,9 @@ export default function RegisterScreen() {
 
             {/* Brand Logo & Tagline */}
             <View style={styles.brandSection}>
-              <VibeNetLogo size={60} variant="vibe" style={styles.brandIcon} />
+              <View style={styles.brandIcon}>
+                <VibenetMark size={60} />
+              </View>
               <Text style={styles.brandName}>VibeNet</Text>
               <Text style={styles.brandTagline}>Capture and connect with friends</Text>
             </View>

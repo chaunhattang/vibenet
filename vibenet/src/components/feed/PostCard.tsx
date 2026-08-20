@@ -4,8 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  ScrollView,
   Dimensions,
   Platform,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -41,6 +45,54 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|m4v)$/i;
 const DEFAULT_TEXT_GRADIENT: [string, string, ...string[]] = ['#833AB4', '#FD1D1D', '#FCAF45'];
 
+// Owns its own video player so only the swiped-to slide plays/decodes at a time.
+// The double-tap-to-like handler lives on each slide (not on an ancestor wrapping the
+// whole ScrollView) so the horizontal drag gesture reaches the ScrollView unobstructed.
+const CarouselMediaItem: React.FC<{
+  uri: string;
+  width: number;
+  isActive: boolean;
+  isMuted: boolean;
+  onDoubleTap: () => void;
+}> = ({ uri, width, isActive, isMuted, onDoubleTap }) => {
+  const isVideo = VIDEO_EXT_RE.test(uri);
+  const resolvedUri = resolveMediaUrl(uri);
+  const player = useVideoPlayer(isVideo ? resolvedUri ?? null : null, (p) => {
+    p.loop = true;
+    p.muted = isMuted;
+  });
+
+  useEffect(() => {
+    if (!player) return;
+    player.muted = isMuted;
+    if (isActive) player.play();
+    else player.pause();
+  }, [isActive, isMuted, player]);
+
+  return (
+    <TouchableWithoutFeedback onPress={onDoubleTap}>
+      <View style={{ width, height: '100%' }}>
+        {isVideo && Platform.OS !== 'web' ? (
+          <VideoView
+            player={player}
+            style={styles.mediaImage}
+            contentFit="cover"
+            nativeControls={false}
+            allowsPictureInPicture={false}
+          />
+        ) : (
+          <Image
+            source={{ uri: resolvedUri }}
+            style={styles.mediaImage}
+            contentFit="cover"
+            transition={200}
+          />
+        )}
+      </View>
+    </TouchableWithoutFeedback>
+  );
+};
+
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   onOpenComments,
@@ -53,6 +105,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [sharesCount, setSharesCount] = useState(post.sharesCount);
   const [currentMediaIdx, setCurrentMediaIdx] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH - Spacing.four * 2);
+  const carouselScrollRef = useRef<ScrollView>(null);
 
   // Live cross-device sync: reflect likes/comments made from this account's other
   // sessions (or anyone else currently viewing this post) without a manual refresh.
@@ -91,7 +145,10 @@ export const PostCard: React.FC<PostCardProps> = ({
       : DEFAULT_TEXT_GRADIENT;
 
   const [isMuted, setIsMuted] = useState(true);
-  const videoUrl = isVideo ? resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) : undefined;
+  // Carousel slides own their own video players (see CarouselMediaItem), so this
+  // single top-level player is only used for the non-carousel single-media case.
+  const videoUrl =
+    isVideo && !hasMultipleImages ? resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) : undefined;
   const player = useVideoPlayer(videoUrl ?? null, (p) => {
     p.loop = true;
     p.muted = isMuted;
@@ -192,42 +249,75 @@ export const PostCard: React.FC<PostCardProps> = ({
     <Animated.View
       entering={FadeInDown.springify().damping(18).stiffness(140)}
       style={styles.cardWrapper}>
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleDoubleTap}
-        style={styles.cardContainer}>
+      <View style={styles.cardContainer}>
         {/* 1. MEDIA CANVAS: PHOTO / CAROUSEL / VIDEO / TEXT */}
         {isTextOnly ? (
           /* Text-Only Post — uses the author's chosen gradient theme, falling back to a default */
-          <LinearGradient
-            colors={textGradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.textOnlyCardCanvas}>
-            <Text style={styles.textOnlyQuoteText}>{post.textContent}</Text>
-          </LinearGradient>
+          <TouchableWithoutFeedback onPress={handleDoubleTap}>
+            <LinearGradient
+              colors={textGradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.textOnlyCardCanvas}>
+              <Text style={styles.textOnlyQuoteText}>{post.textContent}</Text>
+            </LinearGradient>
+          </TouchableWithoutFeedback>
         ) : (
           /* Photo / Video / Carousel Canvas */
-          <View style={styles.mediaCanvasWrapper}>
-            {isVideo && videoUrl && Platform.OS !== 'web' ? (
-              <VideoView
-                player={player}
-                style={styles.mediaImage}
-                contentFit="cover"
-                nativeControls={false}
-                allowsPictureInPicture={false}
-              />
+          <View
+            style={styles.mediaCanvasWrapper}
+            onLayout={(e) => setCarouselWidth(e.nativeEvent.layout.width)}>
+            {hasMultipleImages ? (
+              // Double-tap-to-like is handled per-slide (see CarouselMediaItem) rather
+              // than by an ancestor wrapping this ScrollView, so the swipe gesture isn't
+              // intercepted by a parent Touchable claiming the responder on touch-start.
+              <ScrollView
+                ref={carouselScrollRef}
+                style={styles.carouselScrollView}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
+                  setCurrentMediaIdx(Math.min(mediaUrls.length - 1, Math.max(0, idx)));
+                }}>
+                {mediaUrls.map((uri, idx) => (
+                  <CarouselMediaItem
+                    key={uri + idx}
+                    uri={uri}
+                    width={carouselWidth}
+                    isActive={idx === currentMediaIdx}
+                    isMuted={isMuted}
+                    onDoubleTap={handleDoubleTap}
+                  />
+                ))}
+              </ScrollView>
             ) : (
-              <Image
-                source={{ uri: resolveMediaUrl(mediaUrls[currentMediaIdx] || mediaUrls[0]) }}
-                style={styles.mediaImage}
-                contentFit="cover"
-                transition={200}
-              />
+              <TouchableWithoutFeedback onPress={handleDoubleTap}>
+                <View style={styles.mediaImage}>
+                  {isVideo && videoUrl && Platform.OS !== 'web' ? (
+                    <VideoView
+                      player={player}
+                      style={styles.mediaImage}
+                      contentFit="cover"
+                      nativeControls={false}
+                      allowsPictureInPicture={false}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: resolveMediaUrl(mediaUrls[0]) }}
+                      style={styles.mediaImage}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                  )}
+                </View>
+              </TouchableWithoutFeedback>
             )}
 
             {/* Mute / Unmute Toggle */}
-            {isVideo && videoUrl && Platform.OS !== 'web' && (
+            {isVideo && Platform.OS !== 'web' && (
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsMuted((prev) => !prev)}
@@ -247,7 +337,10 @@ export const PostCard: React.FC<PostCardProps> = ({
                   <TouchableOpacity
                     key={idx}
                     activeOpacity={0.8}
-                    onPress={() => setCurrentMediaIdx(idx)}
+                    onPress={() => {
+                      carouselScrollRef.current?.scrollTo({ x: idx * carouselWidth, animated: true });
+                      setCurrentMediaIdx(idx);
+                    }}
                     style={[
                       styles.carouselDot,
                       currentMediaIdx === idx && styles.activeCarouselDot,
@@ -360,7 +453,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </Text>
           ) : null}
         </LinearGradient>
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };
@@ -392,6 +485,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'relative',
+  },
+  carouselScrollView: {
+    width: '100%',
+    height: '100%',
   },
   mediaImage: {
     width: '100%',

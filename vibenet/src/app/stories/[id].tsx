@@ -34,12 +34,17 @@ export default function StoryRouteScreen() {
 
   if (!group) return null;
 
+  const handleDeleteStory = (storyId: string) => {
+    setGroup((prev) => (prev ? { ...prev, stories: prev.stories.filter((s) => s.id !== storyId) } : prev));
+  };
+
   return (
     <StoryViewerModal
       visible={true}
       stories={[group]}
       initialStoryIndex={0}
       onClose={() => router.back()}
+      onDeleteStory={handleDeleteStory}
     />
   );
 }

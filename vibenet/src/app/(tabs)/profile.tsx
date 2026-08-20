@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   Dimensions,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -22,12 +23,14 @@ import Animated, {
 import { useAuth } from '../../contexts/AuthContext';
 import * as postsApi from '../../services/api/posts';
 import * as friendsApi from '../../services/api/friends';
-import type { PostResponse, UserResponse } from '../../services/api/types';
+import * as storiesApi from '../../services/api/stories';
+import type { PostResponse, StoryItemResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { ProfileSkeleton } from '../../components/skeletons/ProfileSkeleton';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
+import { AvatarStoryRing } from '../../components/common/AvatarStoryRing';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -49,16 +52,18 @@ const DEFAULT_COVER = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshCurrentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [myPosts, setMyPosts] = useState<PostResponse[]>([]);
   const [likedPosts, setLikedPosts] = useState<PostResponse[]>([]);
   const [savedPosts, setSavedPosts] = useState<PostResponse[]>([]);
   const [friends, setFriends] = useState<UserResponse[]>([]);
+  const [myStories, setMyStories] = useState<StoryItemResponse[]>([]);
 
   const loadTab = useCallback(
     async (tab: ProfileTab) => {
@@ -84,15 +89,55 @@ export default function ProfileScreen() {
     [user?.id]
   );
 
-  useEffect(() => {
+  // Posts count and friends count in the stats row are shown regardless of which
+  // tab is active, so they need to be kept fresh independently of loadTab.
+  const loadStats = useCallback(async () => {
     if (!user) return;
-    setIsLoading(true);
-    postsApi
-      .getPostsByUser(user.id)
-      .then((page) => setMyPosts(page.data))
-      .catch((err) => console.warn('Failed to load posts', err))
-      .finally(() => setIsLoading(false));
+    try {
+      const [postsPage, friendsList, stories] = await Promise.all([
+        postsApi.getPostsByUser(user.id),
+        friendsApi.getUserFriends(user.id),
+        storiesApi.getUserStories(user.id),
+      ]);
+      setMyPosts(postsPage.data);
+      setFriends(friendsList);
+      setMyStories(stories);
+    } catch (err) {
+      console.warn('Failed to load profile stats', err);
+    }
   }, [user?.id]);
+
+  const refreshProfile = useCallback(async () => {
+    await Promise.all([
+      refreshCurrentUser(),
+      loadStats(),
+      activeTab !== 'posts' && activeTab !== 'friends' ? loadTab(activeTab) : Promise.resolve(),
+    ]);
+  }, [refreshCurrentUser, loadStats, loadTab, activeTab]);
+
+  // Reload every time the Profile tab regains focus (returning from viewing/editing a
+  // post elsewhere, coming back from another tab) so counts, avatar/bio edits, and tab
+  // content reflect what actually changed instead of a stale snapshot from mount.
+  const hasLoadedOnceRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      if (!hasLoadedOnceRef.current) {
+        setIsLoading(true);
+        refreshProfile().finally(() => {
+          setIsLoading(false);
+          hasLoadedOnceRef.current = true;
+        });
+      } else {
+        refreshProfile().catch((err) => console.warn('Failed to refresh profile', err));
+      }
+    }, [user, refreshProfile])
+  );
+
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    refreshProfile().finally(() => setIsRefreshing(false));
+  }, [refreshProfile]);
 
   useEffect(() => {
     loadTab(activeTab);
@@ -230,7 +275,10 @@ export default function ProfileScreen() {
           ) : (
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}>
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.textPrimary} />
+              }>
             {/* Cover Banner */}
             <View style={styles.coverContainer}>
               <Image
@@ -240,11 +288,15 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Avatar Floating Center */}
+            {/* Avatar Floating Center — gradient ring + tap-through when stories are active */}
             <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: resolveMediaUrl(profile?.avatarUrl) || DEFAULT_AVATAR }}
-                style={styles.avatarImg}
+              <AvatarStoryRing
+                avatarUri={resolveMediaUrl(profile?.avatarUrl) || DEFAULT_AVATAR}
+                size={90}
+                hasStories={myStories.length > 0}
+                onPress={
+                  myStories.length > 0 && user ? () => router.push(`/stories/${user.id}` as any) : undefined
+                }
               />
             </View>
 

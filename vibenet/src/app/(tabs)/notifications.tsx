@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -57,6 +58,7 @@ export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<FriendRequestResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [respondedRequestIds, setRespondedRequestIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -77,6 +79,11 @@ export default function NotificationsScreen() {
       load();
     }, [load])
   );
+
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    load().finally(() => setIsRefreshing(false));
+  }, [load]);
 
   const handleAccept = async (requestId: string) => {
     try {
@@ -171,7 +178,10 @@ export default function NotificationsScreen() {
           ) : (
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}>
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#000000" />
+              }>
               {incomingRequests.length > 0 && (
                 <TouchableOpacity
                   activeOpacity={0.7}

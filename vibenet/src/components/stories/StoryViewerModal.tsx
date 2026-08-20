@@ -9,15 +9,16 @@ import {
   Dimensions,
   Animated,
   Platform,
-  TextInput,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { StoryUserGroupResponse } from '../../services/api/types';
 import * as storiesApi from '../../services/api/stories';
 import { resolveMediaUrl } from '../../services/config';
+import { useAuth } from '../../contexts/AuthContext';
 import { Radii, Spacing, Typography } from '../../constants/theme';
 
 interface StoryViewerModalProps {
@@ -25,6 +26,7 @@ interface StoryViewerModalProps {
   stories: StoryUserGroupResponse[];
   initialStoryIndex?: number;
   onClose: () => void;
+  onDeleteStory?: (storyId: string) => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -34,11 +36,13 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   stories,
   initialStoryIndex = 0,
   onClose,
+  onDeleteStory,
 }) => {
+  const { user } = useAuth();
   const [currentGroupIdx, setCurrentGroupIdx] = useState(initialStoryIndex);
   const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const viewedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -85,11 +89,39 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
     }
   }, [currentFrameIdx, currentGroupIdx]);
 
+  const isOwnStory = !!user && activeGroup?.userId === user.id;
+
+  const handleDeleteStory = () => {
+    if (!activeFrame) return;
+    const storyId = activeFrame.id;
+    setIsPaused(true);
+    Alert.alert('Delete story?', 'This story will be removed for everyone.', [
+      { text: 'Cancel', style: 'cancel', onPress: () => setIsPaused(false) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setIsDeleting(true);
+          try {
+            await storiesApi.deleteStory(storyId);
+            onDeleteStory?.(storyId);
+            onClose();
+          } catch {
+            Alert.alert('Error', 'Failed to delete story. Please try again.');
+            setIsPaused(false);
+          } finally {
+            setIsDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
   useEffect(() => {
     if (!visible || !activeGroup) return;
 
     progressAnim.setValue(0);
-    if (!isPaused) {
+    if (!isPaused && !isDeleting) {
       const anim = Animated.timing(progressAnim, {
         toValue: 1,
         duration: (activeFrame?.durationSeconds || 5) * 1000,
@@ -106,7 +138,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         progressAnim.stopAnimation();
       };
     }
-  }, [currentGroupIdx, currentFrameIdx, isPaused, visible, activeGroup, activeFrame, handleNext, progressAnim]);
+  }, [currentGroupIdx, currentFrameIdx, isPaused, isDeleting, visible, activeGroup, activeFrame, handleNext, progressAnim]);
 
   const handlePressZone = (e: any) => {
     const x = e.nativeEvent.locationX;
@@ -189,12 +221,23 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
               </View>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={onClose}
-              style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            <View style={styles.headerActionsRow}>
+              {isOwnStory && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  disabled={isDeleting}
+                  onPress={handleDeleteStory}
+                  style={styles.closeButton}>
+                  <Ionicons name="trash-outline" size={21} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={onClose}
+                style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -204,38 +247,6 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
             <Text style={styles.captionText}>{activeFrame.caption}</Text>
           </View>
         ) : null}
-
-        {/* Bottom Quick Reply & Reaction Bar */}
-        <View style={styles.bottomBar}>
-          <View style={styles.replyInputContainer}>
-            <TextInput
-              placeholder="Send message..."
-              placeholderTextColor="rgba(255, 255, 255, 0.6)"
-              value={replyText}
-              onChangeText={setReplyText}
-              style={styles.replyInput}
-            />
-            {replyText ? (
-              <TouchableOpacity
-                onPress={() => setReplyText('')}
-                style={styles.sendButton}>
-                <Feather name="send" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          <View style={styles.quickEmojisRow}>
-            {['❤️', '🔥', '😂', '👏'].map((emoji) => (
-              <TouchableOpacity
-                key={emoji}
-                activeOpacity={0.7}
-                onPress={() => {}}
-                style={styles.quickEmojiBtn}>
-                <Text style={styles.quickEmojiText}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -325,6 +336,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 10,
   },
+  headerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   closeButton: {
     width: 36,
     height: 36,
@@ -346,52 +361,5 @@ const styles = StyleSheet.create({
     ...Typography.bodyMedium,
     color: '#FFFFFF',
     textAlign: 'center',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 25 : 15,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: Spacing.four,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  replyInputContainer: {
-    flex: 1,
-    height: 44,
-    borderRadius: Radii.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-  },
-  replyInput: {
-    flex: 1,
-    height: '100%',
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  sendButton: {
-    padding: Spacing.one,
-  },
-  quickEmojisRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  quickEmojiBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickEmojiText: {
-    fontSize: 18,
   },
 });

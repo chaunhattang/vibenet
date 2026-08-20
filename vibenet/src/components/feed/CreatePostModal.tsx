@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,6 +32,7 @@ interface PickedMedia {
 
 interface CreatePostModalProps {
   visible: boolean;
+  initialMode?: 'post' | 'story';
   onClose: () => void;
   onCreatePost: (newPost: PostResponse) => void;
   onCreateStory: (newStory: StoryItemResponse) => void;
@@ -73,12 +74,20 @@ async function toFormFile(media: PickedMedia): Promise<any> {
 
 export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   visible,
+  initialMode = 'post',
   onClose,
   onCreatePost,
   onCreateStory,
 }) => {
   const { user } = useAuth();
-  const [mode, setMode] = useState<'post' | 'story'>('post');
+  const insets = useSafeAreaInsets();
+  const [mode, setMode] = useState<'post' | 'story'>(initialMode);
+
+  // The modal stays mounted (hidden) between opens, so re-sync the mode from
+  // whichever entry point triggered this open (header "+" vs. "Your Story" bubble).
+  useEffect(() => {
+    if (visible) setMode(initialMode);
+  }, [visible, initialMode]);
   const [contentType, setContentType] = useState<PostContentType>('media');
 
   // Media items list (supports multiple images/videos)
@@ -205,6 +214,11 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // Modal renders in its own native window on iOS, so KeyboardAvoidingView's
+          // internal keyboard-frame math (screen-relative) is off by this view's own
+          // distance from the real screen top — the SafeAreaView top inset here.
+          // keyboardVerticalOffset is RN's documented knob for correcting exactly that.
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
           style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
@@ -277,7 +291,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                       styles.typeBtnText,
                       contentType === 'media' && styles.activeTypeBtnText,
                     ]}>
-                    Photos / Carousel
+                    Photos
                   </Text>
                 </TouchableOpacity>
 

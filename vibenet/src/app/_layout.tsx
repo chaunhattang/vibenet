@@ -2,9 +2,11 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'react-native';
+import { StatusBar, View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { VibenetMark } from '../components/common/VibenetMark';
+import { Colors } from '../constants/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -28,11 +30,26 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
-    return null;
+    // Bridges the gap between the native splash hiding and content being ready,
+    // so the app doesn't flash a blank screen while the session check resolves.
+    return (
+      <View style={styles.loadingContainer}>
+        <VibenetMark size={72} />
+      </View>
+    );
   }
 
   return <>{children}</>;
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.bgMain,
+  },
+});
 
 export default function RootLayout() {
   return (

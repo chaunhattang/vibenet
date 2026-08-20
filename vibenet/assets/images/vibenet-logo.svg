@@ -1,26 +1,17 @@
-<svg width="128" height="128" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="vibeGlyphGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF416C" />
-      <stop offset="35%" stop-color="#8A2387" />
-      <stop offset="70%" stop-color="#6A11CB" />
-      <stop offset="100%" stop-color="#2575FC" />
-    </linearGradient>
-  </defs>
-
-  <!-- Dynamic V-Wave Ribbon -->
-  <path
-    d="M22 28 C26 28 30 31 34 38 L50 68 L66 38 C70 31 74 28 78 28 C85 28 89 34 85 42 L58 86 C54 92 46 92 42 86 L15 42 C11 34 15 28 22 28 Z"
-    fill="url(#vibeGlyphGrad)"
-  />
-
-  <!-- Pulsing Sparkle Connection Core -->
-  <path
-    d="M50 20 C50.5 28 56 33.5 64 34 C56 34.5 50.5 40 50 48 C49.5 40 44 34.5 36 34 C44 33.5 49.5 28 50 20 Z"
-    fill="#8A2387"
-  />
-
-  <!-- Frequency Pulse Satellite Dots -->
-  <circle cx="76" cy="20" r="3.5" fill="#2575FC" />
-  <circle cx="84" cy="28" r="2.2" fill="#2575FC" opacity="0.8" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="100%" height="100%">
+  <rect width="240" height="240" rx="48" fill="#000000"/>
+  <!-- Central V flowing directly into the outer @ orbit -->
+  <path d="M 82 86 
+           L 118 152 
+           L 148 90 
+           C 158 115 152 145 132 160 
+           C 105 178 62 165 52 120 
+           C 42 72 82 50 122 50 
+           C 172 50 196 85 194 130 
+           C 192 170 162 194 125 195" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="15" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
 </svg>

@@ -273,3 +273,7 @@ export const Shadows = {
 
 export const MaxContentWidth = 430;
 export const BottomTabInset = 58;
+
+// height / width ratio for the Locket "moment" card — the camera capture flow crops to
+// this same ratio so what's framed on-screen matches what's shown later in the feed.
+export const MomentAspectRatio = 1.2;

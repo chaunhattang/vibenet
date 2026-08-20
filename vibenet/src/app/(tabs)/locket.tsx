@@ -18,7 +18,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Colors, Radii, Spacing, MaxContentWidth, BottomTabInset } from '../../constants/theme';
+import { Colors, Radii, Spacing, MaxContentWidth, BottomTabInset, MomentAspectRatio } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { CameraCaptureModal } from '../../components/locket/CameraCaptureModal';
 import { MyMomentsModal } from '../../components/locket/MyMomentsModal';
@@ -32,7 +32,7 @@ import {
 import { resolveMediaUrl } from '../../services/config';
 
 const CARD_WIDTH = Math.min(Dimensions.get('window').width, MaxContentWidth) - Spacing.four * 2;
-const CARD_HEIGHT = CARD_WIDTH * 1.2;
+const CARD_HEIGHT = CARD_WIDTH * MomentAspectRatio;
 
 async function toFormFile(asset: { uri: string; fileName?: string | null; mimeType?: string | null }): Promise<any> {
   if (Platform.OS === 'web') {
@@ -165,6 +165,8 @@ export default function LocketScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, MomentAspectRatio],
         quality: 0.85,
       });
       if (result.canceled || !result.assets || result.assets.length === 0) return;
@@ -229,51 +231,53 @@ export default function LocketScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Framed Viewfinder Card */}
-          <View style={styles.cardWrap}>
-            {isLoading ? (
-              <View style={[styles.cardFrame, styles.centered]}>
-                <ActivityIndicator color="#FFFFFF" />
-              </View>
-            ) : moments.length === 0 ? (
-              <View style={[styles.cardFrame, styles.centered]}>
-                <Ionicons name="camera-outline" size={36} color="rgba(255,255,255,0.5)" />
-                <Text style={styles.emptyText}>No moments yet</Text>
-                <Text style={styles.emptySubtext}>Capture one to share with everyone.</Text>
-              </View>
-            ) : (
-              <View style={styles.cardFrame}>
-                <FlatList
-                  ref={flatListRef}
-                  data={moments}
-                  keyExtractor={(item) => item.momentId}
-                  pagingEnabled
-                  snapToInterval={CARD_HEIGHT}
-                  decelerationRate="fast"
-                  showsVerticalScrollIndicator={false}
-                  onViewableItemsChanged={onViewableItemsChanged}
-                  viewabilityConfig={viewabilityConfig}
-                  refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
-                  }
-                  getItemLayout={(_, index) => ({ length: CARD_HEIGHT, offset: CARD_HEIGHT * index, index })}
-                  renderItem={({ item }) => (
-                    <MomentPage moment={item} isOwn={item.senderId === user?.id} onDelete={handleDelete} />
-                  )}
-                />
+          {/* Framed Viewfinder Card — centered in the space between the top bar and
+              the capture controls, so leftover vertical space splits evenly instead
+              of collecting in one large gap below the card. */}
+          <View style={styles.cardCenterArea}>
+            <View style={styles.cardWrap}>
+              {isLoading ? (
+                <View style={[styles.cardFrame, styles.centered]}>
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
+              ) : moments.length === 0 ? (
+                <View style={[styles.cardFrame, styles.centered]}>
+                  <Ionicons name="camera-outline" size={36} color="rgba(255,255,255,0.5)" />
+                  <Text style={styles.emptyText}>No moments yet</Text>
+                  <Text style={styles.emptySubtext}>Capture one to share with everyone.</Text>
+                </View>
+              ) : (
+                <View style={styles.cardFrame}>
+                  <FlatList
+                    ref={flatListRef}
+                    data={moments}
+                    keyExtractor={(item) => item.momentId}
+                    pagingEnabled
+                    snapToInterval={CARD_HEIGHT}
+                    decelerationRate="fast"
+                    showsVerticalScrollIndicator={false}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                    refreshControl={
+                      <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+                    }
+                    getItemLayout={(_, index) => ({ length: CARD_HEIGHT, offset: CARD_HEIGHT * index, index })}
+                    renderItem={({ item }) => (
+                      <MomentPage moment={item} isOwn={item.senderId === user?.id} onDelete={handleDelete} />
+                    )}
+                  />
+                </View>
+              )}
+            </View>
+
+            {moments.length > 1 && (
+              <View style={styles.dotsRow}>
+                {moments.map((m, idx) => (
+                  <View key={m.momentId} style={[styles.dot, idx === activeIndex && styles.dotActive]} />
+                ))}
               </View>
             )}
           </View>
-
-          {moments.length > 1 && (
-            <View style={styles.dotsRow}>
-              {moments.map((m, idx) => (
-                <View key={m.momentId} style={[styles.dot, idx === activeIndex && styles.dotActive]} />
-              ))}
-            </View>
-          )}
-
-          <View style={styles.spacer} />
 
           {/* Bottom Capture Bar */}
           <View style={styles.bottomBar}>
@@ -399,9 +403,13 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: Colors.surfaceMuted,
   },
+  cardCenterArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardWrap: {
     paddingHorizontal: Spacing.four,
-    marginTop: Spacing.two,
   },
   cardFrame: {
     width: CARD_WIDTH,
@@ -494,9 +502,6 @@ const styles = StyleSheet.create({
   dotActive: {
     width: 18,
     backgroundColor: '#FFFFFF',
-  },
-  spacer: {
-    flex: 1,
   },
   bottomBar: {
     flexDirection: 'row',

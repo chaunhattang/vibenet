@@ -9,13 +9,41 @@ import {
   Platform,
   Alert,
   KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
-import { Colors, Radii, Spacing } from '../../constants/theme';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Colors, Radii, Spacing, MomentAspectRatio } from '../../constants/theme';
 import { createMoment, type MomentCreationResponse } from '../../services/api/locket';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const VIEWFINDER_WIDTH = SCREEN_WIDTH - Spacing.four * 2;
+const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * MomentAspectRatio;
+
+// The camera sensor's native capture ratio rarely matches the moment card's display
+// ratio, so center-crop every capture to MomentAspectRatio before it's ever uploaded —
+// what's framed in the on-screen viewfinder is then exactly what gets posted.
+async function cropToMomentRatio(photo: { uri: string; width: number; height: number }) {
+  const currentRatio = photo.height / photo.width;
+  let cropWidth = photo.width;
+  let cropHeight = photo.height;
+  if (currentRatio > MomentAspectRatio) {
+    cropHeight = Math.round(photo.width * MomentAspectRatio);
+  } else {
+    cropWidth = Math.round(photo.height / MomentAspectRatio);
+  }
+  const originX = Math.round((photo.width - cropWidth) / 2);
+  const originY = Math.round((photo.height - cropHeight) / 2);
+
+  return manipulateAsync(
+    photo.uri,
+    [{ crop: { originX, originY, width: cropWidth, height: cropHeight } }],
+    { compress: 0.9, format: SaveFormat.JPEG }
+  );
+}
 
 interface CameraCaptureModalProps {
   visible: boolean;
@@ -45,6 +73,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   onClose,
   onCreateMoment,
 }) => {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
@@ -65,7 +94,8 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     try {
       const result = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (result) {
-        setPhoto({ uri: result.uri, mimeType: 'image/jpeg' });
+        const cropped = await cropToMomentRatio(result);
+        setPhoto({ uri: cropped.uri, mimeType: 'image/jpeg' });
       }
     } catch (err) {
       console.warn('Capture failed:', err);
@@ -104,15 +134,25 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.root}>
-            <Image source={{ uri: photo.uri }} style={styles.preview} contentFit="cover" />
-
-            <SafeAreaView style={styles.overlaySafeArea}>
-              <View style={styles.topBar}>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setPhoto(null)} style={styles.iconBtn}>
-                  <Ionicons name="close" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
+            {/* Framed to the same ratio as the moment card so the review screen shows
+                exactly what was already center-cropped in cropToMomentRatio(). */}
+            <View style={styles.previewCenterArea}>
+              <View style={[styles.viewfinderFrame, { width: VIEWFINDER_WIDTH, height: VIEWFINDER_HEIGHT }]}>
+                <Image source={{ uri: photo.uri }} style={styles.frameMedia} contentFit="cover" />
               </View>
+            </View>
 
+            {/* topBar stays absolutely positioned (doesn't need keyboard avoidance).
+                captionBar is a normal flex child below so it actually gets pushed up by
+                KeyboardAvoidingView's padding — an absolutely-positioned overlay wrapping
+                both was found to not reliably track that padding on iOS. */}
+            <View style={[styles.topBar, styles.topBarAbsolute, { top: insets.top + Spacing.two }]}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setPhoto(null)} style={styles.iconBtn}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            <SafeAreaView edges={['bottom']} style={styles.captionSafeArea} pointerEvents="box-none">
               <View style={styles.captionBar}>
                 <TextInput
                   placeholder="Add a caption..."
@@ -152,7 +192,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           </SafeAreaView>
         ) : (
           <>
-            <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+            {/* Framed to MomentAspectRatio so what's composed here matches the moment
+                card's display ratio — see cropToMomentRatio() for the capture-time crop. */}
+            <View style={styles.previewCenterArea}>
+              <View style={[styles.viewfinderFrame, { width: VIEWFINDER_WIDTH, height: VIEWFINDER_HEIGHT }]}>
+                <CameraView ref={cameraRef} style={styles.frameMedia} facing={facing} />
+              </View>
+            </View>
 
             <SafeAreaView style={styles.overlaySafeArea} pointerEvents="box-none">
               <View style={styles.topBar}>
@@ -189,11 +235,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  camera: {
+  previewCenterArea: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  preview: {
-    flex: 1,
+  viewfinderFrame: {
+    borderRadius: Radii.xl,
+    overflow: 'hidden',
+    backgroundColor: '#111113',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  frameMedia: {
+    width: '100%',
+    height: '100%',
   },
   overlaySafeArea: {
     ...StyleSheet.absoluteFillObject,
@@ -204,6 +260,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
+  },
+  // Sits above the photo preview without participating in flex layout, since it
+  // doesn't need to move for the keyboard the way captionSafeArea does.
+  topBarAbsolute: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingTop: 0,
+  },
+  captionSafeArea: {
+    justifyContent: 'flex-end',
   },
   iconBtn: {
     width: 42,

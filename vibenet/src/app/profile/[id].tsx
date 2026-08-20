@@ -17,11 +17,13 @@ import * as usersApi from '../../services/api/users';
 import * as postsApi from '../../services/api/posts';
 import * as reelsApi from '../../services/api/reels';
 import * as friendsApi from '../../services/api/friends';
+import * as storiesApi from '../../services/api/stories';
 import type { FriendshipStatus } from '../../services/api/friends';
-import type { PostResponse, ReelResponse, UserResponse } from '../../services/api/types';
+import type { PostResponse, ReelResponse, StoryItemResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
 import { MediaThumbnail } from '../../components/common/MediaThumbnail';
 import { PostGridThumbnail } from '../../components/common/PostGridThumbnail';
+import { AvatarStoryRing } from '../../components/common/AvatarStoryRing';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -44,20 +46,23 @@ export default function OtherUserProfileScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'reels'>('posts');
   const [userPosts, setUserPosts] = useState<PostResponse[]>([]);
   const [userReels, setUserReels] = useState<ReelResponse[]>([]);
+  const [userStories, setUserStories] = useState<StoryItemResponse[]>([]);
 
   const isSelf = currentUser?.id === id;
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const [fetchedUser, postsPage, followers] = await Promise.all([
+      const [fetchedUser, postsPage, followers, stories] = await Promise.all([
         usersApi.getUserById(id),
         postsApi.getPostsByUser(id),
         usersApi.getFollowers(id, 0, 1),
+        storiesApi.getUserStories(id),
       ]);
       setProfileUser(fetchedUser);
       setUserPosts(postsPage.data);
       setFollowersCount(followers.totalElements);
+      setUserStories(stories);
       if (!isSelf && currentUser) {
         const myFollowing = await usersApi.getFollowing(currentUser.id, 0, 100);
         setIsFollowing(myFollowing.data.some((u) => u.id === id));
@@ -206,11 +211,13 @@ export default function OtherUserProfileScreen() {
               />
             </View>
 
-            {/* Avatar Floating Center */}
+            {/* Avatar Floating Center — gradient ring + tap-through when stories are active */}
             <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: resolveMediaUrl(profile?.avatarUrl) || DEFAULT_AVATAR }}
-                style={styles.avatarImg}
+              <AvatarStoryRing
+                avatarUri={resolveMediaUrl(profile?.avatarUrl) || DEFAULT_AVATAR}
+                size={90}
+                hasStories={userStories.length > 0}
+                onPress={userStories.length > 0 && id ? () => router.push(`/stories/${id}` as any) : undefined}
               />
             </View>
 
