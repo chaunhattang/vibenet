@@ -16,7 +16,7 @@ import { Image } from 'expo-image';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing, Typography, MaxContentWidth } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { getChatMessages, getOrCreateRoomWithFriend, sendMessage } from '../../services/api/chat';
+import { getChatMessages, getOrCreateRoomWithFriend, markChatRoomAsRead, sendMessage } from '../../services/api/chat';
 import { getUserById } from '../../services/api/users';
 import { onChatMessage, onRead, onTyping, sendRead, sendTyping } from '../../services/websocket';
 import type { ChatMessageResponse, UserResponse } from '../../services/api/types';
@@ -51,6 +51,7 @@ export default function ChatDetailScreen() {
         const history = await getChatMessages(roomChatId, 0, 50);
         if (cancelled) return;
         setMessages(history.data.slice().reverse());
+        markChatRoomAsRead(roomChatId).catch(() => {});
       } catch (err) {
         console.warn('Failed to load chat', err);
       }
@@ -154,6 +155,13 @@ export default function ChatDetailScreen() {
   const friendAvatarUrl = resolveMediaUrl(friend?.profileResponse?.avatarUrl);
   const friendDisplayName = friend?.profileResponse?.fullName ?? friend?.username ?? '';
 
+  const handleCallPress = (type: 'voice' | 'video') => {
+    Alert.alert(
+      `${type === 'voice' ? 'Voice' : 'Video'} Call`,
+      `Calling ${friendDisplayName || 'friend'}... Audio/video calling is coming soon in the next release!`
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -180,10 +188,16 @@ export default function ChatDetailScreen() {
             </View>
 
             <View style={styles.headerActions}>
-              <TouchableOpacity activeOpacity={0.7} style={styles.actionIconBtn}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleCallPress('voice')}
+                style={styles.actionIconBtn}>
                 <Ionicons name="call-outline" size={20} color={Colors.textPrimary} />
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.7} style={styles.actionIconBtn}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleCallPress('video')}
+                style={styles.actionIconBtn}>
                 <Ionicons name="videocam-outline" size={22} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
@@ -197,7 +211,7 @@ export default function ChatDetailScreen() {
             {messages.map((msg, idx) => {
               const isMine = msg.senderId === currentUser?.id;
               const isLastMine = isMine && idx === messages.length - 1;
-              const wasSeen = isLastMine && lastReadByFriend === msg.id;
+              const wasSeen = isMine && (msg.isRead === true || (isLastMine && lastReadByFriend === msg.id));
 
               return (
                 <View key={msg.id}>
@@ -219,7 +233,7 @@ export default function ChatDetailScreen() {
                       </Text>
                     </View>
                   </View>
-                  {wasSeen && <Text style={styles.seenLabel}>Seen</Text>}
+                  {wasSeen && isLastMine && <Text style={styles.seenLabel}>Seen</Text>}
                 </View>
               );
             })}

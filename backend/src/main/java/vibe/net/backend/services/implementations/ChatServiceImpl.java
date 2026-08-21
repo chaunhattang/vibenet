@@ -160,6 +160,12 @@ public class ChatServiceImpl implements ChatService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void markChatMessagesAsRead(String chatId, UUID readerId) {
+        chatMessageRepository.markChatMessagesAsRead(chatId, readerId);
+    }
+
     private String buildChatId(UUID id1, UUID id2) {
         String s1 = id1.toString();
         String s2 = id2.toString();
@@ -187,6 +193,8 @@ public class ChatServiceImpl implements ChatService {
                 .recipientId(msg.getRecipient().getId())
                 .content(msg.getContent())
                 .timestamp(msg.getTimestamp())
+                .isRead(msg.isRead())
+                .readAt(msg.getReadAt())
                 .build();
     }
 }

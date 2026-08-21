@@ -3,6 +3,7 @@ import { WS_URL } from './config';
 import { getAccessToken } from './api/client';
 import type {
   ChatMessageResponse,
+  NotificationEvent,
   PostReactionEvent,
   PostCommentEvent,
 } from './api/types';
@@ -19,6 +20,7 @@ interface ReadEvent {
 
 let client: Client | null = null;
 const messageSubscribers = new Set<(msg: ChatMessageResponse) => void>();
+const notificationSubscribers = new Set<(event: NotificationEvent) => void>();
 const chatTopicSubscriptions = new Map<string, { typing: Set<(e: TypingEvent) => void>; read: Set<(e: ReadEvent) => void> }>();
 const postTopicSubscriptions = new Map<string, { reactions: Set<(e: PostReactionEvent) => void>; comments: Set<(e: PostCommentEvent) => void> }>();
 
@@ -48,6 +50,10 @@ function ensureClient(): Client {
     client!.subscribe('/user/queue/messages', (frame: IMessage) => {
       const body = JSON.parse(frame.body) as ChatMessageResponse;
       messageSubscribers.forEach((cb) => cb(body));
+    });
+    client!.subscribe('/user/queue/notifications', (frame: IMessage) => {
+      const body = JSON.parse(frame.body) as NotificationEvent;
+      notificationSubscribers.forEach((cb) => cb(body));
     });
     // Re-subscribe to every chat's typing/read topics on (re)connect.
     chatTopicSubscriptions.forEach((entry, chatId) => subscribeChatTopics(chatId, entry));
@@ -99,6 +105,11 @@ export function disconnectWebSocket() {
 export function onChatMessage(callback: (msg: ChatMessageResponse) => void) {
   messageSubscribers.add(callback);
   return () => messageSubscribers.delete(callback);
+}
+
+export function onNotification(callback: (event: NotificationEvent) => void) {
+  notificationSubscribers.add(callback);
+  return () => notificationSubscribers.delete(callback);
 }
 
 export function sendChatMessage(recipientId: string, content: string) {

@@ -78,4 +78,15 @@ public class ChatController {
 
         return ApiResponse.<ChatMessageResponse>builder().result(saved).build();
     }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PutMapping("/rooms/{chatId}/read")
+    public ApiResponse<Void> markRoomAsRead(@PathVariable String chatId) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        chatService.markChatMessagesAsRead(chatId, userId);
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + chatId + "/read",
+                new ChatWebSocketController.ReadEvent(userId, null));
+        return ApiResponse.<Void>builder().message("Marked as read").build();
+    }
 }

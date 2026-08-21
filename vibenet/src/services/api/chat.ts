@@ -16,3 +16,7 @@ export function getOrCreateRoomWithFriend(friendId: string) {
 export function sendMessage(friendId: string, content: string) {
   return unwrap<ChatMessageResponse>(apiClient.post(`/api/chat/${friendId}/messages`, { content }));
 }
+
+export function markChatRoomAsRead(chatId: string) {
+  return unwrap<void>(apiClient.put(`/api/chat/rooms/${chatId}/read`));
+}

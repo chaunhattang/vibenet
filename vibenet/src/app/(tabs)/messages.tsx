@@ -15,7 +15,7 @@ import { getChatRooms } from '../../services/api/chat';
 import { getOnlineUsers } from '../../services/api/users';
 import type { ChatRoomResponse, UserResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
-import { onChatMessage } from '../../services/websocket';
+import { onChatMessage, onRead, onTyping } from '../../services/websocket';
 import { useAuth } from '../../contexts/AuthContext';
 import { Colors, Radii, Spacing, Typography, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 
@@ -25,6 +25,7 @@ export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatRoomResponse[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<UserResponse[]>([]);
+  const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     try {
@@ -70,6 +71,25 @@ export default function MessagesScreen() {
       unsubscribe();
     };
   }, [currentUser, load]);
+
+  // Subscribe to typing indicators for all visible chat rooms
+  useEffect(() => {
+    if (chats.length === 0) return;
+    const unsubs = chats.map((chat) =>
+      onTyping(chat.chatId, (e) => {
+        if (e.userId === chat.friendId) {
+          setTypingMap((prev) => ({
+            ...prev,
+            [chat.chatId]: e.isTyping,
+          }));
+        }
+      })
+    );
+
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [chats]);
 
   const filteredChats = chats.filter(
     (c) =>
@@ -144,35 +164,45 @@ export default function MessagesScreen() {
             <View style={styles.chatsList}>
               <Text style={styles.sectionTitle}>DIRECT MESSAGES</Text>
 
-              {filteredChats.map((chat) => (
-                <TouchableOpacity
-                  key={chat.chatId}
-                  activeOpacity={0.7}
-                  onPress={() => router.push(`/chat/${chat.friendId}` as any)}
-                  style={styles.chatRowItem}>
-                  <View style={styles.avatarContainer}>
-                    <Image
-                      source={{ uri: resolveMediaUrl(chat.friendAvatar) }}
-                      style={styles.chatAvatar}
-                    />
-                  </View>
+              {filteredChats.map((chat) => {
+                const isTyping = !!typingMap[chat.chatId];
 
-                  <View style={styles.chatInfo}>
-                    <View style={styles.chatHeaderRow}>
-                      <Text style={styles.friendName}>{chat.friendName}</Text>
-                      <Text style={styles.messageTime}>
-                        {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </Text>
+                return (
+                  <TouchableOpacity
+                    key={chat.chatId}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/chat/${chat.friendId}` as any)}
+                    style={styles.chatRowItem}>
+                    <View style={styles.avatarContainer}>
+                      <Image
+                        source={{ uri: resolveMediaUrl(chat.friendAvatar) }}
+                        style={styles.chatAvatar}
+                      />
                     </View>
 
-                    <View style={styles.messagePreviewRow}>
-                      <Text numberOfLines={1} style={styles.messageSnippet}>
-                        {chat.lastMessage || 'Say hi 👋'}
-                      </Text>
+                    <View style={styles.chatInfo}>
+                      <View style={styles.chatHeaderRow}>
+                        <Text style={styles.friendName}>{chat.friendName}</Text>
+                        <Text style={styles.messageTime}>
+                          {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </Text>
+                      </View>
+
+                      <View style={styles.messagePreviewRow}>
+                        {isTyping ? (
+                          <Text numberOfLines={1} style={styles.typingSnippet}>
+                            Typing…
+                          </Text>
+                        ) : (
+                          <Text numberOfLines={1} style={styles.messageSnippet}>
+                            {chat.lastMessage || 'Say hi 👋'}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
 
               {filteredChats.length === 0 && (
                 <View style={styles.emptyContainer}>
@@ -345,6 +375,13 @@ const styles = StyleSheet.create({
   messageSnippet: {
     ...Typography.bodySmall,
     color: Colors.textSecondary,
+    flex: 1,
+  },
+  typingSnippet: {
+    ...Typography.bodySmall,
+    color: '#10B981',
+    fontWeight: '600',
+    fontStyle: 'italic',
     flex: 1,
   },
   emptyContainer: {

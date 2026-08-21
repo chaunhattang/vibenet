@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../contexts/AuthContext';
 import { VibenetMark } from '../../components/common/VibenetMark';
 import { Typography, Spacing } from '../../constants/theme';
@@ -52,10 +51,6 @@ export default function LoginScreen() {
     } else {
       setError(res.error || 'Invalid credentials. Please try again.');
     }
-  };
-
-  const handleSocialAuth = (provider: string) => {
-    showToast(`Connecting to ${provider}...`);
   };
 
   return (
@@ -175,51 +170,6 @@ export default function LoginScreen() {
                   <Text style={styles.btnText}>Log In</Text>
                 )}
               </TouchableOpacity>
-
-              {/* OR Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Stack */}
-              <View style={styles.socialStack}>
-                {/* Apple Sign In */}
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.btnSocial}
-                  onPress={() => handleSocialAuth('Apple')}>
-                  <Ionicons name="logo-apple" size={18} color="#000000" />
-                  <Text style={styles.btnSocialText}>Continue with Apple</Text>
-                </TouchableOpacity>
-
-                {/* Google Sign In */}
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.btnSocial}
-                  onPress={() => handleSocialAuth('Google')}>
-                  <Svg width="17" height="17" viewBox="0 0 24 24">
-                    <Path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                    />
-                    <Path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
-                    />
-                    <Path
-                      fill="#FBBC05"
-                      d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.97 11.97 0 0 0 0 10.84l4.03-3.15z"
-                    />
-                    <Path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </Svg>
-                  <Text style={styles.btnSocialText}>Continue with Google</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Footer */}
@@ -302,7 +252,7 @@ const styles = StyleSheet.create({
   appHeader: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   langSelector: {
     flexDirection: 'row',
@@ -319,19 +269,19 @@ const styles = StyleSheet.create({
   },
   brandSection: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
   },
   brandIcon: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   brandName: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
     letterSpacing: -0.5,
     color: '#111827',
   },
   brandTagline: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#6B7280',
     marginTop: 4,
   },
@@ -343,7 +293,7 @@ const styles = StyleSheet.create({
     borderColor: '#FEE2E2',
     padding: Spacing.three,
     borderRadius: 12,
-    marginBottom: 14,
+    marginBottom: 16,
     gap: Spacing.two,
   },
   errorBannerText: {
@@ -403,9 +353,9 @@ const styles = StyleSheet.create({
   },
   forgotPassButton: {
     alignSelf: 'flex-end',
-    marginTop: -2,
-    marginBottom: 6,
-    paddingVertical: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    marginTop: 2,
   },
   forgotPassText: {
     fontSize: 12.5,
@@ -419,6 +369,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 6,
     ...Platform.select({
       ios: {
         shadowColor: '#0095F6',
@@ -444,54 +395,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    letterSpacing: 0.5,
-  },
-  socialStack: {
-    gap: 10,
-  },
-  btnSocial: {
-    width: '100%',
-    height: 46,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-      },
-    }),
-  },
-  btnSocialText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#111827',
-  },
   appFooter: {
     alignItems: 'center',
     gap: 14,
-    paddingTop: 20,
-    marginTop: 20,
+    paddingTop: 24,
+    marginTop: 24,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },

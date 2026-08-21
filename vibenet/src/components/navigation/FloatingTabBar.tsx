@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -12,6 +12,8 @@ import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveMediaUrl } from '../../services/config';
+import { onNotification } from '../../services/websocket';
+import { getUnreadCount } from '../../services/api/notifications';
 
 export interface TabItem {
   name: string;
@@ -26,8 +28,30 @@ export function FloatingTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const [unreadNotiCount, setUnreadNotiCount] = useState(0);
 
   const isDarkScreen = pathname.includes('/locket');
+
+  useEffect(() => {
+    if (!user) return;
+    getUnreadCount()
+      .then((count) => setUnreadNotiCount(count))
+      .catch(() => {});
+
+    const unsubscribe = onNotification(() => {
+      setUnreadNotiCount((prev) => prev + 1);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (pathname.includes('/notifications')) {
+      setUnreadNotiCount(0);
+    }
+  }, [pathname]);
 
   const tabs: TabItem[] = [
     {
@@ -75,6 +99,10 @@ export function FloatingTabBar() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
 
+    if (tabRoute === '/notifications') {
+      setUnreadNotiCount(0);
+    }
+
     if (tabRoute === '/') {
       router.push('/(tabs)');
     } else {
@@ -95,6 +123,7 @@ export function FloatingTabBar() {
       <View style={styles.tabBarRow}>
         {tabs.map((tab) => {
           const active = isTabActive(tab.route);
+          const isNotiTab = tab.route === '/notifications';
 
           if (tab.isProfile) {
             return (
@@ -127,11 +156,16 @@ export function FloatingTabBar() {
               activeOpacity={0.7}
               onPress={() => handleTabPress(tab.route)}
               style={styles.tabButton}>
-              <Ionicons
-                name={(active ? tab.activeIcon : tab.inactiveIcon) as any}
-                size={27}
-                color={active ? activeIconColor : inactiveIconColor}
-              />
+              <View style={styles.iconWrap}>
+                <Ionicons
+                  name={(active ? tab.activeIcon : tab.inactiveIcon) as any}
+                  size={27}
+                  color={active ? activeIconColor : inactiveIconColor}
+                />
+                {isNotiTab && unreadNotiCount > 0 && (
+                  <View style={styles.notiBadgeDot} />
+                )}
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -191,5 +225,19 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 14,
     backgroundColor: '#E5E7EB',
+  },
+  iconWrap: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notiBadgeDot: {
+    position: 'absolute',
+    top: 0,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
   },
 });

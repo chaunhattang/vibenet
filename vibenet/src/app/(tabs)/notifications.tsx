@@ -17,6 +17,7 @@ import { getNotifications, markAllNotificationsRead, markNotificationRead } from
 import { acceptFriendRequest, declineFriendRequest, getIncomingFriendRequests } from '../../services/api/friends';
 import type { FriendRequestResponse, NotificationResponse } from '../../services/api/types';
 import { resolveMediaUrl } from '../../services/config';
+import { onNotification } from '../../services/websocket';
 
 function describeNotification(n: NotificationResponse): string {
   switch (n.type) {
@@ -79,6 +80,15 @@ export default function NotificationsScreen() {
       load();
     }, [load])
   );
+
+  useEffect(() => {
+    const unsubscribe = onNotification(() => {
+      load();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [load]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);

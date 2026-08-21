@@ -51,6 +51,7 @@ public class ChatWebSocketController {
     @MessageMapping("/chat.read")
     public void read(@Payload ReadRequest request, Principal principal) {
         UUID userId = UUID.fromString(principal.getName());
+        chatService.markChatMessagesAsRead(request.getChatId(), userId);
         messagingTemplate.convertAndSend(
                 "/topic/chat/" + request.getChatId() + "/read",
                 new ReadEvent(userId, request.getLastMessageId()));

@@ -18,4 +18,5 @@ public interface ChatService {
     ChatMessageResponse saveMessage(ChatMessageRequest request, UUID senderId);
 
     PageResponse<ChatMessageResponse> getMessages(String chatId, int page, int size);
+    void markChatMessagesAsRead(String chatId, UUID readerId);
 }

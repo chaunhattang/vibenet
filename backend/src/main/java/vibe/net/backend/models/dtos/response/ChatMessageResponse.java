@@ -20,4 +20,6 @@ public class ChatMessageResponse {
     UUID recipientId;
     String content;
     LocalDateTime timestamp;
+    Boolean isRead;
+    LocalDateTime readAt;
 }

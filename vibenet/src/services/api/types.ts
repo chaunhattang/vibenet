@@ -175,6 +175,15 @@ export interface NotificationResponse {
   createdAt: string;
 }
 
+export interface NotificationEvent {
+  notificationId: string;
+  recipientId: string;
+  actorId: string;
+  type: NotificationType;
+  relatedEntityId: string | null;
+  createdAt: string;
+}
+
 export interface ChatRoomResponse {
   chatId: string;
   friendId: string;
@@ -194,6 +203,8 @@ export interface ChatMessageResponse {
   recipientId: string;
   content: string;
   timestamp: string;
+  isRead?: boolean;
+  readAt?: string | null;
 }
 
 export interface MomentCreationResponse {
